@@ -41,6 +41,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<{ message: string }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ message: string }>;
   logout: () => void;
+  refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
   hasAccess: (requiredRole?: UserRole[]) => boolean;
@@ -199,6 +200,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
   };
 
+  /** Re-fetch the latest user data from the server (useful after admin approves the account) */
+  const refreshUser = async () => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    try {
+      const res = await fetch(`${API_URL}/auth/me`, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      const data = await res.json();
+      if (data.success && data.user) {
+        setUser(data.user);
+      }
+    } catch (err) {
+      console.error('refreshUser failed:', err);
+    }
+  };
+
   const hasAccess = (requiredRoles?: UserRole[]) => {
     if (!user || !user.isApproved) return false;
     if (!requiredRoles || requiredRoles.length === 0) return true;
@@ -215,6 +233,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         forgotPassword,
         resetPassword,
         logout,
+        refreshUser,
         isAuthenticated: !!user,
         loading,
         hasAccess,

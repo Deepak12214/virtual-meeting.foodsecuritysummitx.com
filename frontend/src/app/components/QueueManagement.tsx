@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from './ui/card';
 import { Button } from './ui/button';
 import { Badge } from './ui/badge';
@@ -27,6 +27,7 @@ interface QueueManagementProps {
   canManage?: boolean;
   onMakeLive?: (id: string) => void;
   onReorder?: (items: QueueItem[]) => void;
+  onStatusChange?: (id: string, newStatus: 'ready' | 'not-ready') => void;
 }
 
 export function QueueManagement({
@@ -35,8 +36,13 @@ export function QueueManagement({
   canManage = false,
   onMakeLive,
   onReorder,
+  onStatusChange,
 }: QueueManagementProps) {
   const [items, setItems] = useState(initialItems);
+
+  useEffect(() => {
+    setItems(initialItems);
+  }, [initialItems]);
 
   const moveUp = (index: number) => {
     if (index === 0) return;
@@ -55,16 +61,21 @@ export function QueueManagement({
   };
 
   const toggleStatus = (id: string) => {
-    const newItems = items.map((item) =>
-      item.id === id
+    const item = items.find((i) => i.id === id);
+    if (!item) return;
+    const newStatus = (item.status === 'ready' ? 'not-ready' : 'ready') as 'ready' | 'not-ready';
+
+    const newItems = items.map((i) =>
+      i.id === id
         ? {
-            ...item,
-            status: (item.status === 'ready' ? 'not-ready' : 'ready') as 'ready' | 'not-ready',
+            ...i,
+            status: newStatus,
           }
-        : item
+        : i
     );
     setItems(newItems);
     onReorder?.(newItems);
+    onStatusChange?.(id, newStatus);
   };
 
   const getStatusBadge = (status: string) => {

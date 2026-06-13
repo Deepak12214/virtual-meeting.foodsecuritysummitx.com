@@ -98,32 +98,42 @@ const createRoom = async (name, description = '') => {
 };
 
 /**
- * Map user platform role to 100ms SDK role
+ * Map user platform role to 100ms SDK role.
+ *
+ * ⚠️  MUST match the roles configured in the 100ms template (6a2470934a799ad17a8b64f9):
+ *    - broadcaster      → can publish audio, video, screen
+ *    - viewer-on-stage  → can publish audio, video, screen (used for speakers approved to go live)
+ *    - viewer           → receive-only (audience)
+ *
  * @param {string} userRole - Platform UserRole
  * @returns {string} Mapped 100ms role
  */
 const mapPlatformRoleToHMSRole = (userRole) => {
   switch (userRole) {
+    // Full broadcast control
     case 'admin':
     case 'organizer':
-      return 'host';
     case 'stage_manager':
     case 'host':
-      return 'host';
     case 'moderator':
-      return 'moderator';
+      return 'broadcaster';
+
+    // Speakers join as viewer-on-stage so they can publish once approved
     case 'speaker':
-      return 'speaker';
+      return 'viewer-on-stage';
+
+    // Everyone else watches only
     case 'investor':
     case 'startup':
     case 'exhibitor':
     case 'sponsor':
     case 'attendee':
-      return 'attendee';
+    case 'free_visitor':
     default:
       return 'viewer';
   }
 };
+
 
 module.exports = {
   generateManagementToken,

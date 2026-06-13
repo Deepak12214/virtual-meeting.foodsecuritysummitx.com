@@ -4,6 +4,7 @@ const cors = require('cors');
 const connectDB = require('./config/db');
 const authRoutes = require('./routes/auth.routes');
 const meetingRoutes = require('./routes/meeting.routes');
+const adminRoutes = require('./routes/admin.routes');
 
 // Connect to Database
 connectDB();
@@ -31,6 +32,7 @@ app.get('/api/health', (req, res) => {
 // Bind Routes
 app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
+app.use('/api/admin', adminRoutes);
 
 // 404 Handler
 app.use((req, res) => {
