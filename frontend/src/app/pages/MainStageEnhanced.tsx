@@ -15,6 +15,8 @@ import {
   selectIsLocalScreenShared,
   selectIsLocalAudioEnabled,
   selectIsLocalVideoEnabled,
+  selectIsPeerAudioEnabled,
+  selectIsPeerVideoEnabled,
   useVideo,
   HMSPeer,
   useHMSNotifications,
@@ -73,6 +75,89 @@ function ScreenShareView({ peer }: { peer: HMSPeer }) {
   const trackId = peer.auxiliaryTracks?.[0];
   const { videoRef } = useVideo({ trackId });
   return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain bg-black" />;
+}
+
+// ─── Presenting Peer Video Tile with Admin Controls ──────────────────────────
+
+function PresentingPeerTile({
+  peer,
+  isAdminOrOrganizer,
+  hmsActions,
+  onRemove,
+}: {
+  peer: HMSPeer;
+  isAdminOrOrganizer: boolean;
+  hmsActions: ReturnType<typeof useHMSActions>;
+  onRemove: (peerId: string) => void;
+}) {
+  const isAudioOn = useHMSStore(selectIsPeerAudioEnabled(peer.id));
+  const isVideoOn = useHMSStore(selectIsPeerVideoEnabled(peer.id));
+
+  const handleToggleMuteAudio = async () => {
+    if (!peer.audioTrack) return;
+    try {
+      await hmsActions.setRemoteTrackEnabled(peer.audioTrack, !isAudioOn);
+      toast.success(`${peer.name}'s audio has been ${isAudioOn ? 'muted' : 'unmuted'}`);
+    } catch {
+      toast.error('Failed to change remote audio state');
+    }
+  };
+
+  const handleToggleMuteVideo = async () => {
+    if (!peer.videoTrack) return;
+    try {
+      await hmsActions.setRemoteTrackEnabled(peer.videoTrack, !isVideoOn);
+      toast.success(`${peer.name}'s video has been ${isVideoOn ? 'stopped' : 'started'}`);
+    } catch {
+      toast.error('Failed to change remote video state');
+    }
+  };
+
+  return (
+    <div className="relative w-full h-full bg-gray-900 rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center group">
+      <PeerStageVideo peer={peer} />
+
+      <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[11px] text-white font-medium flex items-center gap-1.5">
+        <span>{peer.name} {peer.isLocal ? '(You)' : ''}</span>
+        {!isAudioOn && <MicOff className="w-3 h-3 text-red-500" />}
+        {!isVideoOn && <VideoOff className="w-3 h-3 text-red-500" />}
+      </div>
+
+      {isAdminOrOrganizer && !peer.isLocal && (
+        <div className="absolute top-2 right-2 flex items-center gap-1 bg-black/50 backdrop-blur-sm p-1 rounded-lg opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 hover:bg-white/10 text-white"
+            onClick={handleToggleMuteAudio}
+            title={isAudioOn ? 'Mute Speaker Audio' : 'Request Unmute Audio'}
+          >
+            {isAudioOn ? <Mic className="w-3.5 h-3.5 text-green-400" /> : <MicOff className="w-3.5 h-3.5 text-red-400" />}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 hover:bg-white/10 text-white"
+            onClick={handleToggleMuteVideo}
+            title={isVideoOn ? 'Stop Speaker Video' : 'Request Start Video'}
+          >
+            {isVideoOn ? <Video className="w-3.5 h-3.5 text-green-400" /> : <VideoOff className="w-3.5 h-3.5 text-red-400" />}
+          </Button>
+
+          <Button
+            size="sm"
+            variant="ghost"
+            className="h-7 w-7 p-0 hover:bg-red-500/20 hover:text-red-400 text-white"
+            onClick={() => onRemove(peer.id)}
+            title="Remove from Stage"
+          >
+            <LogOut className="w-3.5 h-3.5" />
+          </Button>
+        </div>
+      )}
+    </div>
+  );
 }
 
 // ─── Speaker Stage Request Banner ─────────────────────────────────────────────
@@ -136,12 +221,12 @@ function StageRequestBanner({
       {/* Main banner */}
       <div
         className={`relative overflow-hidden rounded-xl border transition-all duration-500 ${hasError
-            ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
-            : requestStatus === 'pending'
-              ? 'bg-gradient-to-r from-indigo-950/80 to-violet-950/80 border-indigo-500/40'
-              : requestStatus === 'rejected'
-                ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
-                : 'bg-gradient-to-r from-gray-900/90 to-slate-900/90 border-[--color-border]'
+          ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
+          : requestStatus === 'pending'
+            ? 'bg-gradient-to-r from-indigo-950/80 to-violet-950/80 border-indigo-500/40'
+            : requestStatus === 'rejected'
+              ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
+              : 'bg-gradient-to-r from-gray-900/90 to-slate-900/90 border-[--color-border]'
           }`}
       >
         {requestStatus === 'pending' && !hasError && (
@@ -155,11 +240,11 @@ function StageRequestBanner({
           {/* Left */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${hasError ? 'bg-red-500/20 text-red-400'
-                : connecting ? 'bg-gray-600/40 text-gray-400'
-                  : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
-                    : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
-                      : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
-                        : 'bg-gray-700/50 text-gray-400'
+              : connecting ? 'bg-gray-600/40 text-gray-400'
+                : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
+                  : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
+                    : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
+                      : 'bg-gray-700/50 text-gray-400'
               }`}>
               {hasError ? <XCircle className="w-5 h-5" />
                 : connecting ? <Loader2 className="w-5 h-5 animate-spin" />
@@ -192,8 +277,8 @@ function StageRequestBanner({
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {/* Status pill */}
             <div className={`hidden sm:flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border ${isConnected ? 'border-green-500/30 bg-green-500/10 text-green-400'
-                : hasError ? 'border-red-500/30 bg-red-500/10 text-red-400'
-                  : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
+              : hasError ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
               }`}>
               {isConnected ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5 animate-pulse" />}
               {isConnected ? 'Connected' : hasError ? 'Error' : 'Connecting…'}
@@ -394,7 +479,7 @@ export function MainStageEnhanced() {
 
   // Keep isConnectedRef in sync with live isConnected state (fixes stale closure in setTimeout)
   useEffect(() => {
-    isConnectedRef.current = isConnected;
+    isConnectedRef.current = isConnected || false;
     if (isConnected && connectionTimeoutRef.current) {
       clearTimeout(connectionTimeoutRef.current);
       setHmsConnecting(false);
@@ -477,6 +562,43 @@ export function MainStageEnhanced() {
     }
   }, [isConnected, localPeer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
+  // ── 4b. Sync platformRole to metadata & Auto-mute admin if speakers are live ──
+  useEffect(() => {
+    if (isConnected && localPeer && user) {
+      hmsActions.changeMetadata(
+        JSON.stringify({
+          platformRole: user.role,
+          name: user.name,
+          inQueue: isPureSpeaker ? requestStatus !== 'none' : false,
+          status: isPureSpeaker ? (requestStatus === 'live' ? 'live' : 'viewer') : 'live'
+        })
+      ).catch((err) => console.error('Error setting metadata on join:', err));
+    }
+  }, [isConnected, localPeer?.id, user, isPureSpeaker, requestStatus, hmsActions]);
+
+  useEffect(() => {
+    if ((isAdmin || isOrganizer) && isConnected) {
+      // Find if there is any active live speaker (non-admin/non-organizer peer live on stage)
+      const hasLiveSpeaker = peers.some((p) => {
+        if (p.isLocal) return false;
+        if (p.roleName === 'viewer-on-stage') {
+          try {
+            const meta = JSON.parse(p.metadata || '{}');
+            return meta.status === 'live';
+          } catch {
+            return false;
+          }
+        }
+        return false;
+      });
+
+      if (hasLiveSpeaker) {
+        if (isAudioEnabled) hmsActions.setLocalAudioEnabled(false);
+        if (isVideoEnabled) hmsActions.setLocalVideoEnabled(false);
+      }
+    }
+  }, [peers, isConnected, isAudioEnabled, isVideoEnabled, isAdmin, isOrganizer, hmsActions]);
+
   // ── 5. Real-time 100ms message & peer events ──────────────────────────────
   const notification = useHMSNotifications();
 
@@ -529,12 +651,27 @@ export function MainStageEnhanced() {
               setRequestStatus('live');
               hmsActions.setLocalAudioEnabled(true);
               hmsActions.setLocalVideoEnabled(true);
+              hmsActions.changeMetadata(
+                JSON.stringify({
+                  inQueue: true,
+                  status: 'live',
+                  title: user?.company || user?.name || 'Speaker',
+                  platformRole: user?.role
+                })
+              ).catch(() => {});
               toast.success('🎉 You are now LIVE on Main Stage!');
             } else if (newStatus === 'not-ready' || newStatus === 'rejected') {
               setRequestStatus(newStatus === 'rejected' ? 'rejected' : 'none');
               requestSentRef.current = false;
               hmsActions.setLocalAudioEnabled(false);
               hmsActions.setLocalVideoEnabled(false);
+              hmsActions.changeMetadata(
+                JSON.stringify({
+                  inQueue: false,
+                  status: 'not-ready',
+                  platformRole: user?.role
+                })
+              ).catch(() => {});
               if (newStatus === 'rejected') {
                 toast.error('Your stage request was declined.');
                 setTimeout(() => setRequestStatus('none'), 5000);
@@ -575,6 +712,7 @@ export function MainStageEnhanced() {
           inQueue: true,
           status: 'ready',
           title: user?.company || user?.name || 'Speaker',
+          platformRole: user?.role
         })
       );
 
@@ -607,7 +745,7 @@ export function MainStageEnhanced() {
 
       await hmsActions.setLocalAudioEnabled(false);
       await hmsActions.setLocalVideoEnabled(false);
-      await hmsActions.changeMetadata(JSON.stringify({ inQueue: false, status: 'not-ready' }));
+      await hmsActions.changeMetadata(JSON.stringify({ inQueue: false, status: 'not-ready', platformRole: user?.role }));
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'status-update', peerId: localPeer.id, status: 'not-ready' }),
         'stage-control'
@@ -621,13 +759,22 @@ export function MainStageEnhanced() {
   /** Admin promotes a speaker to live */
   const makeSpeakerLive = async (peerId: string) => {
     try {
+      // Find peer in room to check current role
+      const peer = peers.find((p) => p.id === peerId) || (localPeer?.id === peerId ? localPeer : null);
+      if (!peer || peer.roleName !== 'viewer-on-stage') {
+        // Only change role if they are not already viewer-on-stage
+        await hmsActions.changeRoleOfPeer(peerId, 'viewer-on-stage', true);
+      }
+      
+      // Send broadcast message to bring them live
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'status-update', peerId, status: 'live' }),
         'stage-control'
       );
       setSpeakerQueue((prev) => prev.map((i) => (i.id === peerId ? { ...i, status: 'live' } : i)));
       toast.success('Speaker promoted to live!');
-    } catch {
+    } catch (err) {
+      console.error('Failed to promote speaker:', err);
       toast.error('Failed to promote speaker');
     }
   };
@@ -635,12 +782,42 @@ export function MainStageEnhanced() {
   /** Admin changes a speaker's queue status */
   const changeSpeakerStatus = async (peerId: string, newStatus: 'ready' | 'not-ready') => {
     try {
+      if (newStatus === 'not-ready') {
+        const peer = peers.find((p) => p.id === peerId) || (localPeer?.id === peerId ? localPeer : null);
+        if (!peer || peer.roleName !== 'viewer') {
+          // Change role back to viewer
+          await hmsActions.changeRoleOfPeer(peerId, 'viewer', true);
+        }
+      }
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'status-update', peerId, status: newStatus }),
         'stage-control'
       );
-    } catch {
+    } catch (err) {
+      console.error('Failed to update speaker status:', err);
       toast.error('Failed to update status');
+    }
+  };
+
+  /** Admin removes a speaker from stage and resets them in the queue */
+  const removeSpeakerFromStage = async (peerId: string) => {
+    try {
+      const peer = peers.find((p) => p.id === peerId) || (localPeer?.id === peerId ? localPeer : null);
+      if (!peer || peer.roleName !== 'viewer') {
+        // Change role back to viewer
+        await hmsActions.changeRoleOfPeer(peerId, 'viewer', true);
+      }
+      // Notify peer
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'status-update', peerId, status: 'not-ready' }),
+        'stage-control'
+      );
+      // Update local speakerQueue status to ready
+      setSpeakerQueue((prev) => prev.map((i) => (i.id === peerId ? { ...i, status: 'ready' } : i)));
+      toast.success('Speaker removed from stage');
+    } catch (err) {
+      console.error('Failed to remove speaker from stage:', err);
+      toast.error('Failed to remove speaker from stage');
     }
   };
 
@@ -670,44 +847,78 @@ export function MainStageEnhanced() {
   const screenSharePeer = peers.find((p) => (p.auxiliaryTracks?.length ?? 0) > 0);
 
   // ─── peers who should appear on the video stage ────────────────────────────
-  // Uses actual 100ms template role names (not platform roles):
-  //   broadcaster      → admin/organizer/host/moderator  (always visible)
-  //   viewer-on-stage  → speaker (visible only when marked 'live' in metadata)
   const presentingPeers = (() => {
-    // Gather all HMS peers (selectPeers may or may not include local peer depending on SDK version)
     const allPeers = localPeer ? [localPeer, ...peers.filter(p => p.id !== localPeer.id)] : peers;
 
-    return allPeers.filter((p) => {
-      const hmsRole = p.roleName ?? '';
-
-      // Broadcasters (admin/host/moderator) → always show in stage
-      if (hmsRole === 'broadcaster') return true;
-
-      // Speakers (viewer-on-stage) → show only when approved to go live
-      if (hmsRole === 'viewer-on-stage') {
-        // Local speaker: use React state (metadata update may lag)
+    // Helper to determine if a peer is a live speaker/presenter (non-admin)
+    const isLiveSpeaker = (p: HMSPeer) => {
+      if (p.roleName === 'viewer-on-stage') {
         if (p.isLocal) return requestStatus === 'live';
-        // Remote speaker: read from metadata
         try {
           const meta = JSON.parse(p.metadata || '{}');
           return meta.status === 'live';
-        } catch { return false; }
+        } catch {
+          return false;
+        }
+      }
+      if (p.roleName === 'broadcaster') {
+        try {
+          const meta = JSON.parse(p.metadata || '{}');
+          const pRole = meta.platformRole;
+          if (pRole === 'admin' || pRole === 'organizer') return false;
+        } catch {}
+        if (p.isLocal && (isAdmin || isOrganizer)) return false;
+        return true;
+      }
+      return false;
+    };
+
+    // Check if there is any live speaker currently in the room
+    const hasLiveSpeakers = allPeers.some(p => isLiveSpeaker(p));
+
+    return allPeers.filter((p) => {
+      let meta: any = {};
+      try {
+        meta = JSON.parse(p.metadata || '{}');
+      } catch (e) {}
+
+      const hmsRole = p.roleName ?? '';
+      const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
+
+      const isPeerAdminOrOrganizer = platformRole === 'admin' || platformRole === 'organizer';
+
+      if (isPeerAdminOrOrganizer) {
+        if (hasLiveSpeakers) {
+          return false;
+        }
+        if (p.isLocal) {
+          return isAudioEnabled || isVideoEnabled;
+        }
+        return !!p.videoTrack || !!p.audioTrack;
       }
 
-      return false;
+      return isLiveSpeaker(p);
     });
   })();
 
   const broadcastingNow = presentingPeers.length > 0;
 
-  // Show broadcaster controls if:
-  //  - admin/host/moderator (broadcaster role in 100ms)
-  //  - OR speaker approved to go live (viewer-on-stage, requestStatus === 'live')
+  // Show broadcaster controls if admin/host/moderator AND there are no live speakers, or if speaker is live
   const localHmsRole = localPeer?.roleName ?? '';
+
+  const hasLiveSpeakers = presentingPeers.some(p => {
+    let meta: any = {};
+    try { meta = JSON.parse(p.metadata || '{}'); } catch {}
+    const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
+    return platformRole !== 'admin' && platformRole !== 'organizer';
+  });
+
   const showBroadcasterControls =
     isConnected &&
-    (localHmsRole === 'broadcaster' ||
-      (localHmsRole === 'viewer-on-stage' && requestStatus === 'live'));
+    (
+      ((localHmsRole === 'broadcaster' || isAdmin || isOrganizer) && !hasLiveSpeakers) ||
+      (localHmsRole === 'viewer-on-stage' && requestStatus === 'live')
+    );
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -808,26 +1019,24 @@ export function MainStageEnhanced() {
                 ) : screenSharePeer ? (
                   <ScreenShareView peer={screenSharePeer} />
 
-                ) : presentingPeers.length === 1 ? (
-                  <PeerStageVideo peer={presentingPeers[0]} />
-
-                ) : presentingPeers.length > 1 ? (
+                ) : presentingPeers.length > 0 ? (
                   <div
-                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${presentingPeers.length === 2
+                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${
+                      presentingPeers.length === 1
+                        ? 'grid-cols-1'
+                        : presentingPeers.length === 2
                         ? 'grid-cols-2'
                         : 'grid-cols-2 md:grid-cols-3'
-                      }`}
+                    }`}
                   >
                     {presentingPeers.map((p) => (
-                      <div
+                      <PresentingPeerTile
                         key={p.id}
-                        className="relative w-full min-h-[140px] bg-gray-900 rounded-lg overflow-hidden border border-gray-800 flex items-center justify-center"
-                      >
-                        <PeerStageVideo peer={p} />
-                        <div className="absolute bottom-2 left-2 bg-black/60 backdrop-blur-sm px-2 py-0.5 rounded text-[11px] text-white font-medium">
-                          {p.name} {p.isLocal ? '(You)' : ''}
-                        </div>
-                      </div>
+                        peer={p}
+                        isAdminOrOrganizer={isAdmin || isOrganizer}
+                        hmsActions={hmsActions}
+                        onRemove={removeSpeakerFromStage}
+                      />
                     ))}
                   </div>
 
