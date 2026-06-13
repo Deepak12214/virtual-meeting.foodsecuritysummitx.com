@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Button } from '../components/ui/button';
-import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import {
   useHMSActions,
@@ -16,6 +16,8 @@ import {
   selectIsPeerAudioEnabled,
   useVideo,
   HMSPeer,
+  useHMSNotifications,
+  HMSNotificationTypes,
 } from '@100mslive/react-sdk';
 import {
   ArrowLeft,
@@ -27,13 +29,23 @@ import {
   PhoneOff,
   Clock,
   Users,
+  Radio,
+  Loader2,
+  CheckCircle,
+  XCircle,
+  AlertCircle,
 } from 'lucide-react';
-import { MOCK_MEETINGS } from '../data/mockData';
+import { toast } from 'sonner';
 import {
   fetchMeetingById,
   fetchJoinToken,
   registerJoin,
   endMeeting,
+  submitLobbyRequest,
+  getLobbyStatus,
+  getLobbyRequests,
+  admitLobbyParticipant,
+  denyLobbyParticipant,
   type Meeting,
 } from '../services/meetingService';
 
@@ -86,6 +98,19 @@ export function MeetingRoom() {
   const [loading, setLoading] = useState(true);
   const [timeRemaining, setTimeRemaining] = useState(1800);
 
+  const isCreator =
+    (meeting?.creator as any)?._id === user?._id ||
+    (meeting?.creator as any)?._id === user?.id ||
+    (meeting?.creator as any)?.id === user?._id ||
+    (meeting?.creator as any)?.id === user?.id ||
+    meeting?.creator === user?._id ||
+    meeting?.creator === user?.id;
+
+  const isOrganizer = localPeer?.roleName === 'broadcaster';
+
+  const [joinStatus, setJoinStatus] = useState<'joining' | 'waiting' | 'admitted' | 'denied'>('joining');
+  const [waitingList, setWaitingList] = useState<{ id: string; name: string; userId?: string }[]>([]);
+
   // ✅ Use store selectors — HMSPeer does NOT have isAudioEnabled/isVideoEnabled directly
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
   const isVideoEnabled = useHMSStore(selectIsLocalVideoEnabled);
@@ -95,14 +120,20 @@ export function MeetingRoom() {
     if (!meetingId) return;
 
     fetchMeetingById(meetingId)
-      .then(setMeeting)
-      .catch(() => {
-        // Fallback to mock data
-        const mock = MOCK_MEETINGS.find((m) => m.id === meetingId);
-        if (mock) setMeeting(mock as unknown as Meeting);
+      .then((data) => {
+        if (data.status === 'completed') {
+          toast.error('This meeting has already ended.');
+          navigate('/meetings');
+          return;
+        }
+        setMeeting(data);
+      })
+      .catch((err) => {
+        toast.error(err?.message || 'Failed to load meeting details.');
+        navigate('/meetings');
       })
       .finally(() => setLoading(false));
-  }, [meetingId]);
+  }, [meetingId, navigate]);
 
   // ── 2. Join 100ms room once meeting data is ready ────────────────────────────
   useEffect(() => {
@@ -112,6 +143,7 @@ export function MeetingRoom() {
     if (!roomId) return;
 
     let left = false;
+    setJoinStatus('joining');
 
     fetchJoinToken(roomId)
       .then(({ token }) => {
@@ -119,26 +151,289 @@ export function MeetingRoom() {
         return hmsActions.join({
           userName: user.name,
           authToken: token,
-          settings: { isAudioMuted: false, isVideoMuted: false },
+          settings: { isAudioMuted: !isCreator, isVideoMuted: !isCreator },
         });
       })
-      .then(() => registerJoin(roomId!))
-      .catch((err) => console.error('HMS join error:', err));
+      .then(() => {
+        if (left) return;
+        registerJoin(roomId!);
+        if (isCreator) {
+          setJoinStatus('admitted');
+          hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
+        } else {
+          setJoinStatus('waiting');
+          hmsActions.changeMetadata(JSON.stringify({ status: 'waiting' })).catch(() => {});
+        }
+      })
+      .catch((err) => {
+        console.error('HMS join error:', err);
+        setJoinStatus('joining');
+      });
 
     return () => {
       left = true;
       hmsActions.leave().catch(() => {});
     };
-  }, [meeting, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [meeting, user, isCreator]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Submit join request to DB when waiting state is active and localPeer ID is generated
+  useEffect(() => {
+    if (joinStatus !== 'waiting' || !meetingId || !localPeer?.id) return;
+
+    submitLobbyRequest(meetingId, localPeer.id)
+      .catch((err) => {
+        console.error('Failed to submit lobby request to database:', err);
+      });
+  }, [joinStatus, meetingId, localPeer?.id]);
+
+  // Poll DB lobby status in case broadcast/signaling messages are missed
+  useEffect(() => {
+    if (joinStatus !== 'waiting' || !meetingId) return;
+
+    const checkStatus = async () => {
+      try {
+        const res = await getLobbyStatus(meetingId);
+        if (res.status === 'approved') {
+          setJoinStatus('admitted');
+          hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
+          hmsActions.setLocalAudioEnabled(true).catch(() => {});
+          hmsActions.setLocalVideoEnabled(true).catch(() => {});
+          toast.success('🎉 You have been admitted to the meeting!');
+        } else if (res.status === 'rejected') {
+          setJoinStatus('denied');
+          hmsActions.leave().catch(() => {});
+          toast.error('❌ Your request to join was declined.');
+        }
+      } catch (err) {
+        console.error('Error polling lobby status:', err);
+      }
+    };
+
+    const interval = setInterval(checkStatus, 4000);
+    return () => clearInterval(interval);
+  }, [joinStatus, meetingId, hmsActions]);
+
+  // Re-broadcast join request while waiting in the lobby
+  useEffect(() => {
+    if (joinStatus !== 'waiting' || !isConnected || !localPeer) return;
+
+    const sendRequest = () => {
+      hmsActions.sendBroadcastMessage(
+        JSON.stringify({
+          action: 'request-join',
+          peerId: localPeer.id,
+          name: localPeer.name,
+          userId: user?._id || user?.id
+        }),
+        'lobby-control'
+      ).catch(() => {});
+    };
+
+    sendRequest();
+
+    const interval = setInterval(sendRequest, 5000);
+    return () => clearInterval(interval);
+  }, [joinStatus, isConnected, localPeer?.id, hmsActions, user]);
+
+  // Host announces presence on connect to wake up any waiting peers
+  useEffect(() => {
+    if (isConnected && isOrganizer) {
+      hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'host-announce' }),
+        'lobby-control'
+      ).catch(() => {});
+    }
+  }, [isConnected, isOrganizer, hmsActions]);
+
+  // Host periodically fetches current waitlist requests from MongoDB to sync waitlist
+  useEffect(() => {
+    if (!isOrganizer || !isConnected || !meetingId) return;
+
+    const syncLobbyRequests = async () => {
+      try {
+        const requests = await getLobbyRequests(meetingId);
+        const formatted = requests.map((req: any) => ({
+          id: req.peerId,
+          name: req.user.name,
+          userId: req.user._id || req.user.id
+        }));
+
+        setWaitingList((prev) => {
+          const updated = [...prev];
+          formatted.forEach((req: any) => {
+            if (!updated.some((p) => p.id === req.id)) {
+              updated.push(req);
+            } else {
+              const index = updated.findIndex((p) => p.id === req.id);
+              if (index > -1 && !updated[index].userId) {
+                updated[index].userId = req.userId;
+              }
+            }
+          });
+          return updated.filter((p) => formatted.some((req: any) => req.id === p.id));
+        });
+      } catch (err) {
+        console.error('Error syncing lobby requests from DB:', err);
+      }
+    };
+
+    syncLobbyRequests();
+    const interval = setInterval(syncLobbyRequests, 5000);
+    return () => clearInterval(interval);
+  }, [isOrganizer, isConnected, meetingId]);
+
+  // Listen for lobby controls (admit / deny / request-join)
+  const notification = useHMSNotifications();
+
+  useEffect(() => {
+    if (!notification) return;
+
+    switch (notification.type) {
+      case HMSNotificationTypes.NEW_MESSAGE: {
+        const msg = notification.data;
+        if (!msg || msg.type !== 'lobby-control') break;
+
+        let data: any;
+        try { data = JSON.parse(msg.message); } catch { break; }
+
+        if (data.action === 'request-join') {
+          if (isOrganizer) {
+            setWaitingList((prev) => {
+              if (prev.some((p) => p.id === data.peerId)) return prev;
+              return [...prev, { id: data.peerId, name: data.name, userId: data.userId }];
+            });
+            toast.info(`🔔 ${data.name} is requesting to join the meeting`);
+          }
+        } else if (data.action === 'host-announce') {
+          // Re-send request if waiting
+          if (!isOrganizer && joinStatus === 'waiting' && localPeer) {
+            hmsActions.sendBroadcastMessage(
+              JSON.stringify({
+                action: 'request-join',
+                peerId: localPeer.id,
+                name: localPeer.name,
+                userId: user?._id || user?.id
+              }),
+              'lobby-control'
+            ).catch(() => {});
+          }
+        } else if (data.action === 'admit') {
+          if (localPeer && localPeer.id === data.peerId) {
+            setJoinStatus('admitted');
+            hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
+            // Unmute local media now that we're admitted
+            hmsActions.setLocalAudioEnabled(true).catch(() => {});
+            hmsActions.setLocalVideoEnabled(true).catch(() => {});
+            toast.success('🎉 You have been admitted to the meeting!');
+          }
+        } else if (data.action === 'deny') {
+          if (localPeer && localPeer.id === data.peerId) {
+            setJoinStatus('denied');
+            hmsActions.leave().catch(() => {});
+            toast.error('❌ Your request to join was declined.');
+          }
+        }
+        break;
+      }
+
+      case HMSNotificationTypes.PEER_LEFT: {
+        const leftPeer = notification.data;
+        if (leftPeer) {
+          setWaitingList((prev) => prev.filter((p) => p.id !== leftPeer.id));
+        }
+        break;
+      }
+
+      default:
+        break;
+    }
+  }, [notification, isOrganizer, joinStatus, localPeer?.id, hmsActions, user]);
+
+  const admitPeer = async (peerId: string) => {
+    try {
+      const waitingPeer = waitingList.find((p) => p.id === peerId);
+
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'admit', peerId }),
+        'lobby-control'
+      );
+
+      if (waitingPeer?.userId && meetingId) {
+        await admitLobbyParticipant(meetingId, waitingPeer.userId);
+      }
+
+      setWaitingList((prev) => prev.filter((p) => p.id !== peerId));
+      toast.success('Participant admitted!');
+    } catch {
+      toast.error('Failed to admit participant');
+    }
+  };
+
+  const denyPeer = async (peerId: string) => {
+    try {
+      const waitingPeer = waitingList.find((p) => p.id === peerId);
+
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'deny', peerId }),
+        'lobby-control'
+      );
+
+      // Physically kick the peer
+      await hmsActions.removePeer(peerId, 'Request denied by host');
+
+      if (waitingPeer?.userId && meetingId) {
+        await denyLobbyParticipant(meetingId, waitingPeer.userId);
+      }
+
+      setWaitingList((prev) => prev.filter((p) => p.id !== peerId));
+      toast.warning('Participant request denied');
+    } catch {
+      toast.error('Failed to deny request');
+    }
+  };
 
   // ── 3. Session countdown timer ───────────────────────────────────────────────
   useEffect(() => {
     if (!meeting) return;
+
+    const calculateTimeRemaining = () => {
+      const startTime = new Date(meeting.scheduledTime).getTime();
+      const durationMs = (meeting.duration || 30) * 60 * 1000;
+      const endTime = startTime + durationMs;
+      const now = Date.now();
+      return Math.max(0, Math.floor((endTime - now) / 1000));
+    };
+
+    const initialRemaining = calculateTimeRemaining();
+    setTimeRemaining(initialRemaining);
+
+    if (initialRemaining <= 0) {
+      toast.error('This meeting has reached its 30-minute limit and has ended.');
+      if (isOrganizer) {
+        handleEndForAll();
+      } else {
+        handleLeave();
+      }
+      return;
+    }
+
     const id = setInterval(() => {
-      setTimeRemaining((prev) => (prev <= 0 ? 0 : prev - 1));
+      const remaining = calculateTimeRemaining();
+      setTimeRemaining(remaining);
+
+      if (remaining <= 0) {
+        clearInterval(id);
+        toast.error('This meeting has reached its 30-minute limit and has ended.');
+        if (isOrganizer) {
+          handleEndForAll();
+        } else {
+          handleLeave();
+        }
+      }
     }, 1000);
+
     return () => clearInterval(id);
-  }, [meeting]);
+  }, [meeting, isOrganizer]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Helpers ──────────────────────────────────────────────────────────────────
   const formatTime = (s: number) =>
@@ -191,13 +486,113 @@ export function MeetingRoom() {
     );
   }
 
-  const isOrganizer =
-    user?.role === 'organizer' ||
-    user?.role === 'admin' ||
-    (meeting.creator as any)?.id === user?.id;
+  if (joinStatus === 'waiting') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+        <Card className="w-full max-w-md border-[--color-border] bg-gradient-to-br from-gray-900/90 to-slate-900/90 shadow-2xl relative overflow-hidden backdrop-blur-md">
+          {/* Animated background glow */}
+          <div className="absolute inset-0 pointer-events-none opacity-20">
+            <div className="absolute -top-10 -right-10 w-32 h-32 bg-indigo-500 rounded-full blur-3xl animate-pulse" />
+            <div className="absolute -bottom-10 -left-10 w-32 h-32 bg-violet-500 rounded-full blur-3xl animate-pulse delay-700" />
+          </div>
+
+          <CardHeader className="text-center pb-4 relative z-10">
+            <div className="w-16 h-16 rounded-full bg-indigo-600/15 flex items-center justify-center mx-auto mb-4 border border-indigo-500/30">
+              <Loader2 className="w-8 h-8 text-indigo-400 animate-spin" />
+            </div>
+            <CardTitle className="text-xl font-bold text-white">Asking to join...</CardTitle>
+            <CardDescription className="text-gray-400 mt-1">
+              You will join the meeting as soon as the host admits you.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-6 text-center relative z-10 pb-8">
+            <div className="p-4 bg-white/5 rounded-xl border border-white/10 text-left space-y-2">
+              <p className="text-xs text-gray-400 uppercase font-semibold tracking-wider font-mono">Meeting Room</p>
+              <h3 className="text-base font-bold text-white truncate">{meeting?.title}</h3>
+              {meeting?.description && <p className="text-xs text-gray-400 line-clamp-2">{meeting.description}</p>}
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-yellow-400 bg-yellow-500/10 border border-yellow-500/20 py-2 px-3 rounded-lg">
+              <AlertCircle className="w-4 h-4 flex-shrink-0" />
+              <span>Please keep this window open while waiting.</span>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={handleLeave}
+              className="w-full border-gray-700 hover:bg-gray-800 text-gray-300 gap-2 h-10"
+            >
+              <PhoneOff className="w-4 h-4" /> Cancel Request
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (joinStatus === 'denied') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+        <Card className="w-full max-w-md border-red-500/30 bg-red-950/20 shadow-2xl relative overflow-hidden backdrop-blur-md text-center p-6">
+          <div className="w-16 h-16 rounded-full bg-red-500/15 flex items-center justify-center mx-auto mb-4 border border-red-500/30">
+            <XCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-xl font-bold text-white font-sans">Request Declined</h2>
+          <p className="text-sm text-gray-400 mt-2">
+            The host of this meeting has declined your request to join.
+          </p>
+          <Link to="/meetings" className="block mt-6">
+            <Button className="w-full bg-indigo-600 hover:bg-indigo-500 text-white h-10">
+              Back to Meetings
+            </Button>
+          </Link>
+        </Card>
+      </div>
+    );
+  }
+
+  // Filter out peers that are still in the waiting room
+  const visiblePeers = peers.filter((p) => {
+    if (p.isLocal) {
+      return joinStatus === 'admitted';
+    }
+    try {
+      const meta = JSON.parse(p.metadata || '{}');
+      return meta.status === 'admitted' || p.roleName === 'broadcaster';
+    } catch {
+      return !!p.videoTrack || !!p.audioTrack;
+    }
+  });
 
   return (
     <div className="space-y-6">
+      {/* Lobby Waiting Room requests for organizer */}
+      {isOrganizer && waitingList.length > 0 && (
+        <Card className="border-amber-500/20 bg-amber-500/5 shadow-md animate-pulse">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm flex items-center gap-2 text-amber-500 font-semibold">
+              <span className="relative flex h-2 w-2">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-amber-400 opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2 w-2 bg-amber-500"></span>
+              </span>
+              Lobby Waiting Room ({waitingList.length} request{waitingList.length > 1 ? 's' : ''})
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-2.5">
+            {waitingList.map((p) => (
+              <div key={p.id} className="flex items-center justify-between p-3 bg-black/10 rounded-lg border border-amber-500/10 gap-4 flex-wrap">
+                <span className="text-sm font-semibold text-white">{p.name}</span>
+                <div className="flex gap-2">
+                  <Button size="sm" className="bg-green-600 hover:bg-green-500 text-white h-8 text-xs font-semibold px-4" onClick={() => admitPeer(p.id)}>Admit</Button>
+                  <Button size="sm" variant="destructive" className="h-8 text-xs font-semibold px-4" onClick={() => denyPeer(p.id)}>Deny</Button>
+                </div>
+              </div>
+            ))}
+          </CardContent>
+        </Card>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
@@ -222,7 +617,7 @@ export function MeetingRoom() {
         </Card>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {peers.length === 0 ? (
+          {visiblePeers.length === 0 ? (
             <Card className="md:col-span-2">
               <CardContent className="flex flex-col items-center justify-center py-16 text-gray-500">
                 <Users className="w-12 h-12 mb-3 text-gray-400" />
@@ -230,7 +625,7 @@ export function MeetingRoom() {
               </CardContent>
             </Card>
           ) : (
-            peers.map((peer) => (
+            visiblePeers.map((peer) => (
               <Card key={peer.id} className="overflow-hidden border-[--color-border]">
                 <CardContent className="p-0">
                   <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-800 flex items-center justify-center">
@@ -278,7 +673,7 @@ export function MeetingRoom() {
                 <div className="h-6 w-px bg-[--color-border]" />
                 <div className="flex items-center gap-2">
                   <Users className="h-5 w-5 text-[--color-text-secondary]" />
-                  <span>{peers.length} peer(s)</span>
+                  <span>{visiblePeers.length} peer(s)</span>
                 </div>
               </div>
 

@@ -1,3 +1,4 @@
+import { useState, useEffect } from 'react';
 import { Link } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
@@ -14,12 +15,21 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { ANALYTICS_DATA, MOCK_SESSIONS, MOCK_MEETINGS, MOCK_BOOTHS } from '../../data/mockData';
+import { ANALYTICS_DATA, MOCK_SESSIONS, MOCK_BOOTHS } from '../../data/mockData';
+import { fetchMeetings, type Meeting } from '../../services/meetingService';
 
 export function OrganizerDashboard() {
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  useEffect(() => {
+    fetchMeetings()
+      .then(setMeetings)
+      .catch((err) => console.warn('Failed to load meetings in OrganizerDashboard:', err));
+  }, []);
+
   const pendingApprovals = 12;
   const activeSessions = MOCK_SESSIONS.filter((s) => s.isLive).length;
-  const activeMeetings = MOCK_MEETINGS.filter((m) => m.status === 'active').length;
+  const activeMeetingsCount = meetings.filter((m) => m.status === 'active').length;
   const liveBooths = MOCK_BOOTHS.filter((b) => b.isLive).length;
 
   const quickActions = [
@@ -40,7 +50,7 @@ export function OrganizerDashboard() {
     },
     {
       title: 'Manage Meetings',
-      description: `${activeMeetings} active meetings`,
+      description: `${activeMeetingsCount} active meetings`,
       icon: Calendar,
       path: '/organizer/meetings',
       color: 'from-green-500 to-emerald-500',
@@ -108,12 +118,12 @@ export function OrganizerDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Active Meetings</CardDescription>
-            <CardTitle className="text-3xl">{ANALYTICS_DATA.activeMeetings}</CardTitle>
+            <CardTitle className="text-3xl">{activeMeetingsCount}</CardTitle>
           </CardHeader>
           <CardContent>
             <div className="flex items-center gap-1 text-sm text-[--color-text-secondary]">
               <Activity className="h-3 w-3" />
-              <span>156 total scheduled</span>
+              <span>{meetings.length} total scheduled</span>
             </div>
           </CardContent>
         </Card>

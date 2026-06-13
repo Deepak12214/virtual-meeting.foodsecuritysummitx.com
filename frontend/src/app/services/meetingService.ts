@@ -166,3 +166,69 @@ export async function fetchPitchRoom(): Promise<Meeting> {
   if (!res.ok) throw new Error(data.message || 'Failed to load Pitch Ceremony room');
   return data.meeting as Meeting;
 }
+
+// ─── Lobby / Waiting Room ──────────────────────────────────────────────────────
+
+/**
+ * Submit a join request to the meeting lobby
+ */
+export async function submitLobbyRequest(meetingId: string, peerId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/lobby/request`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ peerId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to submit lobby request');
+}
+
+/**
+ * Check current user's lobby request status
+ */
+export async function getLobbyStatus(meetingId: string): Promise<{ status: string; peerId: string | null }> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/lobby/status`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch lobby status');
+  return { status: data.status, peerId: data.peerId };
+}
+
+/**
+ * Get all pending lobby requests (Organizer only)
+ */
+export async function getLobbyRequests(meetingId: string): Promise<any[]> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/lobby/requests`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to fetch lobby requests');
+  return data.requests;
+}
+
+/**
+ * Admit a participant from the lobby (Organizer only)
+ */
+export async function admitLobbyParticipant(meetingId: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/lobby/admit`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to admit participant');
+}
+
+/**
+ * Deny a participant from the lobby (Organizer only)
+ */
+export async function denyLobbyParticipant(meetingId: string, userId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}/lobby/deny`, {
+    method: 'POST',
+    headers: getAuthHeaders(),
+    body: JSON.stringify({ userId }),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to deny participant');
+}
+

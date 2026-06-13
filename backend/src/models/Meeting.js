@@ -43,6 +43,28 @@ const meetingSchema = new mongoose.Schema(
         ref: 'User',
       }
     ],
+    lobbyRequests: [
+      {
+        user: {
+          type: mongoose.Schema.Types.ObjectId,
+          ref: 'User',
+          required: true,
+        },
+        peerId: {
+          type: String,
+          required: true,
+        },
+        status: {
+          type: String,
+          enum: ['pending', 'approved', 'rejected'],
+          default: 'pending',
+        },
+        requestedAt: {
+          type: Date,
+          default: Date.now,
+        }
+      }
+    ],
   },
   { timestamps: true }
 );

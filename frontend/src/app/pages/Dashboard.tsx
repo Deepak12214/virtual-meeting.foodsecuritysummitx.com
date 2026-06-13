@@ -1,13 +1,22 @@
+import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
 import { Video, Store, Calendar, Rocket, Users, BarChart3, Clock, Play } from 'lucide-react';
-import { MOCK_SESSIONS, MOCK_MEETINGS, ANALYTICS_DATA } from '../data/mockData';
+import { MOCK_SESSIONS, ANALYTICS_DATA } from '../data/mockData';
+import { fetchMeetings, type Meeting } from '../services/meetingService';
 
 export function Dashboard() {
   const { user } = useAuth();
+  const [meetings, setMeetings] = useState<Meeting[]>([]);
+
+  useEffect(() => {
+    fetchMeetings()
+      .then(setMeetings)
+      .catch((err) => console.warn('Failed to load meetings in Dashboard:', err));
+  }, []);
 
   const quickActions = [
     {
@@ -49,7 +58,7 @@ export function Dashboard() {
   );
 
   const liveSession = MOCK_SESSIONS.find((s) => s.isLive);
-  const upcomingMeetings = MOCK_MEETINGS.filter((m) => m.status === 'scheduled').slice(0, 3);
+  const upcomingMeetings = meetings.filter((m) => m.status === 'scheduled').slice(0, 3);
 
   return (
     <div className="space-y-8">
@@ -153,12 +162,12 @@ export function Dashboard() {
       </div>
 
       {/* Upcoming Meetings */}
-      {upcomingMeetings.length > 0 && user && ['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'].includes(user.role) && (
+      {upcomingMeetings.length > 0 && user && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Your Upcoming Meetings</h2>
           <div className="space-y-3">
             {upcomingMeetings.map((meeting) => (
-              <Card key={meeting.id}>
+              <Card key={meeting._id ?? meeting.id}>
                 <CardHeader>
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
@@ -169,11 +178,11 @@ export function Dashboard() {
                         <CardTitle className="text-base">{meeting.title}</CardTitle>
                         <CardDescription className="flex items-center gap-2 mt-1">
                           <Clock className="h-3 w-3" />
-                          {meeting.scheduledTime.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {meeting.duration} min
+                          {new Date(meeting.scheduledTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} • {meeting.duration} min
                         </CardDescription>
                       </div>
                     </div>
-                    <Link to={`/meetings/${meeting.id}`}>
+                    <Link to={`/meetings/${meeting._id ?? meeting.id}`}>
                       <Button size="sm">Join</Button>
                     </Link>
                   </div>

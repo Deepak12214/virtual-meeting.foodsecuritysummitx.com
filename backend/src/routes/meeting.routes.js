@@ -184,8 +184,13 @@ router.post('/:id/token', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
 
-    // 1. Map user platform role to 100ms role
-    const hmsRole = mapPlatformRoleToHMSRole(req.user.role);
+    // 1. Determine hmsRole: Only the creator of the meeting gets 'broadcaster' role
+    let hmsRole;
+    if (meeting.creator.toString() === req.user._id.toString()) {
+      hmsRole = 'broadcaster';
+    } else {
+      hmsRole = 'viewer-on-stage';
+    }
 
     // 2. Generate join token
     const token = generateJoinToken(meeting.hmsRoomId, req.user._id, hmsRole);
@@ -260,6 +265,177 @@ router.post('/:id/end', protectUser, async (req, res) => {
       message: 'Meeting ended successfully',
       meeting
     });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Submit a join request to the lobby waiting room
+// @route   POST /api/meetings/:id/lobby/request
+// @access  Private
+router.post('/:id/lobby/request', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const { peerId } = req.body;
+    if (!peerId) {
+      return res.status(400).json({ success: false, message: 'peerId is required' });
+    }
+
+    // Check if user already has a request
+    const existingIndex = meeting.lobbyRequests.findIndex(
+      (r) => r.user.toString() === req.user._id.toString()
+    );
+
+    if (existingIndex > -1) {
+      meeting.lobbyRequests[existingIndex].peerId = peerId;
+      meeting.lobbyRequests[existingIndex].status = 'pending';
+      meeting.lobbyRequests[existingIndex].requestedAt = new Date();
+    } else {
+      meeting.lobbyRequests.push({
+        user: req.user._id,
+        peerId,
+        status: 'pending'
+      });
+    }
+
+    await meeting.save();
+    res.status(200).json({ success: true, message: 'Join request submitted to lobby' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Get current user's join request status in the lobby
+// @route   GET /api/meetings/:id/lobby/status
+// @access  Private
+router.get('/:id/lobby/status', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const request = meeting.lobbyRequests.find(
+      (r) => r.user.toString() === req.user._id.toString()
+    );
+
+    res.status(200).json({
+      success: true,
+      status: request ? request.status : 'none',
+      peerId: request ? request.peerId : null
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Get all pending lobby requests (Organizer only)
+// @route   GET /api/meetings/:id/lobby/requests
+// @access  Private
+router.get('/:id/lobby/requests', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id).populate('lobbyRequests.user', 'name email role');
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const isAuthorized = 
+      meeting.creator.toString() === req.user._id.toString() || 
+      req.user.role === 'admin' || 
+      req.user.role === 'organizer';
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Not authorized to view waitlist requests' });
+    }
+
+    const pendingRequests = meeting.lobbyRequests.filter(r => r.status === 'pending');
+
+    res.status(200).json({
+      success: true,
+      requests: pendingRequests
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Admit a participant from the lobby (Organizer only)
+// @route   POST /api/meetings/:id/lobby/admit
+// @access  Private
+router.post('/:id/lobby/admit', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const isAuthorized = 
+      meeting.creator.toString() === req.user._id.toString() || 
+      req.user.role === 'admin' || 
+      req.user.role === 'organizer';
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });
+    }
+
+    const { userId } = req.body;
+    const request = meeting.lobbyRequests.find(r => r.user.toString() === userId.toString());
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Lobby request not found' });
+    }
+
+    request.status = 'approved';
+
+    if (!meeting.participants.includes(userId)) {
+      meeting.participants.push(userId);
+    }
+    
+    if (meeting.status === 'scheduled') {
+      meeting.status = 'active';
+    }
+
+    await meeting.save();
+    res.status(200).json({ success: true, message: 'Participant admitted successfully' });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Deny entry to a participant from the lobby (Organizer only)
+// @route   POST /api/meetings/:id/lobby/deny
+// @access  Private
+router.post('/:id/lobby/deny', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const isAuthorized = 
+      meeting.creator.toString() === req.user._id.toString() || 
+      req.user.role === 'admin' || 
+      req.user.role === 'organizer';
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });
+    }
+
+    const { userId } = req.body;
+    const request = meeting.lobbyRequests.find(r => r.user.toString() === userId.toString());
+
+    if (!request) {
+      return res.status(404).json({ success: false, message: 'Lobby request not found' });
+    }
+
+    request.status = 'rejected';
+
+    await meeting.save();
+    res.status(200).json({ success: true, message: 'Participant request denied successfully' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }

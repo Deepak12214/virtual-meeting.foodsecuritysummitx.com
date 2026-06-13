@@ -1,5 +1,5 @@
 import { useState, useEffect, ReactNode } from 'react';
-import { Link } from 'react-router';
+import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -15,8 +15,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '../components/ui/dialog';
-import { Calendar, Clock, Users, Video, CheckCircle, AlertCircle, Plus } from 'lucide-react';
-import { MOCK_MEETINGS } from '../data/mockData';
+import { Calendar, Clock, Users, Video, CheckCircle, AlertCircle, Plus, Share2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchMeetings,
@@ -28,7 +27,8 @@ import {
 // ─── MeetingRooms Page ────────────────────────────────────────────────────────
 
 export function MeetingRooms() {
-  const { user, hasAccess } = useAuth();
+  const { user } = useAuth();
+  const navigate = useNavigate();
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
@@ -36,16 +36,10 @@ export function MeetingRooms() {
   // Form state
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
-  const [scheduledTime, setScheduledTime] = useState('');
-  const [duration, setDuration] = useState(30);
   const [creating, setCreating] = useState(false);
 
-  const canAccessMeetings = hasAccess([
-    'attendee', 'startup', 'investor', 'exhibitor', 'sponsor',
-    'speaker', 'moderator', 'organizer', 'admin', 'host',
-  ]);
-  const canCreateMeetings =
-    user?.role === 'organizer' || user?.role === 'admin' || user?.role === 'host';
+  const canAccessMeetings = !!user;
+  const canCreateMeetings = !!user;
 
   // ── Load meetings ────────────────────────────────────────────────────────────
   const loadMeetings = async () => {
@@ -53,8 +47,9 @@ export function MeetingRooms() {
     try {
       const data = await fetchMeetings();
       setMeetings(data);
-    } catch {
-      setMeetings(MOCK_MEETINGS as unknown as Meeting[]);
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to fetch meetings');
+      setMeetings([]);
     } finally {
       setLoading(false);
     }
@@ -73,16 +68,19 @@ export function MeetingRooms() {
     const payload: CreateMeetingPayload = {
       title,
       description,
-      scheduledTime: scheduledTime ? new Date(scheduledTime) : new Date(),
-      duration,
+      scheduledTime: new Date(),
+      duration: 30, // Locked to 30 minutes
     };
 
     try {
-      await createMeeting(payload);
-      toast.success('Meeting scheduled successfully!');
+      const newMeeting = await createMeeting(payload);
+      toast.success('Meeting created successfully!');
       setIsCreateOpen(false);
-      setTitle(''); setDescription(''); setScheduledTime(''); setDuration(30);
+      setTitle(''); 
+      setDescription('');
       loadMeetings();
+      // Directly join the newly created meeting room
+      navigate(`/meetings/${newMeeting._id ?? newMeeting.id}`);
     } catch (err: any) {
       toast.error(err?.message || 'Failed to create meeting');
     } finally {
@@ -115,11 +113,26 @@ export function MeetingRooms() {
     );
   }
 
-  const activeMeetings    = meetings.filter((m) => m.status === 'active');
-  const scheduledMeetings = meetings.filter((m) => m.status === 'scheduled');
-  const completedMeetings = meetings.filter((m) => m.status === 'completed');
+  // Check if a meeting is expired
+  const isExpired = (m: Meeting) => {
+    const startTime = new Date(m.scheduledTime).getTime();
+    const durationMs = (m.duration || 30) * 60 * 1000;
+    return Date.now() > (startTime + durationMs) || m.status === 'completed';
+  };
 
-  const getStatusBadge = (status: Meeting['status']) => {
+  // Personal module filter: exclude 'Main Stage Broadcast' and 'Startup Pitch Ceremony'
+  const filteredMeetings = meetings.filter(
+    (m) => m.title !== 'Main Stage Broadcast' && m.title !== 'Startup Pitch Ceremony'
+  );
+
+  const activeMeetings    = filteredMeetings.filter((m) => !isExpired(m) && new Date(m.scheduledTime).getTime() <= Date.now());
+  const scheduledMeetings = filteredMeetings.filter((m) => !isExpired(m) && new Date(m.scheduledTime).getTime() > Date.now());
+  const completedMeetings = filteredMeetings.filter((m) => isExpired(m));
+
+  const getStatusBadge = (status: Meeting['status'], expired: boolean) => {
+    if (expired) {
+      return <Badge variant="secondary">Expired</Badge>;
+    }
     switch (status) {
       case 'active':
         return (
@@ -132,8 +145,14 @@ export function MeetingRooms() {
           </Badge>
         );
       case 'scheduled': return <Badge variant="outline">Scheduled</Badge>;
-      case 'completed': return <Badge variant="secondary">Completed</Badge>;
+      case 'completed': return <Badge variant="secondary">Expired</Badge>;
     }
+  };
+
+  const handleShare = (meeting: Meeting) => {
+    const link = `${window.location.origin}/meetings/${meeting._id ?? meeting.id}`;
+    navigator.clipboard.writeText(link);
+    toast.success('📋 Meeting link copied to clipboard!');
   };
 
   return (
@@ -152,13 +171,13 @@ export function MeetingRooms() {
             <DialogTrigger asChild>
               <Button className="gap-2">
                 <Plus className="h-4 w-4" />
-                Schedule Meeting
+                Create Meeting
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-[425px]">
               <DialogHeader>
-                <DialogTitle>Schedule a Meeting</DialogTitle>
-                <CardDescription>Creates a new 100ms.live room and meeting slot.</CardDescription>
+                <DialogTitle>Create a Meeting</DialogTitle>
+                <CardDescription>Creates an instant 30-minute meeting room.</CardDescription>
               </DialogHeader>
               <form onSubmit={handleCreate} className="space-y-4 pt-4">
                 <div className="space-y-2">
@@ -169,19 +188,9 @@ export function MeetingRooms() {
                   <label className="text-sm font-medium">Description</label>
                   <Textarea placeholder="Meeting goals and agenda…" value={description} onChange={(e) => setDescription(e.target.value)} />
                 </div>
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Date & Time</label>
-                    <Input type="datetime-local" required value={scheduledTime} onChange={(e) => setScheduledTime(e.target.value)} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="text-sm font-medium">Duration (mins)</label>
-                    <Input type="number" required min={5} value={duration} onChange={(e) => setDuration(Number(e.target.value))} />
-                  </div>
-                </div>
                 <DialogFooter className="pt-4">
                   <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={creating}>{creating ? 'Scheduling…' : 'Create Room'}</Button>
+                  <Button type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create Room'}</Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -193,7 +202,7 @@ export function MeetingRooms() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card><CardHeader><CardDescription>Active Now</CardDescription><CardTitle className="text-2xl">{activeMeetings.length}</CardTitle></CardHeader></Card>
         <Card><CardHeader><CardDescription>Scheduled</CardDescription><CardTitle className="text-2xl">{scheduledMeetings.length}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Completed</CardDescription><CardTitle className="text-2xl">{completedMeetings.length}</CardTitle></CardHeader></Card>
+        <Card><CardHeader><CardDescription>Completed / Expired</CardDescription><CardTitle className="text-2xl">{completedMeetings.length}</CardTitle></CardHeader></Card>
       </div>
 
       {/* Tabs */}
@@ -209,13 +218,13 @@ export function MeetingRooms() {
           <TabsList className="grid w-full grid-cols-3">
             <TabsTrigger value="active">Active ({activeMeetings.length})</TabsTrigger>
             <TabsTrigger value="scheduled">Scheduled ({scheduledMeetings.length})</TabsTrigger>
-            <TabsTrigger value="completed">Completed ({completedMeetings.length})</TabsTrigger>
+            <TabsTrigger value="completed">Expired ({completedMeetings.length})</TabsTrigger>
           </TabsList>
 
           {(['active', 'scheduled', 'completed'] as const).map((tab) => {
             const list = tab === 'active' ? activeMeetings : tab === 'scheduled' ? scheduledMeetings : completedMeetings;
             const EmptyIcon = tab === 'active' ? Video : tab === 'scheduled' ? Calendar : CheckCircle;
-            const emptyMsg = tab === 'active' ? 'No active meetings at the moment' : tab === 'scheduled' ? 'No scheduled meetings' : 'No completed meetings yet';
+            const emptyMsg = tab === 'active' ? 'No active meetings at the moment' : tab === 'scheduled' ? 'No scheduled meetings' : 'No expired meetings yet';
 
             return (
               <TabsContent key={tab} value={tab} className="space-y-4 mt-6">
@@ -228,7 +237,7 @@ export function MeetingRooms() {
                   </Card>
                 ) : (
                   list.map((meeting) => (
-                    <MeetingCard key={meeting._id ?? meeting.id} meeting={meeting} getStatusBadge={getStatusBadge} />
+                    <MeetingCard key={meeting._id ?? meeting.id} meeting={meeting} getStatusBadge={getStatusBadge} onShare={handleShare} />
                   ))
                 )}
               </TabsContent>
@@ -245,29 +254,35 @@ export function MeetingRooms() {
 function MeetingCard({
   meeting,
   getStatusBadge,
+  onShare,
 }: {
   meeting: Meeting;
-  getStatusBadge: (status: Meeting['status']) => ReactNode;
+  getStatusBadge: (status: Meeting['status'], expired: boolean) => ReactNode;
+  onShare: (meeting: Meeting) => void;
 }) {
   const date = new Date(meeting.scheduledTime);
   const minutesUntil = Math.floor((date.getTime() - Date.now()) / 60000);
+  
+  const startTime = date.getTime();
+  const durationMs = (meeting.duration || 30) * 60 * 1000;
+  const expired = Date.now() > (startTime + durationMs) || meeting.status === 'completed';
 
   return (
-    <Card>
+    <Card className={expired ? "opacity-60 bg-slate-900/10 border-slate-900/40" : ""}>
       <CardHeader>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
           <div className="flex items-start gap-3 flex-1">
             <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              meeting.status === 'active'    ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-              meeting.status === 'scheduled' ? 'bg-gradient-to-br from-blue-500 to-cyan-500'    :
-                                               'bg-gradient-to-br from-gray-500 to-gray-600'
+              expired ? 'bg-gray-800 text-gray-500' :
+              meeting.status === 'active' || date.getTime() <= Date.now() ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
+              'bg-gradient-to-br from-blue-500 to-cyan-500'
             }`}>
               <Calendar className="h-6 w-6 text-white" />
             </div>
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg">{meeting.title}</CardTitle>
-                {getStatusBadge(meeting.status)}
+                <CardTitle className={`text-lg ${expired ? 'line-through text-gray-500' : ''}`}>{meeting.title}</CardTitle>
+                {getStatusBadge(meeting.status, expired)}
               </div>
               {meeting.description && (
                 <p className="text-sm text-[--color-text-secondary] mb-1">{meeting.description}</p>
@@ -277,7 +292,7 @@ function MeetingCard({
                   <Clock className="h-3 w-3" />
                   {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                   {' • '}{meeting.duration} min
-                  {meeting.status === 'scheduled' && minutesUntil > 0 && (
+                  {!expired && meeting.status === 'scheduled' && minutesUntil > 0 && (
                     <span className="text-xs text-indigo-500 font-medium">(starts in {minutesUntil} min)</span>
                   )}
                 </div>
@@ -291,16 +306,26 @@ function MeetingCard({
             </div>
           </div>
 
-          <div>
-            {meeting.status !== 'completed' ? (
+          <div className="flex items-center gap-2">
+            {!expired && (
+              <Button
+                variant="outline"
+                onClick={() => onShare(meeting)}
+                className="gap-1.5 h-9"
+              >
+                <Share2 className="h-4 w-4" />
+                Share
+              </Button>
+            )}
+            {!expired ? (
               <Link to={`/meetings/${meeting._id ?? meeting.id}`}>
-                <Button className="gap-2">
+                <Button className="gap-2 h-9">
                   <Video className="h-4 w-4" />
-                  {meeting.status === 'active' ? 'Join Now' : 'View Details'}
+                  Join Now
                 </Button>
               </Link>
             ) : (
-              <Button variant="outline" disabled>Ended</Button>
+              <Button variant="outline" disabled className="h-9">Ended</Button>
             )}
           </div>
         </div>
