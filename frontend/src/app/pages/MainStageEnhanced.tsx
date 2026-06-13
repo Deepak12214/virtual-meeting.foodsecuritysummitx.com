@@ -135,15 +135,14 @@ function StageRequestBanner({
 
       {/* Main banner */}
       <div
-        className={`relative overflow-hidden rounded-xl border transition-all duration-500 ${
-          hasError
+        className={`relative overflow-hidden rounded-xl border transition-all duration-500 ${hasError
             ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
             : requestStatus === 'pending'
-            ? 'bg-gradient-to-r from-indigo-950/80 to-violet-950/80 border-indigo-500/40'
-            : requestStatus === 'rejected'
-            ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
-            : 'bg-gradient-to-r from-gray-900/90 to-slate-900/90 border-[--color-border]'
-        }`}
+              ? 'bg-gradient-to-r from-indigo-950/80 to-violet-950/80 border-indigo-500/40'
+              : requestStatus === 'rejected'
+                ? 'bg-gradient-to-r from-red-950/70 to-rose-950/70 border-red-500/30'
+                : 'bg-gradient-to-r from-gray-900/90 to-slate-900/90 border-[--color-border]'
+          }`}
       >
         {requestStatus === 'pending' && !hasError && (
           <div className="absolute inset-0 pointer-events-none">
@@ -155,37 +154,36 @@ function StageRequestBanner({
         <div className="relative flex items-center justify-between gap-4 p-4 sm:p-5 flex-wrap">
           {/* Left */}
           <div className="flex items-center gap-3 min-w-0 flex-1">
-            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${
-              hasError ? 'bg-red-500/20 text-red-400'
-              : connecting ? 'bg-gray-600/40 text-gray-400'
-              : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
-              : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
-              : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
-              : 'bg-gray-700/50 text-gray-400'
-            }`}>
+            <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${hasError ? 'bg-red-500/20 text-red-400'
+                : connecting ? 'bg-gray-600/40 text-gray-400'
+                  : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
+                    : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
+                      : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
+                        : 'bg-gray-700/50 text-gray-400'
+              }`}>
               {hasError ? <XCircle className="w-5 h-5" />
-              : connecting ? <Loader2 className="w-5 h-5 animate-spin" />
-              : requestStatus === 'pending' ? <Loader2 className="w-5 h-5 animate-spin" />
-              : requestStatus === 'rejected' ? <XCircle className="w-5 h-5" />
-              : <Radio className="w-5 h-5" />}
+                : connecting ? <Loader2 className="w-5 h-5 animate-spin" />
+                  : requestStatus === 'pending' ? <Loader2 className="w-5 h-5 animate-spin" />
+                    : requestStatus === 'rejected' ? <XCircle className="w-5 h-5" />
+                      : <Radio className="w-5 h-5" />}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white">
                 {hasError ? 'Connection Failed'
-                : connecting ? 'Connecting to Stage Server…'
-                : requestStatus === 'pending' ? 'Waiting for Stage Access…'
-                : requestStatus === 'rejected' ? 'Stage Access Declined'
-                : isConnected ? 'Join Main Stage'
-                : 'Stage Server Offline'}
+                  : connecting ? 'Connecting to Stage Server…'
+                    : requestStatus === 'pending' ? 'Waiting for Stage Access…'
+                      : requestStatus === 'rejected' ? 'Stage Access Declined'
+                        : isConnected ? 'Join Main Stage'
+                          : 'Stage Server Offline'}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {hasError ? connectionError
-                : connecting ? 'Please wait — establishing secure connection…'
-                : requestStatus === 'pending' ? 'Admin notified · You will go live once approved'
-                : requestStatus === 'rejected' ? 'Your request was declined. You may try again.'
-                : isConnected && isApproved ? `Hello ${userName?.split(' ')[0] ?? 'Speaker'} — click Join Stage to send your request`
-                : isConnected && !isApproved ? 'Connected — waiting for account approval'
-                : 'Could not reach stage server'}
+                  : connecting ? 'Please wait — establishing secure connection…'
+                    : requestStatus === 'pending' ? 'Admin notified · You will go live once approved'
+                      : requestStatus === 'rejected' ? 'Your request was declined. You may try again.'
+                        : isConnected && isApproved ? `Hello ${userName?.split(' ')[0] ?? 'Speaker'} — click Join Stage to send your request`
+                          : isConnected && !isApproved ? 'Connected — waiting for account approval'
+                            : 'Could not reach stage server'}
               </p>
             </div>
           </div>
@@ -193,11 +191,10 @@ function StageRequestBanner({
           {/* Right */}
           <div className="flex items-center gap-2 flex-shrink-0 flex-wrap">
             {/* Status pill */}
-            <div className={`hidden sm:flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border ${
-              isConnected ? 'border-green-500/30 bg-green-500/10 text-green-400'
-              : hasError ? 'border-red-500/30 bg-red-500/10 text-red-400'
-              : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
-            }`}>
+            <div className={`hidden sm:flex items-center gap-1.5 text-[10px] px-2 py-1 rounded-full border ${isConnected ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                : hasError ? 'border-red-500/30 bg-red-500/10 text-red-400'
+                  : 'border-yellow-500/30 bg-yellow-500/10 text-yellow-400'
+              }`}>
               {isConnected ? <Wifi className="w-2.5 h-2.5" /> : <WifiOff className="w-2.5 h-2.5 animate-pulse" />}
               {isConnected ? 'Connected' : hasError ? 'Error' : 'Connecting…'}
             </div>
@@ -284,14 +281,14 @@ export function MainStageEnhanced() {
 
   // 100ms hooks
   const hmsActions = useHMSActions();
-  const isConnected    = useHMSStore(selectIsConnectedToRoom);
-  const peers          = useHMSStore(selectPeers);
-  const localPeer      = useHMSStore(selectLocalPeer);
+  const isConnected = useHMSStore(selectIsConnectedToRoom);
+  const peers = useHMSStore(selectPeers);
+  const localPeer = useHMSStore(selectLocalPeer);
   const amIScreenSharing = useHMSStore(selectIsLocalScreenShared);
 
   // Stage room
   const [stageMeeting, setStageMeeting] = useState<Meeting | null>(null);
-  const [roomError, setRoomError]       = useState<string | null>(null);
+  const [roomError, setRoomError] = useState<string | null>(null);
   const [hmsConnecting, setHmsConnecting] = useState(false);
   const [connectionAttempt, setConnectionAttempt] = useState(0); // increment to retry
   const [isRefreshingUser, setIsRefreshingUser] = useState(false);
@@ -299,16 +296,16 @@ export function MainStageEnhanced() {
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
   // Mock session metadata
-  const liveSession      = MOCK_SESSIONS.find((s) => s.isLive);
+  const liveSession = MOCK_SESSIONS.find((s) => s.isLive);
   const upcomingSessions = MOCK_SESSIONS.filter((s) => s.status === 'upcoming');
 
   // Role checks
-  const isAdmin     = user?.role === 'admin';
+  const isAdmin = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost      = user?.role === 'host' || isOrganizer;
+  const isHost = user?.role === 'host' || isOrganizer;
   const isModerator = user?.role === 'moderator' || isOrganizer;
-  const isSpeaker   = user?.role === 'speaker' || isHost;
-  const canAskQ     = hasAccess(['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'host', 'organizer', 'admin']);
+  const isSpeaker = user?.role === 'speaker' || isHost;
+  const canAskQ = hasAccess(['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'host', 'organizer', 'admin']);
 
   // A "pure speaker" is someone with the speaker role who is NOT also a host/admin/organizer
   const isPureSpeaker = user?.role === 'speaker' && !isHost;
@@ -335,7 +332,7 @@ export function MainStageEnhanced() {
   // Control authority list for the sidebar widget
   const authorities = [
     ...(isAdmin || isOrganizer ? [{ role: user?.role ?? 'admin', name: user?.name ?? 'Admin', mode: 'full' as const }] : []),
-    ...(isHost && !isOrganizer  ? [{ role: 'host',      name: user?.name ?? 'Host',      mode: 'presentation' as const }] : []),
+    ...(isHost && !isOrganizer ? [{ role: 'host', name: user?.name ?? 'Host', mode: 'presentation' as const }] : []),
     ...(isModerator && !isOrganizer && !isHost ? [{ role: 'moderator', name: user?.name ?? 'Moderator', mode: 'limited' as const }] : []),
   ];
 
@@ -391,7 +388,7 @@ export function MainStageEnhanced() {
     return () => {
       left = true;
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-      hmsActions.leave().catch(() => {});
+      hmsActions.leave().catch(() => { });
     };
   }, [stageMeeting, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -427,7 +424,7 @@ export function MainStageEnhanced() {
 
     const initialQueue: typeof speakerQueue = [];
     peers.forEach((p) => {
-      if (p.roleName === 'speaker') {
+      if (p.roleName === 'viewer-on-stage') {
         try {
           const meta = JSON.parse(p.metadata || '{}');
           if (meta.inQueue) {
@@ -512,7 +509,7 @@ export function MainStageEnhanced() {
           if (isHost || isModerator || isAdmin) {
             toast.info(`🎙️ ${data.name} is requesting to join the stage`, {
               duration: 6000,
-              action: { label: 'View Queue', onClick: () => {} },
+              action: { label: 'View Queue', onClick: () => { } },
             });
           }
         }
@@ -659,12 +656,12 @@ export function MainStageEnhanced() {
   const moderateQ = (id: string, status: 'approved' | 'rejected') =>
     setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
 
-  const pendingQs  = questions.filter((q) => q.status === 'pending');
+  const pendingQs = questions.filter((q) => q.status === 'pending');
   const approvedQs = questions.filter((q) => q.status === 'approved');
 
   // ── Media handlers ──────────────────────────────────────────────────────────
-  const toggleAudio  = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
-  const toggleVideo  = () => hmsActions.setLocalVideoEnabled(!isVideoEnabled);
+  const toggleAudio = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
+  const toggleVideo = () => hmsActions.setLocalVideoEnabled(!isVideoEnabled);
   const toggleScreen = async () => {
     try { await hmsActions.setScreenShareEnabled(!amIScreenSharing); }
     catch { toast.error('Failed to share screen'); }
@@ -672,23 +669,45 @@ export function MainStageEnhanced() {
 
   const screenSharePeer = peers.find((p) => (p.auxiliaryTracks?.length ?? 0) > 0);
 
-  // Only show peers who are actively broadcasting
-  const presentingPeers = peers.filter((p) => {
-    if (['host', 'moderator'].includes(p.roleName ?? '')) {
-      return !!(p.videoTrack || p.audioTrack);
-    }
-    if (p.roleName === 'speaker') {
-      try {
-        const meta = JSON.parse(p.metadata || '{}');
-        return meta.status === 'live';
-      } catch { return false; }
-    }
-    return false;
-  });
+  // ─── peers who should appear on the video stage ────────────────────────────
+  // Uses actual 100ms template role names (not platform roles):
+  //   broadcaster      → admin/organizer/host/moderator  (always visible)
+  //   viewer-on-stage  → speaker (visible only when marked 'live' in metadata)
+  const presentingPeers = (() => {
+    // Gather all HMS peers (selectPeers may or may not include local peer depending on SDK version)
+    const allPeers = localPeer ? [localPeer, ...peers.filter(p => p.id !== localPeer.id)] : peers;
+
+    return allPeers.filter((p) => {
+      const hmsRole = p.roleName ?? '';
+
+      // Broadcasters (admin/host/moderator) → always show in stage
+      if (hmsRole === 'broadcaster') return true;
+
+      // Speakers (viewer-on-stage) → show only when approved to go live
+      if (hmsRole === 'viewer-on-stage') {
+        // Local speaker: use React state (metadata update may lag)
+        if (p.isLocal) return requestStatus === 'live';
+        // Remote speaker: read from metadata
+        try {
+          const meta = JSON.parse(p.metadata || '{}');
+          return meta.status === 'live';
+        } catch { return false; }
+      }
+
+      return false;
+    });
+  })();
 
   const broadcastingNow = presentingPeers.length > 0;
+
+  // Show broadcaster controls if:
+  //  - admin/host/moderator (broadcaster role in 100ms)
+  //  - OR speaker approved to go live (viewer-on-stage, requestStatus === 'live')
+  const localHmsRole = localPeer?.roleName ?? '';
   const showBroadcasterControls =
-    isConnected && (isHost || (isPureSpeaker && requestStatus === 'live'));
+    isConnected &&
+    (localHmsRole === 'broadcaster' ||
+      (localHmsRole === 'viewer-on-stage' && requestStatus === 'live'));
 
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
@@ -719,10 +738,10 @@ export function MainStageEnhanced() {
             {isHost
               ? 'Host control interface — manage speakers and the live stage'
               : isPureSpeaker
-              ? 'Request stage access and go live in front of the audience'
-              : isModerator
-              ? 'Moderator view — manage Q&A and audience interaction'
-              : 'Watch live keynotes, panel discussions, and presentations'}
+                ? 'Request stage access and go live in front of the audience'
+                : isModerator
+                  ? 'Moderator view — manage Q&A and audience interaction'
+                  : 'Watch live keynotes, panel discussions, and presentations'}
           </p>
         </div>
 
@@ -794,11 +813,10 @@ export function MainStageEnhanced() {
 
                 ) : presentingPeers.length > 1 ? (
                   <div
-                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${
-                      presentingPeers.length === 2
+                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${presentingPeers.length === 2
                         ? 'grid-cols-2'
                         : 'grid-cols-2 md:grid-cols-3'
-                    }`}
+                      }`}
                   >
                     {presentingPeers.map((p) => (
                       <div
