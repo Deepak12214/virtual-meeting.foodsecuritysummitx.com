@@ -40,7 +40,7 @@ export function MainStage() {
   const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
   const isModerator = user?.role === 'moderator' || isOrganizer;
   const isSpeaker = user?.role === 'speaker' || isOrganizer;
-  const canAskQuestions = hasAccess(['paid_delegate', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin']);
+  const canAskQuestions = hasAccess(['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin']);
 
   const handleSubmitQuestion = () => {
     if (!newQuestion.trim()) return;

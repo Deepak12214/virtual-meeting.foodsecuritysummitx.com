@@ -8,6 +8,8 @@
     "dev": "vite"
   },
   "dependencies": {
+    "@100mslive/hms-video-store": "^0.14.2",
+    "@100mslive/react-sdk": "^0.12.2",
     "@emotion/react": "11.14.0",
     "@emotion/styled": "11.14.1",
     "@mui/icons-material": "7.3.5",

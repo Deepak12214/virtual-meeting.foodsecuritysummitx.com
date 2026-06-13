@@ -31,6 +31,14 @@ export default defineConfig({
     },
   },
 
+  // Polyfill `process.env` for packages built for webpack/Node (e.g. @100mslive/react-sdk).
+  // Vite does not inject `process` globally — without this the SDK crashes with
+  // "ReferenceError: process is not defined".
+  define: {
+    'process.env': {},
+    'process.env.NODE_ENV': JSON.stringify('production'),
+  },
+
   // File types to support raw imports. Never add .css, .tsx, or .ts files to this.
   assetsInclude: ['**/*.svg', '**/*.csv'],
 })

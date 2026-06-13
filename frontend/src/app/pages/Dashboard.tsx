@@ -32,7 +32,7 @@ export function Dashboard() {
       icon: Calendar,
       path: '/meetings',
       color: 'from-green-500 to-emerald-500',
-      roles: ['paid_delegate', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'],
+      roles: ['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'],
     },
     {
       title: 'Startup Pitch',
@@ -153,7 +153,7 @@ export function Dashboard() {
       </div>
 
       {/* Upcoming Meetings */}
-      {upcomingMeetings.length > 0 && user && ['paid_delegate', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'].includes(user.role) && (
+      {upcomingMeetings.length > 0 && user && ['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'].includes(user.role) && (
         <div>
           <h2 className="text-xl font-semibold mb-4">Your Upcoming Meetings</h2>
           <div className="space-y-3">
