@@ -114,7 +114,7 @@ export function QueueManagement({
     }
   };
 
-  const liveItem = items.find((i) => i.status === 'live');
+  const liveItems = items.filter((i) => i.status === 'live');
   const queueItems = items.filter((i) => i.status !== 'live');
 
   return (
@@ -129,21 +129,25 @@ export function QueueManagement({
       </CardHeader>
       <CardContent className="space-y-3">
         {/* Live Now */}
-        {liveItem && (
-          <div className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
-            <div className="flex items-center justify-between mb-1">
-              <span className="text-xs font-medium">Currently Live</span>
-              {getStatusBadge('live')}
-            </div>
-            <p className="font-medium text-sm">{liveItem.name}</p>
-            {liveItem.title && (
-              <p className="text-xs text-[--color-text-secondary]">{liveItem.title}</p>
-            )}
-            {liveItem.duration && (
-              <p className="text-xs text-[--color-text-secondary] mt-1">
-                Duration: {liveItem.duration} min
-              </p>
-            )}
+        {liveItems.length > 0 && (
+          <div className="space-y-2">
+            {liveItems.map((item) => (
+              <div key={item.id} className="p-3 bg-red-500/10 rounded-lg border border-red-500/20">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-xs font-medium text-red-400">Currently Live</span>
+                  {getStatusBadge('live')}
+                </div>
+                <p className="font-medium text-sm">{item.name}</p>
+                {item.title && (
+                  <p className="text-xs text-[--color-text-secondary]">{item.title}</p>
+                )}
+                {item.duration && (
+                  <p className="text-xs text-[--color-text-secondary] mt-1">
+                    Duration: {item.duration} min
+                  </p>
+                )}
+              </div>
+            ))}
           </div>
         )}
 

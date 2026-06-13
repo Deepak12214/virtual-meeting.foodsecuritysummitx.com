@@ -641,7 +641,7 @@ export function MainStageEnhanced() {
           const { peerId: targetId, status: newStatus } = data;
 
           setSpeakerQueue((prev) => {
-            if (newStatus === 'rejected') return prev.filter((i) => i.id !== targetId);
+            if (newStatus === 'rejected' || newStatus === 'not-ready') return prev.filter((i) => i.id !== targetId);
             return prev.map((i) => (i.id === targetId ? { ...i, status: newStatus } : i));
           });
 
@@ -793,6 +793,9 @@ export function MainStageEnhanced() {
         JSON.stringify({ action: 'status-update', peerId, status: newStatus }),
         'stage-control'
       );
+      if (newStatus === 'not-ready') {
+        setSpeakerQueue((prev) => prev.filter((i) => i.id !== peerId));
+      }
     } catch (err) {
       console.error('Failed to update speaker status:', err);
       toast.error('Failed to update status');
@@ -812,8 +815,8 @@ export function MainStageEnhanced() {
         JSON.stringify({ action: 'status-update', peerId, status: 'not-ready' }),
         'stage-control'
       );
-      // Update local speakerQueue status to ready
-      setSpeakerQueue((prev) => prev.map((i) => (i.id === peerId ? { ...i, status: 'ready' } : i)));
+      // Update local speakerQueue status to filter out the speaker
+      setSpeakerQueue((prev) => prev.filter((i) => i.id !== peerId));
       toast.success('Speaker removed from stage');
     } catch (err) {
       console.error('Failed to remove speaker from stage:', err);
