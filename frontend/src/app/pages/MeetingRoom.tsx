@@ -99,11 +99,8 @@ export function MeetingRoom() {
   const [timeRemaining, setTimeRemaining] = useState(1800);
 
   const isCreator =
-    (meeting?.creator as any)?._id === user?._id ||
     (meeting?.creator as any)?._id === user?.id ||
-    (meeting?.creator as any)?.id === user?._id ||
     (meeting?.creator as any)?.id === user?.id ||
-    meeting?.creator === user?._id ||
     meeting?.creator === user?.id;
 
   const isOrganizer = localPeer?.roleName === 'broadcaster';
@@ -143,32 +140,38 @@ export function MeetingRoom() {
     if (!roomId) return;
 
     let left = false;
-    setJoinStatus('joining');
 
-    fetchJoinToken(roomId)
-      .then(({ token }) => {
-        if (left) return;
-        return hmsActions.join({
-          userName: user.name,
-          authToken: token,
-          settings: { isAudioMuted: !isCreator, isVideoMuted: !isCreator },
-        });
-      })
-      .then(() => {
-        if (left) return;
-        registerJoin(roomId!);
-        if (isCreator) {
+    if (isCreator) {
+      setJoinStatus('joining');
+      fetchJoinToken(roomId)
+        .then(({ token }) => {
+          if (left) return;
+          return hmsActions.join({
+            userName: user.name,
+            authToken: token,
+            settings: { isAudioMuted: false, isVideoMuted: false },
+          });
+        })
+        .then(() => {
+          if (left) return;
+          registerJoin(roomId!);
           setJoinStatus('admitted');
           hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
-        } else {
-          setJoinStatus('waiting');
-          hmsActions.changeMetadata(JSON.stringify({ status: 'waiting' })).catch(() => {});
-        }
-      })
-      .catch((err) => {
-        console.error('HMS join error:', err);
-        setJoinStatus('joining');
-      });
+        })
+        .catch((err) => {
+          console.error('HMS join error:', err);
+          setJoinStatus('joining');
+        });
+    } else {
+      // Regular users/guests immediately enter the waiting state and do not join WebRTC yet
+      setJoinStatus('waiting');
+      
+      // Register request in database immediately using their user ID as peerId placeholder
+      submitLobbyRequest(roomId, user.id || user.id)
+        .catch((err) => {
+          console.error('Failed to submit lobby request to database:', err);
+        });
+    }
 
     return () => {
       left = true;
@@ -176,42 +179,41 @@ export function MeetingRoom() {
     };
   }, [meeting, user, isCreator]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Submit join request to DB when waiting state is active and localPeer ID is generated
-  useEffect(() => {
-    if (joinStatus !== 'waiting' || !meetingId || !localPeer?.id) return;
-
-    submitLobbyRequest(meetingId, localPeer.id)
-      .catch((err) => {
-        console.error('Failed to submit lobby request to database:', err);
-      });
-  }, [joinStatus, meetingId, localPeer?.id]);
-
   // Poll DB lobby status in case broadcast/signaling messages are missed
   useEffect(() => {
-    if (joinStatus !== 'waiting' || !meetingId) return;
+    if (joinStatus !== 'waiting' || !meetingId || isCreator) return;
+
+    let joiningRoom = false;
 
     const checkStatus = async () => {
       try {
         const res = await getLobbyStatus(meetingId);
-        if (res.status === 'approved') {
+        if (res.status === 'approved' && !joiningRoom) {
+          joiningRoom = true;
+          // Fetch token and join WebRTC room now that we're admitted!
+          const { token } = await fetchJoinToken(meetingId);
+          await hmsActions.join({
+            userName: user?.name || 'Guest',
+            authToken: token,
+            settings: { isAudioMuted: false, isVideoMuted: false },
+          });
+          registerJoin(meetingId);
           setJoinStatus('admitted');
           hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
-          hmsActions.setLocalAudioEnabled(true).catch(() => {});
-          hmsActions.setLocalVideoEnabled(true).catch(() => {});
           toast.success('🎉 You have been admitted to the meeting!');
         } else if (res.status === 'rejected') {
           setJoinStatus('denied');
-          hmsActions.leave().catch(() => {});
           toast.error('❌ Your request to join was declined.');
         }
       } catch (err) {
         console.error('Error polling lobby status:', err);
+        joiningRoom = false;
       }
     };
 
-    const interval = setInterval(checkStatus, 4000);
+    const interval = setInterval(checkStatus, 3000);
     return () => clearInterval(interval);
-  }, [joinStatus, meetingId, hmsActions]);
+  }, [joinStatus, meetingId, hmsActions, isCreator, user]);
 
   // Re-broadcast join request while waiting in the lobby
   useEffect(() => {
@@ -223,7 +225,7 @@ export function MeetingRoom() {
           action: 'request-join',
           peerId: localPeer.id,
           name: localPeer.name,
-          userId: user?._id || user?.id
+          userId: user?.id || user?.id
         }),
         'lobby-control'
       ).catch(() => {});
@@ -312,7 +314,7 @@ export function MeetingRoom() {
                 action: 'request-join',
                 peerId: localPeer.id,
                 name: localPeer.name,
-                userId: user?._id || user?.id
+                userId: user?.id || user?.id
               }),
               'lobby-control'
             ).catch(() => {});
@@ -376,10 +378,14 @@ export function MeetingRoom() {
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'deny', peerId }),
         'lobby-control'
-      );
+      ).catch(() => {});
 
-      // Physically kick the peer
-      await hmsActions.removePeer(peerId, 'Request denied by host');
+      // Physically kick the peer if they are in the WebRTC room
+      try {
+        await hmsActions.removePeer(peerId, 'Request denied by host');
+      } catch (err) {
+        // Safe to ignore if not joined WebRTC yet
+      }
 
       if (waitingPeer?.userId && meetingId) {
         await denyLobbyParticipant(meetingId, waitingPeer.userId);
