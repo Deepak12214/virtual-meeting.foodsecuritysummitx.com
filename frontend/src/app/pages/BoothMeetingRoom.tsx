@@ -62,6 +62,19 @@ function PeerVideo({ peer }: { peer: HMSPeer }) {
   );
 }
 
+function ScreenShareView({ peer }: { peer: HMSPeer }) {
+  const trackId = peer.auxiliaryTracks?.[0];
+  const { videoRef } = useVideo({ trackId });
+  return (
+    <video
+      ref={videoRef}
+      autoPlay
+      playsInline
+      className="w-full h-full object-contain bg-black"
+    />
+  );
+}
+
 function PeerMuteIcon({ peerId }: { peerId: string }) {
   const isAudioOn = useHMSStore(selectIsPeerAudioEnabled(peerId));
   if (isAudioOn) return null;
@@ -87,6 +100,7 @@ export function BoothMeetingRoom() {
   const peers = useHMSStore(selectPeers);
   const localPeer = useHMSStore(selectLocalPeer);
   const amIScreenSharing = useHMSStore(selectIsLocalScreenShared);
+  const screenSharePeer = peers.find((p) => (p.auxiliaryTracks?.length ?? 0) > 0);
 
   const [meeting, setMeeting] = useState<BoothMeeting | null>(null);
   const [loading, setLoading] = useState(true);
@@ -157,9 +171,31 @@ export function BoothMeetingRoom() {
     } else {
       setJoinStatus('waiting');
       
-      submitBoothLobbyRequest(roomId, user.id)
+      getBoothLobbyStatus(roomId)
+        .then((res) => {
+          if (left) return;
+          if (res.status === 'approved') {
+            return fetchBoothMeetingJoinToken(roomId)
+              .then(({ token }) => {
+                if (left) return;
+                return hmsActions.join({
+                  userName: user.name,
+                  authToken: token,
+                  settings: { isAudioMuted: false, isVideoMuted: false },
+                });
+              })
+              .then(() => {
+                if (left) return;
+                setJoinStatus('admitted');
+                hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
+                toast.success('🎉 Connected back to the booth meeting room!');
+              });
+          } else {
+            return submitBoothLobbyRequest(roomId, user.id);
+          }
+        })
         .catch((err) => {
-          console.error('Failed to submit lobby request:', err);
+          console.error('Failed in lobby initiation:', err);
         });
     }
 
@@ -516,36 +552,66 @@ export function BoothMeetingRoom() {
         <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
           {/* Main Video Stream Panel */}
           <div className="lg:col-span-3 space-y-6">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              {visiblePeers.map((peer) => (
-                <Card key={peer.id} className="relative aspect-video overflow-hidden bg-black/90 border-none group shadow-lg">
+            {screenSharePeer ? (
+              <div className="space-y-4">
+                <Card className="relative w-full aspect-video overflow-hidden bg-black border-none shadow-xl">
                   <CardContent className="p-0 h-full w-full">
-                    <PeerVideo peer={peer} />
+                    <ScreenShareView peer={screenSharePeer} />
                     <div className="absolute bottom-4 left-4 z-10">
                       <Badge className="bg-black/50 backdrop-blur-sm text-white text-xs flex items-center gap-1.5">
-                        {peer.name} {peer.isLocal ? '(You)' : ''}
-                        {peer.roleName && (
-                          <span className="opacity-75 uppercase text-[9px] bg-white/20 px-1 rounded">
-                            {peer.roleName}
-                          </span>
-                        )}
+                        {screenSharePeer.name}'s Screen Share
                       </Badge>
                     </div>
-                    <PeerMuteIcon peerId={peer.id} />
                   </CardContent>
                 </Card>
-              ))}
-
-              {visiblePeers.length === 0 && (
-                <div className="col-span-2 aspect-video bg-black/95 rounded-xl border border-[--color-border] flex flex-col items-center justify-center text-center p-6">
-                  <Radio className="h-12 w-12 text-[--color-text-secondary] animate-pulse mb-3" />
-                  <p className="font-semibold text-sm">Waiting for live video feed...</p>
-                  <p className="text-xs text-[--color-text-secondary] mt-1">
-                    Connecting to representatives and active video streams.
-                  </p>
+                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
+                  {visiblePeers.map((peer) => (
+                    <Card key={peer.id} className="relative aspect-video overflow-hidden bg-black/90 border-none group shadow-md">
+                      <CardContent className="p-0 h-full w-full">
+                        <PeerVideo peer={peer} />
+                        <div className="absolute bottom-4 left-4 z-10">
+                          <Badge className="bg-black/50 backdrop-blur-sm text-white text-[10px] flex items-center gap-1 px-1.5 py-0.5">
+                            {peer.name} {peer.isLocal ? '(You)' : ''}
+                          </Badge>
+                        </div>
+                        <PeerMuteIcon peerId={peer.id} />
+                      </CardContent>
+                    </Card>
+                  ))}
                 </div>
-              )}
-            </div>
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {visiblePeers.map((peer) => (
+                  <Card key={peer.id} className="relative aspect-video overflow-hidden bg-black/90 border-none group shadow-lg">
+                    <CardContent className="p-0 h-full w-full">
+                      <PeerVideo peer={peer} />
+                      <div className="absolute bottom-4 left-4 z-10">
+                        <Badge className="bg-black/50 backdrop-blur-sm text-white text-xs flex items-center gap-1.5">
+                          {peer.name} {peer.isLocal ? '(You)' : ''}
+                          {peer.roleName && (
+                            <span className="opacity-75 uppercase text-[9px] bg-white/20 px-1 rounded">
+                              {peer.roleName}
+                            </span>
+                          )}
+                        </Badge>
+                      </div>
+                      <PeerMuteIcon peerId={peer.id} />
+                    </CardContent>
+                  </Card>
+                ))}
+
+                {visiblePeers.length === 0 && (
+                  <div className="col-span-2 aspect-video bg-black/95 rounded-xl border border-[--color-border] flex flex-col items-center justify-center text-center p-6">
+                    <Radio className="h-12 w-12 text-[--color-text-secondary] animate-pulse mb-3" />
+                    <p className="font-semibold text-sm">Waiting for live video feed...</p>
+                    <p className="text-xs text-[--color-text-secondary] mt-1">
+                      Connecting to representatives and active video streams.
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
           </div>
 
           {/* Organizer Lobby Controller Panel */}
