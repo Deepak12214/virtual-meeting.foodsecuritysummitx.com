@@ -470,23 +470,23 @@ export function BoothMeetingRoom() {
 
       {/* ── Waiting Lobby Screen ── */}
       {joinStatus === 'waiting' && (
-        <Card className="max-w-md mx-auto py-12 text-center bg-black/20 backdrop-blur-md border border-white/10 shadow-2xl relative overflow-hidden">
+        <Card className="max-w-md mx-auto py-12 text-center  shadow-2xl relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10" />
           <CardContent className="space-y-6 relative z-10">
             <Loader2 className="h-16 w-16 mx-auto animate-spin text-indigo-400" />
             <div className="space-y-2">
-              <CardTitle className="text-xl font-bold text-white">Lobby Waiting Room</CardTitle>
-              <CardDescription className="text-white/70">
+              <CardTitle className="text-xl font-bold">Lobby Waiting Room</CardTitle>
+              <CardDescription>
                 You will be connected automatically once a booth representative admits you.
               </CardDescription>
             </div>
-            <div className="p-4 bg-white/5 rounded-lg text-left border border-white/5 space-y-2">
-              <p className="text-xs text-white/50 uppercase font-semibold">Your Profile Shared</p>
-              <p className="text-sm font-semibold text-white">{user?.name}</p>
-              <p className="text-xs text-white/70">{user?.email}</p>
-              <p className="text-xs text-white/70 capitalize">{user?.role?.replace('_', ' ')} • {user?.company || 'No Company'}</p>
+            <div className="p-4 bg-slate-50 rounded-lg text-left border border-slate-200 space-y-2">
+              <p className="text-xs text-slate-500 uppercase font-semibold">Your Profile Shared</p>
+              <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
+              <p className="text-xs text-slate-600">{user?.email}</p>
+              <p className="text-xs text-slate-600 capitalize">{user?.role?.replace('_', ' ')} • {user?.company || 'No Company'}</p>
             </div>
-            <Button variant="outline" onClick={handleLeave} className="w-full text-white border-white/20 hover:bg-white/10">
+            <Button variant="outline" onClick={handleLeave} className="w-full">
               Cancel & Leave
             </Button>
           </CardContent>

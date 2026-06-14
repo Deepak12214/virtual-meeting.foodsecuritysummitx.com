@@ -48,7 +48,7 @@ const boothSchema = new mongoose.Schema(
     },
     meeting: {
       type: mongoose.Schema.Types.ObjectId,
-      ref: 'Meeting'
+      ref: 'BoothMeeting'
     },
     leads: [
       {
