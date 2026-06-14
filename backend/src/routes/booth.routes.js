@@ -306,8 +306,19 @@ router.put('/:id', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to edit this booth' });
     }
 
-    const { description, brochures } = req.body;
+    const { name, logo, description, brochures } = req.body;
 
+    if (name !== undefined && name !== booth.name) {
+      if (!name.trim()) {
+        return res.status(400).json({ success: false, message: 'Booth name cannot be empty' });
+      }
+      const existingBooth = await Booth.findOne({ name: name.trim() });
+      if (existingBooth) {
+        return res.status(400).json({ success: false, message: 'Booth name already registered' });
+      }
+      booth.name = name.trim();
+    }
+    if (logo !== undefined) booth.logo = logo;
     if (description !== undefined) booth.description = description;
     if (brochures !== undefined) {
       if (brochures.length > 3) {

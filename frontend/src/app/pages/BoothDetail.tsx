@@ -40,6 +40,7 @@ import {
   fetchBoothLeads,
   claimBooth,
   getImageUrl,
+  uploadGenericFile,
   type Booth,
   type Lead
 } from '../services/boothService';
@@ -57,6 +58,9 @@ export function BoothDetail() {
 
   // Edit states
   const [editOpen, setEditOpen] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editLogoUrl, setEditLogoUrl] = useState('');
+  const [editLogoFile, setEditLogoFile] = useState<File | null>(null);
   const [editDescription, setEditDescription] = useState('');
   const [editBrochures, setEditBrochures] = useState<{ name: string; url: string; file?: File }[]>([]);
   const [uploading, setUploading] = useState(false);
@@ -68,6 +72,8 @@ export function BoothDetail() {
     try {
       const data = await fetchBoothById(boothId);
       setBooth(data);
+      setEditName(data.name || '');
+      setEditLogoUrl(data.logo || '');
       setEditDescription(data.description || '');
       setEditBrochures(data.brochures || []);
     } catch (err: any) {
@@ -75,6 +81,17 @@ export function BoothDetail() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleOpenEdit = () => {
+    if (booth) {
+      setEditName(booth.name || '');
+      setEditLogoUrl(booth.logo || '');
+      setEditLogoFile(null);
+      setEditDescription(booth.description || '');
+      setEditBrochures(booth.brochures || []);
+    }
+    setEditOpen(true);
   };
 
   useEffect(() => {
@@ -207,8 +224,18 @@ export function BoothDetail() {
 
   // Editing booth logic
   const handleSaveDetails = async () => {
+    if (!editName.trim()) {
+      toast.error('Booth name is required.');
+      return;
+    }
     setUploading(true);
     try {
+      // Upload Logo if changed
+      let finalLogoUrl = editLogoUrl;
+      if (editLogoFile) {
+        finalLogoUrl = await uploadGenericFile(editLogoFile);
+      }
+
       const updatedBrochures = await Promise.all(
         editBrochures.map(async (bro) => {
           if (bro.file) {
@@ -220,6 +247,8 @@ export function BoothDetail() {
       );
 
       await updateBooth(booth.id, {
+        name: editName.trim(),
+        logo: finalLogoUrl,
         description: editDescription,
         brochures: updatedBrochures
       });
@@ -365,7 +394,7 @@ export function BoothDetail() {
                 
                 <div className="flex flex-col gap-2 self-start md:self-center">
                   {isRep && (
-                    <Button variant="outline" className="gap-2" onClick={() => setEditOpen(true)}>
+                    <Button variant="outline" className="gap-2" onClick={handleOpenEdit}>
                       <Edit className="h-4 w-4" />
                       Edit Booth Details
                     </Button>
@@ -668,10 +697,49 @@ export function BoothDetail() {
             <CardHeader className="border-b border-slate-100">
               <CardTitle className="text-xl font-bold text-slate-900">Edit Booth Details</CardTitle>
               <CardDescription className="text-slate-500">
-                Modify descriptions and upload up to 3 brochures.
+                Modify name, logo, description, and upload up to 3 brochures.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4 max-h-[75vh] overflow-y-auto pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Booth Title (Card Title)</label>
+                  <Input
+                    value={editName}
+                    onChange={(e) => setEditName(e.target.value)}
+                    placeholder="Enter booth name..."
+                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Booth Logo</label>
+                  <div className="flex items-center gap-3">
+                    {editLogoUrl && (
+                      <img
+                        src={editLogoFile ? URL.createObjectURL(editLogoFile) : getImageUrl(editLogoUrl)}
+                        alt="Preview"
+                        className="w-10 h-10 rounded-md object-cover border border-slate-200"
+                      />
+                    )}
+                    <Input
+                      type="file"
+                      accept="image/*"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) {
+                          setEditLogoFile(file);
+                          setEditLogoUrl(URL.createObjectURL(file));
+                        }
+                      }}
+                      className="text-xs bg-white border border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500 flex-1"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <Separator className="bg-slate-100" />
+
               <div className="space-y-2">
                 <label className="text-sm font-semibold text-slate-700">Booth Description</label>
                 <Textarea
@@ -687,12 +755,12 @@ export function BoothDetail() {
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-slate-700">Brochure PDFs (Max 3)</label>
+                  <label className="text-sm font-semibold text-black">Brochure PDFs (Max 3)</label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="gap-1 border-slate-300 text-slate-700 hover:bg-slate-50"
+                    className="gap-1 border-slate-300 text-black hover:bg-primary"
                     onClick={addBrochureRow}
                     disabled={editBrochures.length >= 3}
                   >
@@ -763,7 +831,7 @@ export function BoothDetail() {
                 <Button variant="outline" onClick={() => setEditOpen(false)} disabled={uploading} className="border-slate-300 text-slate-700 hover:bg-slate-50">
                   Cancel
                 </Button>
-                <Button onClick={handleSaveDetails} disabled={uploading} className="gap-2 bg-indigo-600 hover:bg-indigo-700 text-white">
+                <Button onClick={handleSaveDetails} disabled={uploading} className="gap-2 bg-primary hover:bg-primary-dark text-white">
                   {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save Details
                 </Button>

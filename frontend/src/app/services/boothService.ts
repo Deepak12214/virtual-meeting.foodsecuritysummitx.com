@@ -140,7 +140,7 @@ export async function fetchBoothById(id: string): Promise<Booth> {
 /**
  * Update booth details (restricted to reps & admins).
  */
-export async function updateBooth(id: string, payload: { description?: string; brochures?: Brochure[] }): Promise<Booth> {
+export async function updateBooth(id: string, payload: { name?: string; logo?: string; description?: string; brochures?: Brochure[] }): Promise<Booth> {
   const res = await fetch(`${API_URL}/booths/${id}`, {
     method: 'PUT',
     headers: getAuthHeaders(),

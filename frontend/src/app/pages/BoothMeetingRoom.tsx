@@ -618,10 +618,12 @@ export function BoothMeetingRoom() {
                 <Button variant={isVideoEnabled ? 'default' : 'secondary'} size="lg" onClick={toggleVideo} className="gap-2">
                   {isVideoEnabled ? <><Video className="h-5 w-5" />Camera On</> : <><VideoOff className="h-5 w-5" />Camera Off</>}
                 </Button>
-                <Button variant={amIScreenSharing ? 'secondary' : 'outline'} size="lg" onClick={toggleScreen} className="gap-2">
-                  <Share2 className="h-5 w-5" />
-                  {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
-                </Button>
+                {isOrganizer && (
+                  <Button variant={amIScreenSharing ? 'secondary' : 'outline'} size="lg" onClick={toggleScreen} className="gap-2">
+                    <Share2 className="h-5 w-5" />
+                    {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
+                  </Button>
+                )}
                 <div className="h-10 w-px bg-[--color-border]" />
                 {isOrganizer ? (
                   <Button variant="destructive" size="lg" onClick={handleEndForAll} className="gap-2">
