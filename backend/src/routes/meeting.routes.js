@@ -234,7 +234,14 @@ router.put('/:id', protectUser, async (req, res) => {
 
     if (title !== undefined) meeting.title = title;
     if (description !== undefined) meeting.description = description;
-    if (status !== undefined) meeting.status = status;
+    
+    if (status !== undefined) {
+      if (status === 'active' && meeting.status !== 'active' && scheduledTime === undefined) {
+        meeting.scheduledTime = new Date();
+      }
+      meeting.status = status;
+    }
+    
     if (scheduledTime !== undefined) meeting.scheduledTime = scheduledTime;
 
     await meeting.save();
@@ -298,6 +305,7 @@ router.post('/:id/join', protectUser, async (req, res) => {
       meeting.participants.push(req.user._id);
       if (meeting.status === 'scheduled') {
         meeting.status = 'active';
+        meeting.scheduledTime = new Date();
       }
       await meeting.save();
     }

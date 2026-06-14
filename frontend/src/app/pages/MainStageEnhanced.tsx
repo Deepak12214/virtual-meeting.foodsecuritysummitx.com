@@ -52,6 +52,90 @@ import { EmergencyControls } from '../components/EmergencyControls';
 import { toast } from 'sonner';
 import { fetchMainStageRoom, fetchJoinToken, type Meeting } from '../services/meetingService';
 
+interface StageOfflineScreenProps {
+  scheduledTime?: string | Date;
+  status?: string;
+  defaultDescription?: string;
+  className?: string;
+}
+
+export function StageOfflineScreen({ scheduledTime, status, defaultDescription, className = '' }: StageOfflineScreenProps) {
+  const [countdownText, setCountdownText] = useState('');
+  const [isFutureScheduled, setIsFutureScheduled] = useState(false);
+
+  useEffect(() => {
+    if (!scheduledTime || status !== 'scheduled') {
+      setIsFutureScheduled(false);
+      return;
+    }
+
+    const targetDate = new Date(scheduledTime);
+    const updateCountdown = () => {
+      const now = new Date();
+      if (targetDate > now) {
+        setIsFutureScheduled(true);
+        const diff = targetDate.getTime() - now.getTime();
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setCountdownText(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+      } else {
+        setIsFutureScheduled(false);
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [scheduledTime, status]);
+
+  const formattedStartTime = scheduledTime 
+    ? new Date(scheduledTime).toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      })
+    : '';
+
+  return (
+    <div className={`flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 ${className}`}>
+      <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20 shadow-lg animate-pulse">
+        <Radio className="w-8 h-8 text-indigo-500" />
+      </div>
+      
+      {isFutureScheduled ? (
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+              Scheduled Live Stream
+            </span>
+            <h3 className="text-2xl font-bold tracking-tight mt-2">Stage goes live in</h3>
+          </div>
+          
+          <div className="text-4xl font-mono font-extrabold tracking-wider text-indigo-400 drop-shadow-md bg-black/30 px-6 py-3 rounded-2xl border border-white/5 inline-block">
+            {countdownText}
+          </div>
+          
+          <p className="text-sm text-gray-400">
+            Starting at: <span className="font-semibold text-gray-200">{formattedStartTime}</span>
+          </p>
+        </div>
+      ) : (
+        <div className="text-center max-w-sm">
+          <h3 className="text-xl font-bold tracking-tight">Stage is Offline</h3>
+          <p className="text-sm text-gray-400 mt-2">
+            {defaultDescription || "This stage is currently offline. Please check back later or view the scheduled sessions in the lobby."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // ─── Peer Video ───────────────────────────────────────────────────────────────
 
 function PeerStageVideo({ peer }: { peer: HMSPeer }) {
@@ -932,6 +1016,11 @@ export function MainStageEnhanced() {
                   LIVE
                 </Badge>
               )
+            ) : stageMeeting?.status === 'scheduled' && new Date(stageMeeting.scheduledTime) > new Date() ? (
+              <Badge variant="secondary" className="bg-amber-500/10 border-amber-500/25 text-amber-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                SCHEDULED
+              </Badge>
             ) : (
               <Badge variant="secondary" className="bg-rose-500/10 border-rose-500/25 text-rose-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -1013,15 +1102,12 @@ export function MainStageEnhanced() {
               <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center">
 
                 {stageMeeting && stageMeeting.status !== 'active' ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950">
-                    <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20 shadow-lg">
-                      <Radio className="w-8 h-8 text-rose-500 animate-pulse" />
-                    </div>
-                    <h3 className="text-xl font-bold tracking-tight">Stage is Offline</h3>
-                    <p className="text-sm text-gray-400 text-center mt-2 max-w-sm">
-                      This stage is currently offline. Please check back later or view the scheduled sessions in the lobby.
-                    </p>
-                  </div>
+                  <StageOfflineScreen
+                    scheduledTime={stageMeeting.scheduledTime}
+                    status={stageMeeting.status}
+                    defaultDescription={stageMeeting.description}
+                    className="absolute inset-0"
+                  />
                 ) : !isConnected ? (
                   <div className="flex flex-col items-center gap-3 text-white">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
@@ -1178,7 +1264,12 @@ export function MainStageEnhanced() {
         <div className="lg:col-span-1 space-y-4">
           {authorities.length > 0 && <ControlAuthorityIndicator authorities={authorities} />}
           {(isHost || isOrganizer) && (
-            <AdvancedTimer initialSeconds={3600} type="session" canControl={isOrganizer} />
+            <AdvancedTimer 
+              type="session" 
+              canControl={isOrganizer} 
+              status={stageMeeting?.status}
+              scheduledTime={stageMeeting?.scheduledTime}
+            />
           )}
           {(isHost || isModerator || isOrganizer) && <OperationalComms />}
           {isAdmin && <EmergencyControls />}

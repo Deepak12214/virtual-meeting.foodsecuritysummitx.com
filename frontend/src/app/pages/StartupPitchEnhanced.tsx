@@ -25,6 +25,8 @@ import {
   MicOff,
   VideoOff,
   Radio,
+  Clock,
+  Loader2,
 } from 'lucide-react';
 import { MOCK_STARTUPS } from '../data/mockData';
 import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
@@ -34,6 +36,90 @@ import { QueueManagement } from '../components/QueueManagement';
 import { EmergencyControls } from '../components/EmergencyControls';
 import { toast } from 'sonner';
 import { fetchPitchRoom, fetchJoinToken, type Meeting } from '../services/meetingService';
+
+interface StageOfflineScreenProps {
+  scheduledTime?: string | Date;
+  status?: string;
+  defaultDescription?: string;
+  className?: string;
+}
+
+export function StageOfflineScreen({ scheduledTime, status, defaultDescription, className = '' }: StageOfflineScreenProps) {
+  const [countdownText, setCountdownText] = useState('');
+  const [isFutureScheduled, setIsFutureScheduled] = useState(false);
+
+  useEffect(() => {
+    if (!scheduledTime || status !== 'scheduled') {
+      setIsFutureScheduled(false);
+      return;
+    }
+
+    const targetDate = new Date(scheduledTime);
+    const updateCountdown = () => {
+      const now = new Date();
+      if (targetDate > now) {
+        setIsFutureScheduled(true);
+        const diff = targetDate.getTime() - now.getTime();
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setCountdownText(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+      } else {
+        setIsFutureScheduled(false);
+      }
+    };
+
+    updateCountdown();
+    const timer = setInterval(updateCountdown, 1000);
+    return () => clearInterval(timer);
+  }, [scheduledTime, status]);
+
+  const formattedStartTime = scheduledTime 
+    ? new Date(scheduledTime).toLocaleString('en-IN', {
+        day: 'numeric',
+        month: 'short',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+        hour12: true
+      })
+    : '';
+
+  return (
+    <div className={`flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 ${className}`}>
+      <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20 shadow-lg animate-pulse">
+        <Radio className="w-8 h-8 text-indigo-500" />
+      </div>
+      
+      {isFutureScheduled ? (
+        <div className="text-center space-y-4 max-w-sm">
+          <div className="space-y-1">
+            <span className="text-[10px] uppercase font-bold tracking-widest text-indigo-400 bg-indigo-500/10 px-2.5 py-1 rounded-full border border-indigo-500/20">
+              Scheduled Live Stream
+            </span>
+            <h3 className="text-2xl font-bold tracking-tight mt-2">Stage goes live in</h3>
+          </div>
+          
+          <div className="text-4xl font-mono font-extrabold tracking-wider text-indigo-400 drop-shadow-md bg-black/30 px-6 py-3 rounded-2xl border border-white/5 inline-block">
+            {countdownText}
+          </div>
+          
+          <p className="text-sm text-gray-400">
+            Starting at: <span className="font-semibold text-gray-200">{formattedStartTime}</span>
+          </p>
+        </div>
+      ) : (
+        <div className="text-center max-w-sm">
+          <h3 className="text-xl font-bold tracking-tight">Stage is Offline</h3>
+          <p className="text-sm text-gray-400 mt-2">
+            {defaultDescription || "This stage is currently offline. Please check back later or view the scheduled sessions in the lobby."}
+          </p>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ─── Peer Video Tiles ─────────────────────────────────────────────────────────
 
@@ -196,6 +282,11 @@ export function StartupPitchEnhanced() {
                   <Radio className="h-3 w-3 animate-pulse" /> PITCH LIVE
                 </Badge>
               )
+            ) : pitchMeeting?.status === 'scheduled' && new Date(pitchMeeting.scheduledTime) > new Date() ? (
+              <Badge variant="secondary" className="bg-amber-500/10 border-amber-500/25 text-amber-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                SCHEDULED
+              </Badge>
             ) : (
               <Badge variant="secondary" className="bg-rose-500/10 border-rose-500/25 text-rose-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
                 <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
@@ -235,17 +326,12 @@ export function StartupPitchEnhanced() {
         {/* Main pitch area */}
         <div className="lg:col-span-3 space-y-4">
           {pitchMeeting && pitchMeeting.status !== 'active' ? (
-            <Card>
-              <CardContent className="py-24 text-center bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 border-[--color-border] rounded-xl flex flex-col items-center justify-center min-h-[400px]">
-                <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20 shadow-lg">
-                  <Radio className="h-8 w-8 text-rose-500 animate-pulse" />
-                </div>
-                <h3 className="text-xl font-bold tracking-tight text-white">Stage is Offline</h3>
-                <p className="text-sm text-gray-400 mt-2 max-w-sm">
-                  {pitchMeeting.description || 'The Startup Pitch Stage is currently offline. Please wait for the host or organizer to start the session.'}
-                </p>
-              </CardContent>
-            </Card>
+            <StageOfflineScreen
+              scheduledTime={pitchMeeting.scheduledTime}
+              status={pitchMeeting.status}
+              defaultDescription={pitchMeeting.description || 'The Startup Pitch Stage is currently offline. Please wait for the host or organizer to start the session.'}
+              className="py-24 text-center border-[--color-border] rounded-xl min-h-[400px]"
+            />
           ) : currentStartup ? (
             <Card className="overflow-hidden">
               <CardContent className="p-0">

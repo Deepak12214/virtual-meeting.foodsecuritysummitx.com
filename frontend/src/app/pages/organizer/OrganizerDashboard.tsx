@@ -62,6 +62,83 @@ const getStageBadge = (stage: Meeting | null) => {
   return { text: 'OFFLINE', className: 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium' };
 };
 
+interface StageTimerProps {
+  status: string;
+  scheduledTime: string | Date;
+}
+
+export function StageTimer({ status, scheduledTime }: StageTimerProps) {
+  const [displayText, setDisplayText] = useState('');
+  const [timerType, setTimerType] = useState<'countdown' | 'elapsed' | 'offline'>('offline');
+
+  useEffect(() => {
+    const targetDate = new Date(scheduledTime);
+    const initialNow = new Date();
+    
+    // If status is active, count up from the scheduledTime if it is in the past,
+    // or from initialNow (current time when component was set to active) if it is in the future.
+    const activeStart = targetDate <= initialNow ? targetDate : initialNow;
+
+    const updateTimer = () => {
+      const now = new Date();
+      
+      if (status === 'active') {
+        const diff = now.getTime() - activeStart.getTime();
+        const diffMs = diff < 0 ? 0 : diff;
+        const hours = Math.floor(diffMs / 3600000);
+        const minutes = Math.floor((diffMs % 3600000) / 60000);
+        const seconds = Math.floor((diffMs % 60000) / 1000);
+        
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setDisplayText(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+        setTimerType('elapsed');
+      } else if (status === 'scheduled' && targetDate > now) {
+        const diff = targetDate.getTime() - now.getTime();
+        const hours = Math.floor(diff / 3600000);
+        const minutes = Math.floor((diff % 3600000) / 60000);
+        const seconds = Math.floor((diff % 60000) / 1000);
+        
+        const pad = (n: number) => String(n).padStart(2, '0');
+        setDisplayText(`${pad(hours)}:${pad(minutes)}:${pad(seconds)}`);
+        setTimerType('countdown');
+      } else {
+        setDisplayText('Stream is Offline');
+        setTimerType('offline');
+      }
+    };
+
+    updateTimer();
+    const timer = setInterval(updateTimer, 1000);
+
+    return () => clearInterval(timer);
+  }, [status, scheduledTime]);
+
+  if (timerType === 'countdown') {
+    return (
+      <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg w-full">
+        <Clock className="h-3.5 w-3.5" />
+        <span className="font-medium">Starts in: <span className="font-mono font-bold">{displayText}</span></span>
+      </div>
+    );
+  }
+
+  if (timerType === 'elapsed') {
+    return (
+      <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg w-full">
+        <Radio className="h-3.5 w-3.5 animate-pulse text-emerald-500" />
+        <span className="font-medium">Live duration: <span className="font-mono font-bold">{displayText}</span></span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="mt-3 flex items-center gap-1.5 text-xs text-gray-500 bg-gray-500/5 border border-gray-500/10 px-2.5 py-1.5 rounded-lg w-full">
+      <AlertCircle className="h-3.5 w-3.5" />
+      <span className="font-medium">{displayText}</span>
+    </div>
+  );
+}
+
 export function OrganizerDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -185,7 +262,11 @@ export function OrganizerDashboard() {
     setTogglingMain(true);
     const newStatus = mainStage.status === 'active' ? 'completed' : 'active';
     try {
-      const updated = await updateMeeting(mainStage._id, { status: newStatus });
+      const payload: any = { status: newStatus };
+      if (newStatus === 'active') {
+        payload.scheduledTime = new Date();
+      }
+      const updated = await updateMeeting(mainStage._id, payload);
       setMainStage(updated);
       toast.success(`Main Stage is now ${newStatus === 'active' ? 'Online' : 'Offline'}`);
     } catch (err: any) {
@@ -200,7 +281,11 @@ export function OrganizerDashboard() {
     setTogglingPitch(true);
     const newStatus = pitchStage.status === 'active' ? 'completed' : 'active';
     try {
-      const updated = await updateMeeting(pitchStage._id, { status: newStatus });
+      const payload: any = { status: newStatus };
+      if (newStatus === 'active') {
+        payload.scheduledTime = new Date();
+      }
+      const updated = await updateMeeting(pitchStage._id, payload);
       setPitchStage(updated);
       toast.success(`Startup Pitch Stage is now ${newStatus === 'active' ? 'Online' : 'Offline'}`);
     } catch (err: any) {
@@ -388,21 +473,11 @@ export function OrganizerDashboard() {
                     <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{mainStage?.title || 'Main Stage Broadcast'}</h4>
                     <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{mainStage?.description || 'No description set'}</p>
                     
-                    {mainStage?.status === 'scheduled' && new Date(mainStage.scheduledTime) > new Date() && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg w-full">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>Goes live at {new Date(mainStage.scheduledTime).toLocaleString('en-IN', {
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                        })}</span>
-                      </div>
-                    )}
-                    {mainStage?.status === 'active' && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg w-full">
-                        <Radio className="h-3.5 w-3.5 animate-pulse" />
-                        <span>Active since {new Date(mainStage.scheduledTime).toLocaleString('en-IN', {
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                        })}</span>
-                      </div>
+                    {mainStage && (
+                      <StageTimer 
+                        status={mainStage.status} 
+                        scheduledTime={mainStage.scheduledTime} 
+                      />
                     )}
                   </>
                 )}
@@ -503,21 +578,11 @@ export function OrganizerDashboard() {
                     <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{pitchStage?.title || 'Startup Pitch Ceremony'}</h4>
                     <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{pitchStage?.description || 'No description set'}</p>
                     
-                    {pitchStage?.status === 'scheduled' && new Date(pitchStage.scheduledTime) > new Date() && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg w-full">
-                        <Clock className="h-3.5 w-3.5" />
-                        <span>Goes live at {new Date(pitchStage.scheduledTime).toLocaleString('en-IN', {
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                        })}</span>
-                      </div>
-                    )}
-                    {pitchStage?.status === 'active' && (
-                      <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg w-full">
-                        <Radio className="h-3.5 w-3.5 animate-pulse" />
-                        <span>Active since {new Date(pitchStage.scheduledTime).toLocaleString('en-IN', {
-                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
-                        })}</span>
-                      </div>
+                    {pitchStage && (
+                      <StageTimer 
+                        status={pitchStage.status} 
+                        scheduledTime={pitchStage.scheduledTime} 
+                      />
                     )}
                   </>
                 )}
