@@ -395,10 +395,21 @@ function BoothCard({
             />
             <div className="flex-1">
               <div className="flex items-center gap-2 mb-1">
-                <CardTitle className="text-lg">{booth.name}</CardTitle>
+                <CardTitle className="text-lg truncate">{booth.name}</CardTitle>
                 {booth.tier && getTierIcon(booth.tier)}
               </div>
-              {booth.tier && getTierBadge(booth.tier)}
+              <div className="flex items-center gap-2 flex-wrap">
+                {booth.tier && getTierBadge(booth.tier)}
+                {booth.isLive && (
+                  <Badge variant="default" className="gap-1 bg-green-500 hover:bg-green-600 border-none px-2 py-0.5 text-xs font-semibold animate-in fade-in zoom-in duration-300">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                    </span>
+                    Live Exhibitor
+                  </Badge>
+                )}
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -406,15 +417,7 @@ function BoothCard({
           <CardDescription className="line-clamp-2">{booth.description}</CardDescription>
 
           <div className="flex flex-wrap gap-2">
-            {booth.isLive && (
-              <Badge variant="default" className="gap-1 bg-green-500">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
-                </span>
-                Live
-              </Badge>
-            )}
+
             <Badge variant="secondary" className="gap-1">
               <Eye className="h-3 w-3" />
               {booth.visitCount}
