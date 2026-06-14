@@ -40,6 +40,28 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+const formatForDatetimeInput = (dateString?: string | Date): string => {
+  if (!dateString) return '';
+  const date = new Date(dateString);
+  if (isNaN(date.getTime())) return '';
+  
+  // Format to local YYYY-MM-DDTHH:MM
+  const tzOffset = date.getTimezoneOffset() * 60000; // offset in milliseconds
+  const localISOTime = (new Date(date.getTime() - tzOffset)).toISOString().slice(0, 16);
+  return localISOTime;
+};
+
+const getStageBadge = (stage: Meeting | null) => {
+  if (!stage) return { text: 'OFFLINE', className: 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium' };
+  if (stage.status === 'active') {
+    return { text: 'ONLINE', className: 'bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 py-0.5 animate-pulse text-[10px] font-bold' };
+  }
+  if (stage.status === 'scheduled' && new Date(stage.scheduledTime) > new Date()) {
+    return { text: 'SCHEDULED', className: 'bg-amber-500/20 border border-amber-500/30 text-amber-500 gap-1 px-2.5 py-0.5 text-[10px] font-bold' };
+  }
+  return { text: 'OFFLINE', className: 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium' };
+};
+
 export function OrganizerDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -53,8 +75,10 @@ export function OrganizerDashboard() {
   
   const [mainTitle, setMainTitle] = useState('');
   const [mainDesc, setMainDesc] = useState('');
+  const [mainScheduleTime, setMainScheduleTime] = useState('');
   const [pitchTitle, setPitchTitle] = useState('');
   const [pitchDesc, setPitchDesc] = useState('');
+  const [pitchScheduleTime, setPitchScheduleTime] = useState('');
 
   const [savingMain, setSavingMain] = useState(false);
   const [savingPitch, setSavingPitch] = useState(false);
@@ -75,6 +99,7 @@ export function OrganizerDashboard() {
         setMainStage(data);
         setMainTitle(data.title);
         setMainDesc(data.description || '');
+        setMainScheduleTime(formatForDatetimeInput(data.scheduledTime));
       })
       .catch((err) => console.warn('Failed to load main stage in Dashboard:', err));
 
@@ -83,6 +108,7 @@ export function OrganizerDashboard() {
         setPitchStage(data);
         setPitchTitle(data.title);
         setPitchDesc(data.description || '');
+        setPitchScheduleTime(formatForDatetimeInput(data.scheduledTime));
       })
       .catch((err) => console.warn('Failed to load pitch stage in Dashboard:', err));
 
@@ -102,13 +128,23 @@ export function OrganizerDashboard() {
     if (!mainStage || !mainStage._id) return;
     setSavingMain(true);
     try {
+      const scheduledDate = mainScheduleTime ? new Date(mainScheduleTime) : new Date();
+      const now = new Date();
+      // If scheduled time is in the future, set status to 'scheduled' automatically
+      const newStatus = scheduledDate > now ? 'scheduled' : mainStage.status;
+
       const updated = await updateMeeting(mainStage._id, {
         title: mainTitle,
-        description: mainDesc
+        description: mainDesc,
+        scheduledTime: scheduledDate.toISOString(),
+        status: newStatus
       });
       setMainStage(updated);
       setEditingMain(false);
-      toast.success('Main Stage details updated');
+      toast.success(scheduledDate > now 
+        ? `Main Stage scheduled successfully for ${scheduledDate.toLocaleString()}`
+        : 'Main Stage details updated'
+      );
     } catch (err: any) {
       toast.error(err.message || 'Failed to update Main Stage');
     } finally {
@@ -120,13 +156,23 @@ export function OrganizerDashboard() {
     if (!pitchStage || !pitchStage._id) return;
     setSavingPitch(true);
     try {
+      const scheduledDate = pitchScheduleTime ? new Date(pitchScheduleTime) : new Date();
+      const now = new Date();
+      // If scheduled time is in the future, set status to 'scheduled' automatically
+      const newStatus = scheduledDate > now ? 'scheduled' : pitchStage.status;
+
       const updated = await updateMeeting(pitchStage._id, {
         title: pitchTitle,
-        description: pitchDesc
+        description: pitchDesc,
+        scheduledTime: scheduledDate.toISOString(),
+        status: newStatus
       });
       setPitchStage(updated);
       setEditingPitch(false);
-      toast.success('Startup Pitch details updated');
+      toast.success(scheduledDate > now 
+        ? `Startup Pitch Stage scheduled successfully for ${scheduledDate.toLocaleString()}`
+        : 'Startup Pitch Stage details updated'
+      );
     } catch (err: any) {
       toast.error(err.message || 'Failed to update Startup Pitch stage');
     } finally {
@@ -137,7 +183,7 @@ export function OrganizerDashboard() {
   const handleToggleMainStatus = async () => {
     if (!mainStage || !mainStage._id) return;
     setTogglingMain(true);
-    const newStatus = mainStage.status === 'active' ? 'scheduled' : 'active';
+    const newStatus = mainStage.status === 'active' ? 'completed' : 'active';
     try {
       const updated = await updateMeeting(mainStage._id, { status: newStatus });
       setMainStage(updated);
@@ -152,7 +198,7 @@ export function OrganizerDashboard() {
   const handleTogglePitchStatus = async () => {
     if (!pitchStage || !pitchStage._id) return;
     setTogglingPitch(true);
-    const newStatus = pitchStage.status === 'active' ? 'scheduled' : 'active';
+    const newStatus = pitchStage.status === 'active' ? 'completed' : 'active';
     try {
       const updated = await updateMeeting(pitchStage._id, { status: newStatus });
       setPitchStage(updated);
@@ -288,13 +334,15 @@ export function OrganizerDashboard() {
                     <Video className="h-4 w-4 text-indigo-500" />
                     <span>Main Stage Broadcast</span>
                   </div>
-                  <Badge 
-                    variant={mainStage?.status === 'active' ? 'default' : 'secondary'}
-                    className={mainStage?.status === 'active' ? 'bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 py-0.5 animate-pulse text-[10px] font-bold' : 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium'}
-                  >
-                    <Radio className="h-2.5 w-2.5" />
-                    {mainStage?.status === 'active' ? 'ONLINE' : 'OFFLINE'}
-                  </Badge>
+                  {(() => {
+                    const badge = getStageBadge(mainStage);
+                    return (
+                      <Badge className={badge.className}>
+                        <Radio className="h-2.5 w-2.5" />
+                        {badge.text}
+                      </Badge>
+                    );
+                  })()}
                 </div>
 
                 {editingMain ? (
@@ -311,7 +359,16 @@ export function OrganizerDashboard() {
                       placeholder="Main Stage Description"
                       className="text-sm min-h-16 resize-y"
                     />
-                    <div className="flex gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[--color-text-secondary] font-semibold uppercase tracking-wider">Schedule Auto-Live Time</label>
+                      <Input 
+                        type="datetime-local"
+                        value={mainScheduleTime}
+                        onChange={(e) => setMainScheduleTime(e.target.value)}
+                        className="text-sm h-9 bg-[--color-surface] border-[--color-border] text-[--color-text-primary]"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSaveMain} disabled={savingMain} className="gap-1.5 h-8 text-xs">
                         {savingMain ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                         Save Details
@@ -320,6 +377,7 @@ export function OrganizerDashboard() {
                         setEditingMain(false);
                         setMainTitle(mainStage?.title || '');
                         setMainDesc(mainStage?.description || '');
+                        setMainScheduleTime(formatForDatetimeInput(mainStage?.scheduledTime));
                       }} className="h-8 text-xs gap-1">
                         <X className="h-3 w-3" /> Cancel
                       </Button>
@@ -329,6 +387,23 @@ export function OrganizerDashboard() {
                   <>
                     <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{mainStage?.title || 'Main Stage Broadcast'}</h4>
                     <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{mainStage?.description || 'No description set'}</p>
+                    
+                    {mainStage?.status === 'scheduled' && new Date(mainStage.scheduledTime) > new Date() && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg w-full">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>Goes live at {new Date(mainStage.scheduledTime).toLocaleString('en-IN', {
+                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                        })}</span>
+                      </div>
+                    )}
+                    {mainStage?.status === 'active' && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg w-full">
+                        <Radio className="h-3.5 w-3.5 animate-pulse" />
+                        <span>Active since {new Date(mainStage.scheduledTime).toLocaleString('en-IN', {
+                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                        })}</span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -336,7 +411,7 @@ export function OrganizerDashboard() {
               {!editingMain && (
                 <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[--color-border]/50">
                   <Button variant="outline" size="sm" onClick={() => setEditingMain(true)} className="h-8 gap-1 text-xs">
-                    <Edit className="h-3 w-3" /> Edit Details
+                    <Edit className="h-3 w-3" /> Edit & Schedule
                   </Button>
                   
                   <Button
@@ -374,13 +449,15 @@ export function OrganizerDashboard() {
                     <Rocket className="h-4 w-4 text-indigo-500" />
                     <span>Startup Pitch Ceremony</span>
                   </div>
-                  <Badge 
-                    variant={pitchStage?.status === 'active' ? 'default' : 'secondary'}
-                    className={pitchStage?.status === 'active' ? 'bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 py-0.5 animate-pulse text-[10px] font-bold' : 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium'}
-                  >
-                    <Radio className="h-2.5 w-2.5" />
-                    {pitchStage?.status === 'active' ? 'ONLINE' : 'OFFLINE'}
-                  </Badge>
+                  {(() => {
+                    const badge = getStageBadge(pitchStage);
+                    return (
+                      <Badge className={badge.className}>
+                        <Radio className="h-2.5 w-2.5" />
+                        {badge.text}
+                      </Badge>
+                    );
+                  })()}
                 </div>
 
                 {editingPitch ? (
@@ -397,7 +474,16 @@ export function OrganizerDashboard() {
                       placeholder="Startup Pitch Description"
                       className="text-sm min-h-16 resize-y"
                     />
-                    <div className="flex gap-2">
+                    <div className="space-y-1">
+                      <label className="text-[10px] text-[--color-text-secondary] font-semibold uppercase tracking-wider">Schedule Auto-Live Time</label>
+                      <Input 
+                        type="datetime-local"
+                        value={pitchScheduleTime}
+                        onChange={(e) => setPitchScheduleTime(e.target.value)}
+                        className="text-sm h-9 bg-[--color-surface] border-[--color-border] text-[--color-text-primary]"
+                      />
+                    </div>
+                    <div className="flex gap-2 pt-1">
                       <Button size="sm" onClick={handleSavePitch} disabled={savingPitch} className="gap-1.5 h-8 text-xs">
                         {savingPitch ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
                         Save Details
@@ -406,6 +492,7 @@ export function OrganizerDashboard() {
                         setEditingPitch(false);
                         setPitchTitle(pitchStage?.title || '');
                         setPitchDesc(pitchStage?.description || '');
+                        setPitchScheduleTime(formatForDatetimeInput(pitchStage?.scheduledTime));
                       }} className="h-8 text-xs gap-1">
                         <X className="h-3 w-3" /> Cancel
                       </Button>
@@ -415,6 +502,23 @@ export function OrganizerDashboard() {
                   <>
                     <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{pitchStage?.title || 'Startup Pitch Ceremony'}</h4>
                     <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{pitchStage?.description || 'No description set'}</p>
+                    
+                    {pitchStage?.status === 'scheduled' && new Date(pitchStage.scheduledTime) > new Date() && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs text-amber-600 bg-amber-500/10 border border-amber-500/20 px-2.5 py-1.5 rounded-lg w-full">
+                        <Clock className="h-3.5 w-3.5" />
+                        <span>Goes live at {new Date(pitchStage.scheduledTime).toLocaleString('en-IN', {
+                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                        })}</span>
+                      </div>
+                    )}
+                    {pitchStage?.status === 'active' && (
+                      <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1.5 rounded-lg w-full">
+                        <Radio className="h-3.5 w-3.5 animate-pulse" />
+                        <span>Active since {new Date(pitchStage.scheduledTime).toLocaleString('en-IN', {
+                          day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit'
+                        })}</span>
+                      </div>
+                    )}
                   </>
                 )}
               </div>
@@ -422,7 +526,7 @@ export function OrganizerDashboard() {
               {!editingPitch && (
                 <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[--color-border]/50">
                   <Button variant="outline" size="sm" onClick={() => setEditingPitch(true)} className="h-8 gap-1 text-xs">
-                    <Edit className="h-3 w-3" /> Edit Details
+                    <Edit className="h-3 w-3" /> Edit & Schedule
                   </Button>
                   
                   <Button

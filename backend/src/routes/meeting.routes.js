@@ -59,6 +59,14 @@ router.get('/', protectUser, async (req, res) => {
       .populate('participants', 'name email role')
       .sort({ scheduledTime: 1 });
 
+    const now = new Date();
+    for (let meeting of meetings) {
+      if (meeting.status === 'scheduled' && now >= new Date(meeting.scheduledTime)) {
+        meeting.status = 'active';
+        await meeting.save();
+      }
+    }
+
     res.status(200).json({
       success: true,
       count: meetings.length,
@@ -80,6 +88,14 @@ router.get('/main-stage/room', protectUser, async (req, res) => {
       meeting = await Meeting.findOne({ title: 'Main Stage Broadcast' });
       if (meeting) {
         meeting.stageType = 'main_stage';
+        await meeting.save();
+      }
+    }
+
+    if (meeting && meeting.status === 'scheduled') {
+      const now = new Date();
+      if (now >= new Date(meeting.scheduledTime)) {
+        meeting.status = 'active';
         await meeting.save();
       }
     }
@@ -130,6 +146,14 @@ router.get('/pitch/room', protectUser, async (req, res) => {
       meeting = await Meeting.findOne({ title: 'Startup Pitch Ceremony' });
       if (meeting) {
         meeting.stageType = 'pitch';
+        await meeting.save();
+      }
+    }
+
+    if (meeting && meeting.status === 'scheduled') {
+      const now = new Date();
+      if (now >= new Date(meeting.scheduledTime)) {
+        meeting.status = 'active';
         await meeting.save();
       }
     }
@@ -206,11 +230,12 @@ router.put('/:id', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this meeting' });
     }
 
-    const { title, description, status } = req.body;
+    const { title, description, status, scheduledTime } = req.body;
 
     if (title !== undefined) meeting.title = title;
     if (description !== undefined) meeting.description = description;
     if (status !== undefined) meeting.status = status;
+    if (scheduledTime !== undefined) meeting.scheduledTime = scheduledTime;
 
     await meeting.save();
 

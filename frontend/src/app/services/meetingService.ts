@@ -146,7 +146,7 @@ export async function endMeeting(meetingId: string): Promise<void> {
  */
 export async function updateMeeting(
   meetingId: string,
-  payload: { title?: string; description?: string; status?: 'active' | 'scheduled' | 'completed' }
+  payload: { title?: string; description?: string; status?: 'active' | 'scheduled' | 'completed'; scheduledTime?: string | Date }
 ): Promise<Meeting> {
   const res = await fetch(`${API_URL}/meetings/${meetingId}`, {
     method: 'PUT',
