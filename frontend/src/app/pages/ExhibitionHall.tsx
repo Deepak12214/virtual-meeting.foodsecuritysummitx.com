@@ -6,7 +6,7 @@ import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus } from 'lucide-react';
-import { fetchBooths, createBooth, uploadGenericFile, type Booth } from '../services/boothService';
+import { fetchBooths, createBooth, uploadGenericFile, getImageUrl, type Booth } from '../services/boothService';
 import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
@@ -330,7 +330,7 @@ export function ExhibitionHall() {
                   {newLogo ? (
                     <div className="flex items-center justify-between h-10 px-3 border border-slate-200 rounded-md bg-slate-50 text-xs">
                       <div className="flex items-center gap-2">
-                        <img src={newLogo} alt="Uploaded logo preview" className="w-6 h-6 rounded object-cover" />
+                        <img src={getImageUrl(newLogo)} alt="Uploaded logo preview" className="w-6 h-6 rounded object-cover" />
                         <span className="text-slate-600 truncate max-w-[200px]">Logo Ready</span>
                       </div>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setNewLogo('')} className="text-red-500 hover:text-red-600 h-7 px-2">
@@ -389,7 +389,7 @@ function BoothCard({
         <CardHeader>
           <div className="flex items-start gap-3">
             <img
-              src={booth.logo}
+              src={getImageUrl(booth.logo)}
               alt={booth.name}
               className="w-16 h-16 rounded-lg object-cover"
             />

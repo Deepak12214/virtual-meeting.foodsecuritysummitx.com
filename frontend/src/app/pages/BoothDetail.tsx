@@ -39,6 +39,7 @@ import {
   logBoothLead,
   fetchBoothLeads,
   claimBooth,
+  getImageUrl,
   type Booth,
   type Lead
 } from '../services/boothService';
@@ -328,7 +329,7 @@ export function BoothDetail() {
             <CardHeader>
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
                 <img
-                  src={booth.logo}
+                  src={getImageUrl(booth.logo)}
                   alt={booth.name}
                   className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover border border-[--color-border] shadow-sm"
                 />

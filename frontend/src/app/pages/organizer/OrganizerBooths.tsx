@@ -3,7 +3,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../..
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Store, Eye, Users, Plus, Edit, Loader2 } from 'lucide-react';
-import { fetchBooths, type Booth } from '../../services/boothService';
+import { fetchBooths, getImageUrl, type Booth } from '../../services/boothService';
 
 export function OrganizerBooths() {
   const [booths, setBooths] = useState<Booth[]>([]);
@@ -83,7 +83,7 @@ export function OrganizerBooths() {
               >
                 <div className="flex items-start gap-3 flex-1">
                   <img
-                    src={booth.logo}
+                    src={getImageUrl(booth.logo)}
                     alt={booth.name}
                     className="w-12 h-12 rounded-lg object-cover"
                   />

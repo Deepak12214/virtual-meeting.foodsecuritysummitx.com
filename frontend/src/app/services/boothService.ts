@@ -13,6 +13,13 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
+export function getImageUrl(url?: string): string {
+  if (!url) return '';
+  if (url.startsWith('http') || url.startsWith('data:')) return url;
+  const baseUrl = API_URL.replace('/api', '');
+  return `${baseUrl}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
 // ─── Interfaces ────────────────────────────────────────────────────────────────
 
 export interface Brochure {
