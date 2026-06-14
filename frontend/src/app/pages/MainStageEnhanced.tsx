@@ -258,6 +258,7 @@ interface StageRequestBannerProps {
   onRefreshSession: () => void;
   userName?: string;
   isApproved: boolean;
+  isMeetingActive: boolean;
 }
 
 function StageRequestBanner({
@@ -272,6 +273,7 @@ function StageRequestBanner({
   onRefreshSession,
   userName,
   isApproved,
+  isMeetingActive,
 }: StageRequestBannerProps) {
   if (requestStatus === 'live') return null;
 
@@ -325,34 +327,38 @@ function StageRequestBanner({
           <div className="flex items-center gap-3 min-w-0 flex-1">
             <div className={`flex-shrink-0 w-10 h-10 rounded-full flex items-center justify-center ${hasError ? 'bg-red-500/20 text-red-400'
               : connecting ? 'bg-gray-600/40 text-gray-400'
-                : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
-                  : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
-                    : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
-                      : 'bg-gray-700/50 text-gray-400'
+                : !isMeetingActive ? 'bg-amber-500/10 text-amber-400 border border-amber-500/20'
+                  : requestStatus === 'pending' ? 'bg-indigo-500/20 text-indigo-400'
+                    : requestStatus === 'rejected' ? 'bg-red-500/20 text-red-400'
+                      : isConnected && isApproved ? 'bg-green-500/15 text-green-400'
+                        : 'bg-gray-700/50 text-gray-400'
               }`}>
               {hasError ? <XCircle className="w-5 h-5" />
                 : connecting ? <Loader2 className="w-5 h-5 animate-spin" />
-                  : requestStatus === 'pending' ? <Loader2 className="w-5 h-5 animate-spin" />
-                    : requestStatus === 'rejected' ? <XCircle className="w-5 h-5" />
-                      : <Radio className="w-5 h-5" />}
+                  : !isMeetingActive ? <Radio className="w-5 h-5 text-amber-500" />
+                    : requestStatus === 'pending' ? <Loader2 className="w-5 h-5 animate-spin" />
+                      : requestStatus === 'rejected' ? <XCircle className="w-5 h-5" />
+                        : <Radio className="w-5 h-5" />}
             </div>
             <div className="min-w-0">
               <p className="text-sm font-semibold text-white">
                 {hasError ? 'Connection Failed'
                   : connecting ? 'Connecting to Stage Server…'
-                    : requestStatus === 'pending' ? 'Waiting for Stage Access…'
-                      : requestStatus === 'rejected' ? 'Stage Access Declined'
-                        : isConnected ? 'Join Main Stage'
-                          : 'Stage Server Offline'}
+                    : !isMeetingActive ? 'Stage is Offline'
+                      : requestStatus === 'pending' ? 'Waiting for Stage Access…'
+                        : requestStatus === 'rejected' ? 'Stage Access Declined'
+                          : isConnected ? 'Join Main Stage'
+                            : 'Stage Server Offline'}
               </p>
               <p className="text-xs text-gray-400 mt-0.5">
                 {hasError ? connectionError
                   : connecting ? 'Please wait — establishing secure connection…'
-                    : requestStatus === 'pending' ? 'Admin notified · You will go live once approved'
-                      : requestStatus === 'rejected' ? 'Your request was declined. You may try again.'
-                        : isConnected && isApproved ? `Hello ${userName?.split(' ')[0] ?? 'Speaker'} — click Join Stage to send your request`
-                          : isConnected && !isApproved ? 'Connected — waiting for account approval'
-                            : 'Could not reach stage server'}
+                    : !isMeetingActive ? 'You can only request to join once the stream goes live.'
+                      : requestStatus === 'pending' ? 'Admin notified · You will go live once approved'
+                        : requestStatus === 'rejected' ? 'Your request was declined. You may try again.'
+                          : isConnected && isApproved ? `Hello ${userName?.split(' ')[0] ?? 'Speaker'} — click Join Stage to send your request`
+                            : isConnected && !isApproved ? 'Connected — waiting for account approval'
+                              : 'Could not reach stage server'}
               </p>
             </div>
           </div>
@@ -397,9 +403,9 @@ function StageRequestBanner({
             {!hasError && !connecting && requestStatus === 'none' && (
               <Button
                 onClick={onRequest}
-                disabled={!isConnected || !isApproved}
+                disabled={!isConnected || !isApproved || !isMeetingActive}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white gap-2 text-sm font-semibold disabled:opacity-40 shadow-lg shadow-indigo-500/20"
-                title={!isApproved ? 'Account not yet approved by admin' : !isConnected ? 'Connecting to server…' : ''}
+                title={!isApproved ? 'Account not yet approved by admin' : !isMeetingActive ? 'Stage is offline' : !isConnected ? 'Connecting to server…' : ''}
               >
                 <Radio className="w-4 h-4" />
                 Join Stage
@@ -420,8 +426,10 @@ function StageRequestBanner({
 
             {/* Rejected → Request Again */}
             {!hasError && requestStatus === 'rejected' && (
-              <Button onClick={onRequest} disabled={!isConnected} variant="outline"
-                className="text-sm border-red-500/30 text-red-400 hover:bg-red-500/10 gap-2">
+              <Button onClick={onRequest} disabled={!isConnected || !isMeetingActive} variant="outline"
+                className="text-sm border-red-500/30 text-red-400 hover:bg-red-500/10 gap-2"
+                title={!isMeetingActive ? 'Stage is offline' : ''}
+              >
                 <Radio className="w-4 h-4" /> Request Again
               </Button>
             )}
@@ -1073,7 +1081,7 @@ export function MainStageEnhanced() {
 
 
       {/* ── SPEAKER: Prominent Stage Request Banner (top, full-width) ──────── */}
-      {isPureSpeaker && requestStatus !== 'live' && stageMeeting?.status === 'active' && (
+      {isPureSpeaker && requestStatus !== 'live' && (
         <StageRequestBanner
           requestStatus={requestStatus}
           isConnected={isConnected}
@@ -1086,8 +1094,8 @@ export function MainStageEnhanced() {
           onRefreshSession={handleRefreshSession}
           userName={user?.name}
           isApproved={user?.isApproved ?? false}
+          isMeetingActive={stageMeeting?.status === 'active'}
         />
-
       )}
 
       {/* ── Main Grid ─────────────────────────────────────────────────────── */}
