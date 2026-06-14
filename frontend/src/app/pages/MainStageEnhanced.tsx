@@ -483,7 +483,7 @@ export function MainStageEnhanced() {
     return () => {
       left = true;
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-      hmsActions.leave().catch(() => { });
+      hmsActions.leave().catch(() => {});
     };
   }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -890,26 +890,6 @@ export function MainStageEnhanced() {
     const hasLiveSpeakers = allPeers.some(p => isLiveSpeaker(p));
 
     return allPeers.filter((p) => {
-      let meta: any = {};
-      try {
-        meta = JSON.parse(p.metadata || '{}');
-      } catch (e) {}
-
-      const hmsRole = p.roleName ?? '';
-      const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
-
-      const isPeerAdminOrOrganizer = platformRole === 'admin' || platformRole === 'organizer';
-
-      if (isPeerAdminOrOrganizer) {
-        if (hasLiveSpeakers) {
-          return false;
-        }
-        if (p.isLocal) {
-          return isAudioEnabled || isVideoEnabled;
-        }
-        return !!p.videoTrack || !!p.audioTrack;
-      }
-
       return isLiveSpeaker(p);
     });
   })();
@@ -1077,11 +1057,11 @@ export function MainStageEnhanced() {
                     <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20">
                       <Radio className="w-8 h-8 text-indigo-400 animate-pulse" />
                     </div>
-                    <h3 className="text-lg font-bold">Stage is Offline</h3>
+                    <h3 className="text-lg font-bold text-indigo-400">Stage is Online</h3>
                     <p className="text-sm text-gray-400 text-center mt-1 max-w-xs">
                       {isPureSpeaker
                         ? 'Request access above to go live on this stage.'
-                        : 'Waiting for speakers or hosts to go live.'}
+                        : 'Waiting for speakers or hosts to join screen.'}
                     </p>
                   </div>
                 )}
