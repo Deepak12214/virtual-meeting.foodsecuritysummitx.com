@@ -4,8 +4,6 @@ import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
 import { Input } from '../../components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../../components/ui/tabs';
-import { ScrollArea } from '../../components/ui/scroll-area';
-import { Separator } from '../../components/ui/separator';
 import {
   Search,
   CheckCircle,
@@ -16,17 +14,20 @@ import {
   ShieldCheck,
   ShieldOff,
   Trash2,
-  MoreHorizontal,
-  UserCog,
   AlertCircle,
   Loader2,
-  Building2,
-  Mail,
-  Phone,
   Calendar,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import { useAuth } from '../../context/AuthContext';
+import {
+  Table,
+  TableHeader,
+  TableBody,
+  TableHead,
+  TableRow,
+  TableCell,
+} from '../../components/ui/table';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -82,177 +83,6 @@ function getAuthHeaders(): HeadersInit {
   };
 }
 
-// ─── User Card Component ──────────────────────────────────────────────────────
-
-function UserCard({
-  user,
-  isAdmin,
-  onApprove,
-  onReject,
-  onRoleChange,
-  onDelete,
-  loadingId,
-}: {
-  user: AdminUser;
-  isAdmin: boolean;
-  onApprove: (id: string) => void;
-  onReject: (id: string) => void;
-  onRoleChange: (id: string, role: string) => void;
-  onDelete: (id: string) => void;
-  loadingId: string | null;
-}) {
-  const [showRoleMenu, setShowRoleMenu] = useState(false);
-  const isLoading = loadingId === user._id;
-  const initials = user.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
-
-  return (
-    <div className="relative p-4 rounded-xl border border-[--color-border] bg-[--color-surface] hover:bg-[--color-surface-elevated] transition-all duration-200 group">
-      <div className="flex items-start gap-3">
-        {/* Avatar */}
-        <div className={`w-11 h-11 rounded-full flex items-center justify-center text-white font-bold text-sm flex-shrink-0 ${
-          user.isApproved ? 'bg-gradient-to-br from-indigo-500 to-purple-600' : 'bg-gradient-to-br from-gray-400 to-gray-500'
-        }`}>
-          {initials}
-        </div>
-
-        {/* Info */}
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2 flex-wrap">
-            <p className="font-semibold text-sm truncate">{user.name}</p>
-            {/* Status dots */}
-            <div className="flex items-center gap-1">
-              {user.isApproved ? (
-                <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Approved" />
-              ) : (
-                <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Pending" />
-              )}
-              {!user.isActive && (
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full" title="Deactivated" />
-              )}
-            </div>
-          </div>
-
-          <div className="flex items-center gap-1 mt-0.5">
-            <Mail className="h-3 w-3 text-[--color-text-secondary]" />
-            <p className="text-xs text-[--color-text-secondary] truncate">{user.email}</p>
-          </div>
-
-          {user.company && (
-            <div className="flex items-center gap-1 mt-0.5">
-              <Building2 className="h-3 w-3 text-[--color-text-secondary]" />
-              <p className="text-xs text-[--color-text-secondary] truncate">{user.company}</p>
-            </div>
-          )}
-
-          <div className="flex items-center gap-2 mt-2 flex-wrap">
-            <Badge
-              variant="outline"
-              className={`text-[10px] h-5 capitalize border ${ROLE_COLORS[user.role] || ''}`}
-            >
-              {user.role.replace('_', ' ')}
-            </Badge>
-            {!user.isApproved && (
-              <Badge variant="outline" className="text-[10px] h-5 border-yellow-500/30 bg-yellow-500/10 text-yellow-600">
-                <Clock className="h-2.5 w-2.5 mr-1" />
-                Pending
-              </Badge>
-            )}
-            {!user.isActive && (
-              <Badge variant="outline" className="text-[10px] h-5 border-red-500/30 bg-red-500/10 text-red-500">
-                Deactivated
-              </Badge>
-            )}
-          </div>
-
-          <p className="text-[10px] text-[--color-text-secondary] mt-1.5 flex items-center gap-1">
-            <Calendar className="h-2.5 w-2.5" />
-            {new Date(user.createdAt).toLocaleDateString('en-IN', {
-              day: 'numeric', month: 'short', year: 'numeric',
-            })}
-          </p>
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex items-center gap-2 mt-3 pt-3 border-t border-[--color-border]">
-        {!user.isApproved ? (
-          <Button
-            size="sm"
-            className="h-7 text-xs flex-1 bg-green-600 hover:bg-green-500 text-white gap-1"
-            onClick={() => onApprove(user._id)}
-            disabled={isLoading}
-          >
-            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
-            Approve
-          </Button>
-        ) : (
-          <Button
-            size="sm"
-            variant="outline"
-            className="h-7 text-xs flex-1 text-amber-600 border-amber-500/30 hover:bg-amber-500/10 gap-1"
-            onClick={() => onReject(user._id)}
-            disabled={isLoading}
-          >
-            {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldOff className="h-3 w-3" />}
-            Revoke
-          </Button>
-        )}
-
-        {/* Role change dropdown — admin only */}
-        {isAdmin && (
-          <div className="relative">
-            <Button
-              size="sm"
-              variant="ghost"
-              className="h-7 w-7 p-0"
-              onClick={() => setShowRoleMenu(!showRoleMenu)}
-              title="Change role"
-            >
-              <UserCog className="h-3.5 w-3.5" />
-            </Button>
-            {showRoleMenu && (
-              <div className="absolute right-0 bottom-8 z-50 w-40 bg-[--color-surface-elevated] border border-[--color-border] rounded-lg shadow-xl overflow-hidden">
-                <p className="px-3 py-2 text-[10px] font-semibold text-[--color-text-secondary] uppercase tracking-wide border-b border-[--color-border]">
-                  Change Role
-                </p>
-                <ScrollArea className="h-48">
-                  {ALL_ROLES.map((r) => (
-                    <button
-                      key={r}
-                      className={`w-full text-left px-3 py-1.5 text-xs hover:bg-[--color-surface] transition-colors capitalize ${
-                        r === user.role ? 'font-semibold text-indigo-500' : ''
-                      }`}
-                      onClick={() => {
-                        onRoleChange(user._id, r);
-                        setShowRoleMenu(false);
-                      }}
-                    >
-                      {r.replace('_', ' ')}
-                    </button>
-                  ))}
-                </ScrollArea>
-              </div>
-            )}
-          </div>
-        )}
-
-        {isAdmin && (
-          <Button
-            size="sm"
-            variant="ghost"
-            className="h-7 w-7 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
-            onClick={() => onDelete(user._id)}
-            disabled={isLoading}
-            title="Delete user"
-          >
-            <Trash2 className="h-3.5 w-3.5" />
-          </Button>
-        )}
-      </div>
-    </div>
-  );
-}
-
 // ─── Main Page Component ──────────────────────────────────────────────────────
 
 export function OrganizerUsers() {
@@ -266,6 +96,10 @@ export function OrganizerUsers() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeTab, setActiveTab] = useState('pending');
   const [roleFilter, setRoleFilter] = useState('all');
+
+  // Pagination states
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 15;
 
   // ── Fetch users ─────────────────────────────────────────────────────────────
   const fetchUsers = useCallback(async () => {
@@ -293,6 +127,11 @@ export function OrganizerUsers() {
   useEffect(() => {
     fetchUsers();
   }, [fetchUsers]);
+
+  // Reset page when tab/filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [activeTab, searchQuery, roleFilter]);
 
   // ── Actions ─────────────────────────────────────────────────────────────────
 
@@ -394,14 +233,10 @@ export function OrganizerUsers() {
   const pendingUsers  = filtered.filter((u) => !u.isApproved);
   const approvedUsers = filtered.filter((u) => u.isApproved);
 
-  const sharedCardProps = {
-    isAdmin,
-    onApprove: handleApprove,
-    onReject: handleReject,
-    onRoleChange: handleRoleChange,
-    onDelete: handleDelete,
-    loadingId,
-  };
+  // Pagination lists
+  const currentTabUsers = activeTab === 'pending' ? pendingUsers : approvedUsers;
+  const totalPages = Math.ceil(currentTabUsers.length / pageSize);
+  const paginatedUsers = currentTabUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -555,7 +390,9 @@ export function OrganizerUsers() {
                     variant="outline"
                     className="text-xs gap-2 text-green-600 border-green-600/30 hover:bg-green-500/10"
                     onClick={async () => {
-                      for (const u of pendingUsers) await handleApprove(u._id);
+                      if (window.confirm(`Approve all ${pendingUsers.length} pending users?`)) {
+                        for (const u of pendingUsers) await handleApprove(u._id);
+                      }
                     }}
                   >
                     <CheckCircle className="h-3.5 w-3.5" />
@@ -563,11 +400,140 @@ export function OrganizerUsers() {
                   </Button>
                 )}
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {pendingUsers.map((u) => (
-                  <UserCard key={u._id} user={u} {...sharedCardProps} />
-                ))}
+              
+              {/* User List Table */}
+              <div className="rounded-xl border border-[--color-border] overflow-hidden bg-[--color-surface] shadow-sm">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-[--color-surface-elevated]">
+                      <TableRow>
+                        <TableHead className="w-[60px] pl-4">User</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead>Requested Role</TableHead>
+                        <TableHead>Registration Date</TableHead>
+                        <TableHead className="text-right pr-4">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedUsers.map((u) => {
+                        const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                        const isLoading = loadingId === u._id;
+                        return (
+                          <TableRow key={u._id} className="hover:bg-muted/30">
+                            <TableCell className="pl-4">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-gray-400 to-gray-500 flex items-center justify-center text-white font-bold text-xs">
+                                {initials}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-semibold text-sm text-[--color-text-primary] flex items-center gap-1.5">
+                                  {u.name}
+                                  <span className="w-1.5 h-1.5 bg-yellow-500 rounded-full animate-pulse" title="Pending Approval" />
+                                </p>
+                                <p className="text-xs text-[--color-text-secondary] mt-0.5">{u.email}</p>
+                                {u.company && (
+                                  <p className="text-[10px] text-[--color-text-secondary] mt-0.5 font-medium italic">{u.company}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] capitalize border ${ROLE_COLORS[u.role] || ''}`}>
+                                {u.role.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-[--color-text-secondary]">
+                              {new Date(u.createdAt).toLocaleDateString('en-IN', {
+                                day: 'numeric', month: 'short', year: 'numeric'
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right pr-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  className="h-7 text-xs bg-green-600 hover:bg-green-500 text-white gap-1"
+                                  onClick={() => handleApprove(u._id)}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle className="h-3 w-3" />}
+                                  Approve
+                                </Button>
+                                
+                                {isAdmin && (
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                                    disabled={isLoading}
+                                    className="h-7 px-1.5 rounded-md border border-[--color-border] bg-[--color-surface] text-[11px] text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-indigo-500/40 capitalize"
+                                  >
+                                    {ALL_ROLES.map((r) => (
+                                      <option key={r} value={r} className="capitalize">
+                                        {r.replace('_', ' ')}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+
+                                {isAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                                    onClick={() => handleDelete(u._id)}
+                                    disabled={isLoading}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-xs text-[--color-text-secondary]">
+                    Showing {Math.min(pendingUsers.length, (currentPage - 1) * pageSize + 1)} to {Math.min(pendingUsers.length, currentPage * pageSize)} of {pendingUsers.length} users
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-8 h-8 p-0"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </TabsContent>
@@ -590,11 +556,141 @@ export function OrganizerUsers() {
               <p className="text-sm text-[--color-text-secondary] mb-3">
                 {approvedUsers.length} approved user{approvedUsers.length !== 1 ? 's' : ''}
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-3">
-                {approvedUsers.map((u) => (
-                  <UserCard key={u._id} user={u} {...sharedCardProps} />
-                ))}
+              
+              {/* User List Table */}
+              <div className="rounded-xl border border-[--color-border] overflow-hidden bg-[--color-surface] shadow-sm">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader className="bg-[--color-surface-elevated]">
+                      <TableRow>
+                        <TableHead className="w-[60px] pl-4">User</TableHead>
+                        <TableHead>Details</TableHead>
+                        <TableHead>Platform Role</TableHead>
+                        <TableHead>Registration Date</TableHead>
+                        <TableHead className="text-right pr-4">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {paginatedUsers.map((u) => {
+                        const initials = u.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                        const isLoading = loadingId === u._id;
+                        return (
+                          <TableRow key={u._id} className="hover:bg-muted/30">
+                            <TableCell className="pl-4">
+                              <div className="w-9 h-9 rounded-full bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-xs">
+                                {initials}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <div>
+                                <p className="font-semibold text-sm text-[--color-text-primary] flex items-center gap-1.5">
+                                  {u.name}
+                                  <span className="w-1.5 h-1.5 bg-green-500 rounded-full" title="Approved Access" />
+                                </p>
+                                <p className="text-xs text-[--color-text-secondary] mt-0.5">{u.email}</p>
+                                {u.company && (
+                                  <p className="text-[10px] text-[--color-text-secondary] mt-0.5 font-medium italic">{u.company}</p>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell>
+                              <Badge variant="outline" className={`text-[10px] capitalize border ${ROLE_COLORS[u.role] || ''}`}>
+                                {u.role.replace('_', ' ')}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-xs text-[--color-text-secondary]">
+                              {new Date(u.createdAt).toLocaleDateString('en-IN', {
+                                day: 'numeric', month: 'short', year: 'numeric'
+                              })}
+                            </TableCell>
+                            <TableCell className="text-right pr-4">
+                              <div className="flex items-center justify-end gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs text-amber-600 border-amber-500/30 hover:bg-amber-500/10 gap-1"
+                                  onClick={() => handleReject(u._id)}
+                                  disabled={isLoading}
+                                >
+                                  {isLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : <ShieldOff className="h-3 w-3" />}
+                                  Revoke
+                                </Button>
+                                
+                                {isAdmin && (
+                                  <select
+                                    value={u.role}
+                                    onChange={(e) => handleRoleChange(u._id, e.target.value)}
+                                    disabled={isLoading}
+                                    className="h-7 px-1.5 rounded-md border border-[--color-border] bg-[--color-surface] text-[11px] text-[--color-text-primary] focus:outline-none focus:ring-1 focus:ring-indigo-500/40 capitalize"
+                                  >
+                                    {ALL_ROLES.map((r) => (
+                                      <option key={r} value={r} className="capitalize">
+                                        {r.replace('_', ' ')}
+                                      </option>
+                                    ))}
+                                  </select>
+                                )}
+
+                                {isAdmin && (
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    className="h-7 w-7 p-0 text-red-400 hover:text-red-500 hover:bg-red-500/10"
+                                    onClick={() => handleDelete(u._id)}
+                                    disabled={isLoading}
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                )}
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
               </div>
+
+              {/* Pagination Controls */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-4">
+                  <p className="text-xs text-[--color-text-secondary]">
+                    Showing {Math.min(approvedUsers.length, (currentPage - 1) * pageSize + 1)} to {Math.min(approvedUsers.length, currentPage * pageSize)} of {approvedUsers.length} users
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === 1}
+                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
+                    >
+                      Previous
+                    </Button>
+                    <div className="flex items-center gap-1">
+                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
+                        <Button
+                          key={page}
+                          variant={currentPage === page ? 'default' : 'outline'}
+                          size="sm"
+                          className="w-8 h-8 p-0"
+                          onClick={() => setCurrentPage(page)}
+                        >
+                          {page}
+                        </Button>
+                      ))}
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      disabled={currentPage === totalPages}
+                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
+                    >
+                      Next
+                    </Button>
+                  </div>
+                </div>
+              )}
             </>
           )}
         </TabsContent>

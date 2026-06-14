@@ -14,60 +14,158 @@ import {
   CheckCircle,
   Clock,
   AlertCircle,
+  Radio,
+  Rocket,
+  Play,
+  Pause,
+  Edit,
+  Save,
+  X,
+  Loader2,
+  ShieldCheck,
 } from 'lucide-react';
-import { ANALYTICS_DATA, MOCK_SESSIONS } from '../../data/mockData';
-import { fetchMeetings, type Meeting } from '../../services/meetingService';
+import { fetchMeetings, fetchMainStageRoom, fetchPitchRoom, updateMeeting, type Meeting } from '../../services/meetingService';
 import { fetchBooths, type Booth } from '../../services/boothService';
+import { Input } from '../../components/ui/input';
+import { Textarea } from '../../components/ui/textarea';
+import { toast } from 'sonner';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
 
 export function OrganizerDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
   const [booths, setBooths] = useState<Booth[]>([]);
+  const [mainStage, setMainStage] = useState<Meeting | null>(null);
+  const [pitchStage, setPitchStage] = useState<Meeting | null>(null);
+  const [userStats, setUserStats] = useState<{ pending: number; approved: number; total: number }>({ pending: 0, approved: 0, total: 0 });
+
+  // Edit states for live stages
+  const [editingMain, setEditingMain] = useState(false);
+  const [editingPitch, setEditingPitch] = useState(false);
+  
+  const [mainTitle, setMainTitle] = useState('');
+  const [mainDesc, setMainDesc] = useState('');
+  const [pitchTitle, setPitchTitle] = useState('');
+  const [pitchDesc, setPitchDesc] = useState('');
+
+  const [savingMain, setSavingMain] = useState(false);
+  const [savingPitch, setSavingPitch] = useState(false);
+  const [togglingMain, setTogglingMain] = useState(false);
+  const [togglingPitch, setTogglingPitch] = useState(false);
 
   useEffect(() => {
     fetchMeetings()
       .then(setMeetings)
       .catch((err) => console.warn('Failed to load meetings in OrganizerDashboard:', err));
+    
     fetchBooths()
       .then(setBooths)
       .catch((err) => console.warn('Failed to load booths in OrganizerDashboard:', err));
+
+    fetchMainStageRoom()
+      .then((data) => {
+        setMainStage(data);
+        setMainTitle(data.title);
+        setMainDesc(data.description || '');
+      })
+      .catch((err) => console.warn('Failed to load main stage in Dashboard:', err));
+
+    fetchPitchRoom()
+      .then((data) => {
+        setPitchStage(data);
+        setPitchTitle(data.title);
+        setPitchDesc(data.description || '');
+      })
+      .catch((err) => console.warn('Failed to load pitch stage in Dashboard:', err));
+
+    fetch(`${API_URL}/admin/users?limit=1`, {
+      headers: getAuthHeaders(),
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success && data.stats) {
+          setUserStats(data.stats);
+        }
+      })
+      .catch((err) => console.warn('Failed to load user stats in Dashboard:', err));
   }, []);
 
-  const pendingApprovals = 12;
-  const activeSessions = MOCK_SESSIONS.filter((s) => s.isLive).length;
-  const activeMeetingsCount = meetings.filter((m) => m.status === 'active').length;
-  const liveBooths = booths.filter((b) => b.isLive).length;
+  const handleSaveMain = async () => {
+    if (!mainStage || !mainStage._id) return;
+    setSavingMain(true);
+    try {
+      const updated = await updateMeeting(mainStage._id, {
+        title: mainTitle,
+        description: mainDesc
+      });
+      setMainStage(updated);
+      setEditingMain(false);
+      toast.success('Main Stage details updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update Main Stage');
+    } finally {
+      setSavingMain(false);
+    }
+  };
 
-  const quickActions = [
-    {
-      title: 'Manage Users',
-      description: `${pendingApprovals} pending approvals`,
-      icon: Users,
-      path: '/organizer/users',
-      color: 'from-blue-500 to-cyan-500',
-      badge: pendingApprovals,
-    },
-    {
-      title: 'Manage Sessions',
-      description: `${activeSessions} live now`,
-      icon: Video,
-      path: '/organizer/sessions',
-      color: 'from-purple-500 to-pink-500',
-    },
-    {
-      title: 'Manage Meetings',
-      description: `${activeMeetingsCount} active meetings`,
-      icon: Calendar,
-      path: '/organizer/meetings',
-      color: 'from-green-500 to-emerald-500',
-    },
-    {
-      title: 'Manage Booths',
-      description: `${liveBooths} booths live`,
-      icon: Store,
-      path: '/organizer/booths',
-      color: 'from-orange-500 to-red-500',
-    },
-  ];
+  const handleSavePitch = async () => {
+    if (!pitchStage || !pitchStage._id) return;
+    setSavingPitch(true);
+    try {
+      const updated = await updateMeeting(pitchStage._id, {
+        title: pitchTitle,
+        description: pitchDesc
+      });
+      setPitchStage(updated);
+      setEditingPitch(false);
+      toast.success('Startup Pitch details updated');
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update Startup Pitch stage');
+    } finally {
+      setSavingPitch(false);
+    }
+  };
+
+  const handleToggleMainStatus = async () => {
+    if (!mainStage || !mainStage._id) return;
+    setTogglingMain(true);
+    const newStatus = mainStage.status === 'active' ? 'scheduled' : 'active';
+    try {
+      const updated = await updateMeeting(mainStage._id, { status: newStatus });
+      setMainStage(updated);
+      toast.success(`Main Stage is now ${newStatus === 'active' ? 'Online' : 'Offline'}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update Main Stage status');
+    } finally {
+      setTogglingMain(false);
+    }
+  };
+
+  const handleTogglePitchStatus = async () => {
+    if (!pitchStage || !pitchStage._id) return;
+    setTogglingPitch(true);
+    const newStatus = pitchStage.status === 'active' ? 'scheduled' : 'active';
+    try {
+      const updated = await updateMeeting(pitchStage._id, { status: newStatus });
+      setPitchStage(updated);
+      toast.success(`Startup Pitch Stage is now ${newStatus === 'active' ? 'Online' : 'Offline'}`);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update Startup Pitch status');
+    } finally {
+      setTogglingPitch(false);
+    }
+  };
+
+  const activeMeetingsCount = meetings.filter((m) => m.status === 'active').length;
+
 
   return (
     <div className="space-y-6">
@@ -83,39 +181,39 @@ export function OrganizerDashboard() {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Total Registrations</CardDescription>
-            <CardTitle className="text-3xl">{ANALYTICS_DATA.totalRegistrations.toLocaleString()}</CardTitle>
+            <CardDescription>Total Users</CardDescription>
+            <CardTitle className="text-3xl font-bold">{userStats.total}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-1 text-sm text-green-600">
-              <TrendingUp className="h-3 w-3" />
-              <span>+12% from yesterday</span>
+            <div className="flex items-center gap-1 text-xs text-[--color-text-secondary]">
+              <Users className="h-3.5 w-3.5" />
+              <span>Registered accounts</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Active Users</CardDescription>
-            <CardTitle className="text-3xl">{ANALYTICS_DATA.activeUsers.toLocaleString()}</CardTitle>
+            <CardDescription>Approved Users</CardDescription>
+            <CardTitle className="text-3xl font-bold text-emerald-500">{userStats.approved}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-1 text-sm text-green-600">
-              <TrendingUp className="h-3 w-3" />
-              <span>50% engagement rate</span>
+            <div className="flex items-center gap-1 text-xs text-emerald-600">
+              <CheckCircle className="h-3.5 w-3.5" />
+              <span>Access granted</span>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader className="pb-2">
-            <CardDescription>Stage Viewers</CardDescription>
-            <CardTitle className="text-3xl">{ANALYTICS_DATA.stageViewers.toLocaleString()}</CardTitle>
+            <CardDescription>Total Booths</CardDescription>
+            <CardTitle className="text-3xl font-bold">{booths.length}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-1 text-sm text-[--color-text-secondary]">
-              <Activity className="h-3 w-3" />
-              <span>Peak: 1,850 viewers</span>
+            <div className="flex items-center gap-1 text-xs text-[--color-text-secondary]">
+              <Store className="h-3.5 w-3.5" />
+              <span>Created booths</span>
             </div>
           </CardContent>
         </Card>
@@ -123,145 +221,234 @@ export function OrganizerDashboard() {
         <Card>
           <CardHeader className="pb-2">
             <CardDescription>Active Meetings</CardDescription>
-            <CardTitle className="text-3xl">{activeMeetingsCount}</CardTitle>
+            <CardTitle className="text-3xl font-bold text-indigo-500">{activeMeetingsCount}</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="flex items-center gap-1 text-sm text-[--color-text-secondary]">
-              <Activity className="h-3 w-3" />
+            <div className="flex items-center gap-1 text-xs text-indigo-600">
+              <Activity className="h-3.5 w-3.5" />
               <span>{meetings.length} total scheduled</span>
             </div>
           </CardContent>
         </Card>
       </div>
 
-      {/* Alerts & Notifications */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="bg-yellow-500/10 border-yellow-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <AlertCircle className="h-5 w-5 text-yellow-600" />
-              <CardTitle className="text-base">Pending Approvals</CardTitle>
+      {/* Approvals Status */}
+      <Card className="">
+        <CardHeader className="pb-2">
+          <div className="flex items-center gap-2">
+            <ShieldCheck className="h-5 w-5 text-indigo-500" />
+            <CardTitle className="text-base font-semibold">User Access Control</CardTitle>
+          </div>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="flex items-center justify-between p-4 rounded-xl bg-yellow-500/10 border border-yellow-500/20">
+            <div>
+              <p className="text-xs font-semibold text-yellow-600 uppercase tracking-wider">Pending Approvals</p>
+              <p className="text-3xl font-extrabold text-yellow-600 mt-1">{userStats.pending}</p>
+              <p className="text-[10px] text-[--color-text-secondary] mt-1">Users awaiting account review</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-yellow-600 mb-2">{pendingApprovals}</p>
             <Link to="/organizer/users">
-              <Button variant="outline" size="sm" className="w-full">
-                Review Now
+              <Button size="sm" className="bg-yellow-600 hover:bg-yellow-500 text-white text-xs px-4 h-9 font-medium">
+                Review & Approve
               </Button>
             </Link>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-green-500/10 border-green-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <CheckCircle className="h-5 w-5 text-green-600" />
-              <CardTitle className="text-base">Live Sessions</CardTitle>
+          </div>
+          <div className="flex items-center justify-between p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20">
+            <div>
+              <p className="text-xs font-semibold text-emerald-600 uppercase tracking-wider">Approved Access</p>
+              <p className="text-3xl font-extrabold text-emerald-600 mt-1">{userStats.approved}</p>
+              <p className="text-[10px] text-[--color-text-secondary] mt-1">Platform access granted</p>
             </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-green-600 mb-2">{activeSessions}</p>
-            <Link to="/organizer/sessions">
-              <Button variant="outline" size="sm" className="w-full">
-                Manage Sessions
+            <Link to="/organizer/users">
+              <Button size="sm" variant="outline" className="border-emerald-600/30 text-emerald-600 hover:bg-emerald-500/10 text-xs px-4 h-9 font-medium">
+                Manage Users
               </Button>
             </Link>
-          </CardContent>
-        </Card>
+          </div>
+        </CardContent>
+      </Card>
 
-        <Card className="bg-blue-500/10 border-blue-500/20">
-          <CardHeader>
-            <div className="flex items-center gap-2">
-              <Clock className="h-5 w-5 text-blue-600" />
-              <CardTitle className="text-base">Upcoming Sessions</CardTitle>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <p className="text-2xl font-bold text-blue-600 mb-2">
-              {MOCK_SESSIONS.filter((s) => s.status === 'upcoming').length}
-            </p>
-            <Link to="/organizer/sessions">
-              <Button variant="outline" size="sm" className="w-full">
-                View Schedule
-              </Button>
-            </Link>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Quick Actions */}
-      <div>
-        <h2 className="text-xl font-semibold mb-4">Quick Actions</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-          {quickActions.map((action) => {
-            const Icon = action.icon;
-            return (
-              <Link key={action.path} to={action.path}>
-                <Card className="hover:shadow-lg transition-shadow cursor-pointer h-full">
-                  <CardHeader>
-                    <div className={`w-12 h-12 rounded-lg bg-gradient-to-br ${action.color} flex items-center justify-center mb-3`}>
-                      <Icon className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex items-center justify-between">
-                      <CardTitle className="text-lg">{action.title}</CardTitle>
-                      {action.badge && (
-                        <Badge variant="destructive">{action.badge}</Badge>
-                      )}
-                    </div>
-                    <CardDescription>{action.description}</CardDescription>
-                  </CardHeader>
-                </Card>
-              </Link>
-            );
-          })}
-        </div>
-      </div>
-
-      {/* Recent Activity */}
-      <Card>
-        <CardHeader>
-          <CardTitle>Recent Activity</CardTitle>
+      {/* Event Stages Status */}
+      <Card className="border-[--color-border]">
+        <CardHeader className="pb-4">
+          <div>
+            <CardTitle>Event Stages Status</CardTitle>
+            <CardDescription>Live status and dynamic controls for broadcast rooms</CardDescription>
+          </div>
         </CardHeader>
         <CardContent>
-          <div className="space-y-3">
-            {[
-              {
-                action: 'New user registration',
-                user: 'john.smith@example.com',
-                time: '2 minutes ago',
-                type: 'user',
-              },
-              {
-                action: 'Session started',
-                user: 'Opening Keynote',
-                time: '15 minutes ago',
-                type: 'session',
-              },
-              {
-                action: 'Meeting scheduled',
-                user: 'Investor Meeting - Alpha Ventures',
-                time: '1 hour ago',
-                type: 'meeting',
-              },
-              {
-                action: 'Booth activated',
-                user: 'Global Tech Corp',
-                time: '2 hours ago',
-                type: 'booth',
-              },
-            ].map((activity, index) => (
-              <div
-                key={index}
-                className="flex items-start justify-between p-3 bg-[--color-surface] rounded-lg"
-              >
-                <div>
-                  <p className="font-medium">{activity.action}</p>
-                  <p className="text-sm text-[--color-text-secondary]">{activity.user}</p>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {/* Main Stage */}
+            <div className={`p-5 rounded-xl border border-[--color-border] bg-[--color-surface] flex flex-col justify-between min-h-[220px] transition-colors ${
+              mainStage?.status === 'active' ? 'bg-emerald-500/5 border-emerald-500/20' : ''
+            }`}>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-[--color-text-secondary] font-medium">
+                    <Video className="h-4 w-4 text-indigo-500" />
+                    <span>Main Stage Broadcast</span>
+                  </div>
+                  <Badge 
+                    variant={mainStage?.status === 'active' ? 'default' : 'secondary'}
+                    className={mainStage?.status === 'active' ? 'bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 py-0.5 animate-pulse text-[10px] font-bold' : 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium'}
+                  >
+                    <Radio className="h-2.5 w-2.5" />
+                    {mainStage?.status === 'active' ? 'ONLINE' : 'OFFLINE'}
+                  </Badge>
                 </div>
-                <span className="text-xs text-[--color-text-secondary]">{activity.time}</span>
+
+                {editingMain ? (
+                  <div className="space-y-3 mt-2">
+                    <Input 
+                      value={mainTitle}
+                      onChange={(e) => setMainTitle(e.target.value)}
+                      placeholder="Main Stage Title"
+                      className="text-sm font-semibold h-9"
+                    />
+                    <Textarea 
+                      value={mainDesc}
+                      onChange={(e) => setMainDesc(e.target.value)}
+                      placeholder="Main Stage Description"
+                      className="text-sm min-h-16 resize-y"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleSaveMain} disabled={savingMain} className="gap-1.5 h-8 text-xs">
+                        {savingMain ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save Details
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setEditingMain(false);
+                        setMainTitle(mainStage?.title || '');
+                        setMainDesc(mainStage?.description || '');
+                      }} className="h-8 text-xs gap-1">
+                        <X className="h-3 w-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{mainStage?.title || 'Main Stage Broadcast'}</h4>
+                    <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{mainStage?.description || 'No description set'}</p>
+                  </>
+                )}
               </div>
-            ))}
+
+              {!editingMain && (
+                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[--color-border]/50">
+                  <Button variant="outline" size="sm" onClick={() => setEditingMain(true)} className="h-8 gap-1 text-xs">
+                    <Edit className="h-3 w-3" /> Edit Details
+                  </Button>
+                  
+                  <Button
+                    variant={mainStage?.status === 'active' ? 'destructive' : 'default'}
+                    size="sm"
+                    onClick={handleToggleMainStatus}
+                    disabled={togglingMain}
+                    className={`h-8 gap-1.5 text-xs min-w-[100px] ${
+                      mainStage?.status !== 'active' ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-semibold' : ''
+                    }`}
+                  >
+                    {togglingMain ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : mainStage?.status === 'active' ? (
+                      <>
+                        <Pause className="h-3 w-3" /> Stop Stage
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3" /> Go Live
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Startup Pitch */}
+            <div className={`p-5 rounded-xl border border-[--color-border] bg-[--color-surface] flex flex-col justify-between min-h-[220px] transition-colors ${
+              pitchStage?.status === 'active' ? 'bg-emerald-500/5 border-emerald-500/20' : ''
+            }`}>
+              <div>
+                <div className="flex items-center justify-between mb-3">
+                  <div className="flex items-center gap-1.5 text-xs text-[--color-text-secondary] font-medium">
+                    <Rocket className="h-4 w-4 text-indigo-500" />
+                    <span>Startup Pitch Ceremony</span>
+                  </div>
+                  <Badge 
+                    variant={pitchStage?.status === 'active' ? 'default' : 'secondary'}
+                    className={pitchStage?.status === 'active' ? 'bg-emerald-500 hover:bg-emerald-600 text-white gap-1 px-2.5 py-0.5 animate-pulse text-[10px] font-bold' : 'text-gray-400 gap-1 px-2.5 py-0.5 text-[10px] font-medium'}
+                  >
+                    <Radio className="h-2.5 w-2.5" />
+                    {pitchStage?.status === 'active' ? 'ONLINE' : 'OFFLINE'}
+                  </Badge>
+                </div>
+
+                {editingPitch ? (
+                  <div className="space-y-3 mt-2">
+                    <Input 
+                      value={pitchTitle}
+                      onChange={(e) => setPitchTitle(e.target.value)}
+                      placeholder="Startup Pitch Title"
+                      className="text-sm font-semibold h-9"
+                    />
+                    <Textarea 
+                      value={pitchDesc}
+                      onChange={(e) => setPitchDesc(e.target.value)}
+                      placeholder="Startup Pitch Description"
+                      className="text-sm min-h-16 resize-y"
+                    />
+                    <div className="flex gap-2">
+                      <Button size="sm" onClick={handleSavePitch} disabled={savingPitch} className="gap-1.5 h-8 text-xs">
+                        {savingPitch ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                        Save Details
+                      </Button>
+                      <Button size="sm" variant="ghost" onClick={() => {
+                        setEditingPitch(false);
+                        setPitchTitle(pitchStage?.title || '');
+                        setPitchDesc(pitchStage?.description || '');
+                      }} className="h-8 text-xs gap-1">
+                        <X className="h-3 w-3" /> Cancel
+                      </Button>
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <h4 className="font-bold text-lg text-[--color-text-primary] line-clamp-1">{pitchStage?.title || 'Startup Pitch Ceremony'}</h4>
+                    <p className="text-xs text-[--color-text-secondary] mt-2 line-clamp-3 min-h-[48px]">{pitchStage?.description || 'No description set'}</p>
+                  </>
+                )}
+              </div>
+
+              {!editingPitch && (
+                <div className="flex items-center gap-2 mt-4 pt-3 border-t border-[--color-border]/50">
+                  <Button variant="outline" size="sm" onClick={() => setEditingPitch(true)} className="h-8 gap-1 text-xs">
+                    <Edit className="h-3 w-3" /> Edit Details
+                  </Button>
+                  
+                  <Button
+                    variant={pitchStage?.status === 'active' ? 'destructive' : 'default'}
+                    size="sm"
+                    onClick={handleTogglePitchStatus}
+                    disabled={togglingPitch}
+                    className={`h-8 gap-1.5 text-xs min-w-[100px] ${
+                      pitchStage?.status !== 'active' ? 'bg-emerald-600 hover:bg-emerald-500 text-white font-semibold' : ''
+                    }`}
+                  >
+                    {togglingPitch ? (
+                      <Loader2 className="h-3 w-3 animate-spin" />
+                    ) : pitchStage?.status === 'active' ? (
+                      <>
+                        <Pause className="h-3 w-3" /> Stop Stage
+                      </>
+                    ) : (
+                      <>
+                        <Play className="h-3 w-3" /> Go Live
+                      </>
+                    )}
+                  </Button>
+                </div>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

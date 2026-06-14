@@ -12,9 +12,6 @@ import { BoothMeetingRoom } from "./pages/BoothMeetingRoom";
 import { StartupPitchEnhanced } from "./pages/StartupPitchEnhanced";
 import { OrganizerDashboard } from "./pages/organizer/OrganizerDashboard";
 import { OrganizerUsers } from "./pages/organizer/OrganizerUsers";
-import { OrganizerSessions } from "./pages/organizer/OrganizerSessions";
-import { OrganizerMeetings } from "./pages/organizer/OrganizerMeetings";
-import { OrganizerBooths } from "./pages/organizer/OrganizerBooths";
 import { Analytics } from "./pages/Analytics";
 import { Profile } from "./pages/Profile";
 import { OperationalLogs } from "./pages/OperationalLogs";
@@ -49,9 +46,6 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: OrganizerDashboard },
           { path: "users", Component: OrganizerUsers },
-          { path: "sessions", Component: OrganizerSessions },
-          { path: "meetings", Component: OrganizerMeetings },
-          { path: "booths", Component: OrganizerBooths },
         ],
       },
       { path: "*", Component: NotFound },
