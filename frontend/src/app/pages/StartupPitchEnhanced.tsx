@@ -76,18 +76,28 @@ export function StartupPitchEnhanced() {
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
   const isVideoEnabled = useHMSStore(selectIsLocalVideoEnabled);
 
-  // ── 1. Load Pitch room ───────────────────────────────────────────────────────
+  // ── 1. Load Pitch room (polling every 5 seconds for status updates) ─────────
   useEffect(() => {
     if (!canAccess) return;
 
-    fetchPitchRoom()
-      .then(setPitchMeeting)
-      .catch((err) => console.error('Failed to load Pitch room:', err));
+    const getRoom = () => {
+      fetchPitchRoom()
+        .then(setPitchMeeting)
+        .catch((err) => console.error('Failed to load Pitch room:', err));
+    };
+
+    getRoom();
+    const interval = setInterval(getRoom, 5000);
+    return () => clearInterval(interval);
   }, [canAccess]);
 
   // ── 2. Join HMS room ─────────────────────────────────────────────────────────
   useEffect(() => {
     if (!pitchMeeting || !user) return;
+    if (pitchMeeting.status !== 'active') {
+      hmsActions.leave().catch(() => {});
+      return;
+    }
     const roomId = pitchMeeting._id ?? pitchMeeting.id;
     if (!roomId) return;
 
@@ -105,7 +115,7 @@ export function StartupPitchEnhanced() {
       .catch((err) => console.error('HMS pitch join error:', err));
 
     return () => { left = true; hmsActions.leave().catch(() => {}); };
-  }, [pitchMeeting, user]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pitchMeeting?._id, pitchMeeting?.id, pitchMeeting?.status, user]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // ── Access guard ─────────────────────────────────────────────────────────────
   if (!canAccess) {
@@ -179,18 +189,27 @@ export function StartupPitchEnhanced() {
       <div className="flex items-center justify-between">
         <div>
           <div className="flex items-center gap-3">
-            <h1 className="text-3xl font-bold">Startup Pitch Ceremony</h1>
-            {currentStartup && (
-              <Badge className="bg-red-500 gap-1 px-3 py-1">
-                <Radio className="h-3 w-3 animate-pulse" /> PITCH LIVE
+            <h1 className="text-3xl font-bold">{pitchMeeting?.title || 'Startup Pitch Ceremony'}</h1>
+            {pitchMeeting?.status === 'active' ? (
+              currentStartup && (
+                <Badge className="bg-red-500 gap-1 px-3 py-1">
+                  <Radio className="h-3 w-3 animate-pulse" /> PITCH LIVE
+                </Badge>
+              )
+            ) : (
+              <Badge variant="secondary" className="bg-rose-500/10 border-rose-500/25 text-rose-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                STAGE OFFLINE
               </Badge>
             )}
           </div>
           <p className="text-[--color-text-secondary] mt-2">
-            {isHost ? 'Host control interface for startup pitch management'
-              : isStartup ? 'Present your startup to potential investors'
-              : isInvestor ? 'Discover and connect with innovative startups'
-              : ''}
+            {pitchMeeting?.description || (
+              isHost ? 'Host control interface for startup pitch management'
+                : isStartup ? 'Present your startup to potential investors'
+                : isInvestor ? 'Discover and connect with innovative startups'
+                : 'Watch innovative startups pitch to investors'
+            )}
           </p>
         </div>
       </div>
@@ -215,7 +234,19 @@ export function StartupPitchEnhanced() {
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
         {/* Main pitch area */}
         <div className="lg:col-span-3 space-y-4">
-          {currentStartup ? (
+          {pitchMeeting && pitchMeeting.status !== 'active' ? (
+            <Card>
+              <CardContent className="py-24 text-center bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950 border-[--color-border] rounded-xl flex flex-col items-center justify-center min-h-[400px]">
+                <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20 shadow-lg">
+                  <Radio className="h-8 w-8 text-rose-500 animate-pulse" />
+                </div>
+                <h3 className="text-xl font-bold tracking-tight text-white">Stage is Offline</h3>
+                <p className="text-sm text-gray-400 mt-2 max-w-sm">
+                  {pitchMeeting.description || 'The Startup Pitch Stage is currently offline. Please wait for the host or organizer to start the session.'}
+                </p>
+              </CardContent>
+            </Card>
+          ) : currentStartup ? (
             <Card className="overflow-hidden">
               <CardContent className="p-0">
                 {/* Video area */}

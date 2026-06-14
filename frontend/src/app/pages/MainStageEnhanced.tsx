@@ -421,20 +421,30 @@ export function MainStageEnhanced() {
     ...(isModerator && !isOrganizer && !isHost ? [{ role: 'moderator', name: user?.name ?? 'Moderator', mode: 'limited' as const }] : []),
   ];
 
-  // ── 1. Load Main Stage room ──────────────────────────────────────────────────
+  // ── 1. Load Main Stage room (polling every 5 seconds for status updates) ──────
   useEffect(() => {
     setRoomError(null);
-    fetchMainStageRoom()
-      .then(setStageMeeting)
-      .catch((err) => {
-        console.error('Failed to load Main Stage room:', err);
-        setRoomError('Could not load Main Stage room. Please refresh.');
-      });
+    const getRoom = () => {
+      fetchMainStageRoom()
+        .then(setStageMeeting)
+        .catch((err) => {
+          console.error('Failed to load Main Stage room:', err);
+          setRoomError('Could not load Main Stage room. Please refresh.');
+        });
+    };
+
+    getRoom();
+    const interval = setInterval(getRoom, 5000);
+    return () => clearInterval(interval);
   }, []);
 
   // ── 2. Join HMS room (with retry support + 15s timeout) ──────────────────────
   useEffect(() => {
     if (!stageMeeting || !user) return;
+    if (stageMeeting.status !== 'active') {
+      hmsActions.leave().catch(() => {});
+      return;
+    }
     const roomId = stageMeeting._id ?? stageMeeting.id;
     if (!roomId) return;
 
@@ -475,7 +485,7 @@ export function MainStageEnhanced() {
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       hmsActions.leave().catch(() => { });
     };
-  }, [stageMeeting, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Keep isConnectedRef in sync with live isConnected state (fixes stale closure in setTimeout)
   useEffect(() => {
@@ -931,17 +941,24 @@ export function MainStageEnhanced() {
       <div className="flex items-center justify-between flex-wrap gap-3">
         <div>
           <div className="flex items-center gap-3 flex-wrap">
-            <h1 className="text-3xl font-bold">Main Stage</h1>
-            {isConnected && broadcastingNow && (
-              <Badge className="bg-red-500 gap-1.5 px-3 py-1 text-sm">
-                <span className="relative flex h-2 w-2">
-                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-                </span>
-                LIVE
+            <h1 className="text-3xl font-bold">{stageMeeting?.title || 'Main Stage'}</h1>
+            {stageMeeting?.status === 'active' ? (
+              isConnected && broadcastingNow && (
+                <Badge className="bg-red-500 gap-1.5 px-3 py-1 text-sm">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
+                  </span>
+                  LIVE
+                </Badge>
+              )
+            ) : (
+              <Badge variant="secondary" className="bg-rose-500/10 border-rose-500/25 text-rose-500 gap-1.5 text-xs font-semibold px-2.5 py-1">
+                <span className="h-1.5 w-1.5 rounded-full bg-rose-500" />
+                STAGE OFFLINE
               </Badge>
             )}
-            {!isConnected && (
+            {!isConnected && stageMeeting?.status === 'active' && (
               <Badge variant="secondary" className="gap-1.5 text-xs">
                 <Loader2 className="h-3 w-3 animate-spin" />
                 Connecting…
@@ -949,13 +966,15 @@ export function MainStageEnhanced() {
             )}
           </div>
           <p className="text-[--color-text-secondary] mt-1 text-sm">
-            {isHost
-              ? 'Host control interface — manage speakers and the live stage'
-              : isPureSpeaker
-                ? 'Request stage access and go live in front of the audience'
-                : isModerator
-                  ? 'Moderator view — manage Q&A and audience interaction'
-                  : 'Watch live keynotes, panel discussions, and presentations'}
+            {stageMeeting?.description || (
+              isHost
+                ? 'Host control interface — manage speakers and the live stage'
+                : isPureSpeaker
+                  ? 'Request stage access and go live in front of the audience'
+                  : isModerator
+                    ? 'Moderator view — manage Q&A and audience interaction'
+                    : 'Watch live keynotes, panel discussions, and presentations'
+            )}
           </p>
         </div>
 
@@ -985,7 +1004,7 @@ export function MainStageEnhanced() {
 
 
       {/* ── SPEAKER: Prominent Stage Request Banner (top, full-width) ──────── */}
-      {isPureSpeaker && requestStatus !== 'live' && (
+      {isPureSpeaker && requestStatus !== 'live' && stageMeeting?.status === 'active' && (
         <StageRequestBanner
           requestStatus={requestStatus}
           isConnected={isConnected}
@@ -1013,7 +1032,17 @@ export function MainStageEnhanced() {
             <CardContent className="p-0">
               <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center">
 
-                {!isConnected ? (
+                {stageMeeting && stageMeeting.status !== 'active' ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-950 via-slate-900 to-gray-950">
+                    <div className="w-20 h-20 rounded-full bg-rose-500/10 flex items-center justify-center mb-4 border border-rose-500/20 shadow-lg">
+                      <Radio className="w-8 h-8 text-rose-500 animate-pulse" />
+                    </div>
+                    <h3 className="text-xl font-bold tracking-tight">Stage is Offline</h3>
+                    <p className="text-sm text-gray-400 text-center mt-2 max-w-sm">
+                      This stage is currently offline. Please check back later or view the scheduled sessions in the lobby.
+                    </p>
+                  </div>
+                ) : !isConnected ? (
                   <div className="flex flex-col items-center gap-3 text-white">
                     <div className="w-10 h-10 border-4 border-indigo-500 border-t-transparent rounded-full animate-spin" />
                     <p className="text-sm text-gray-400">Connecting to stage…</p>
@@ -1078,10 +1107,10 @@ export function MainStageEnhanced() {
               </div>
 
               {/* Session info */}
-              {liveSession && (
-                <div className="p-4 border-t border-[--color-border]">
-                  <h2 className="text-lg font-bold">{liveSession.title}</h2>
-                  <p className="text-[--color-text-secondary] mt-0.5 text-sm">{liveSession.description}</p>
+              <div className="p-4 border-t border-[--color-border]">
+                <h2 className="text-lg font-bold">{stageMeeting?.title || (liveSession?.title ?? 'Main Stage Broadcast')}</h2>
+                <p className="text-[--color-text-secondary] mt-0.5 text-sm">{stageMeeting?.description || (liveSession?.description ?? 'Broadcasting stage for virtual event keynotes and presentations.')}</p>
+                {liveSession && (
                   <div className="flex items-center gap-2.5 mt-3">
                     <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
                       {liveSession.speaker.split(' ').map((n) => n[0]).join('')}
@@ -1091,8 +1120,8 @@ export function MainStageEnhanced() {
                       <p className="text-xs text-[--color-text-secondary]">{liveSession.speakerTitle}</p>
                     </div>
                   </div>
-                </div>
-              )}
+                )}
+              </div>
             </CardContent>
           </Card>
 

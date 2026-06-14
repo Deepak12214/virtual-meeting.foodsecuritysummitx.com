@@ -74,7 +74,15 @@ router.get('/', protectUser, async (req, res) => {
 // @access  Private
 router.get('/main-stage/room', protectUser, async (req, res) => {
   try {
-    let meeting = await Meeting.findOne({ title: 'Main Stage Broadcast' });
+    let meeting = await Meeting.findOne({ stageType: 'main_stage' });
+
+    if (!meeting) {
+      meeting = await Meeting.findOne({ title: 'Main Stage Broadcast' });
+      if (meeting) {
+        meeting.stageType = 'main_stage';
+        await meeting.save();
+      }
+    }
 
     if (!meeting) {
       let hmsRoom;
@@ -92,6 +100,7 @@ router.get('/main-stage/room', protectUser, async (req, res) => {
       meeting = await Meeting.create({
         title: 'Main Stage Broadcast',
         description: 'Broadcasting stage for virtual event keynotes and presentations.',
+        stageType: 'main_stage',
         hmsRoomId: hmsRoom.id,
         scheduledTime: new Date(),
         duration: 480, // 8 hours
@@ -115,7 +124,15 @@ router.get('/main-stage/room', protectUser, async (req, res) => {
 // @access  Private
 router.get('/pitch/room', protectUser, async (req, res) => {
   try {
-    let meeting = await Meeting.findOne({ title: 'Startup Pitch Ceremony' });
+    let meeting = await Meeting.findOne({ stageType: 'pitch' });
+
+    if (!meeting) {
+      meeting = await Meeting.findOne({ title: 'Startup Pitch Ceremony' });
+      if (meeting) {
+        meeting.stageType = 'pitch';
+        await meeting.save();
+      }
+    }
 
     if (!meeting) {
       let hmsRoom;
@@ -133,6 +150,7 @@ router.get('/pitch/room', protectUser, async (req, res) => {
       meeting = await Meeting.create({
         title: 'Startup Pitch Ceremony',
         description: 'Broadcasting stage for startup pitches and investor panels.',
+        stageType: 'pitch',
         hmsRoomId: hmsRoom.id,
         scheduledTime: new Date(),
         duration: 480, // 8 hours
@@ -166,6 +184,39 @@ router.get('/:id', protectUser, async (req, res) => {
 
     res.status(200).json({
       success: true,
+      meeting
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Update meeting details (Organizer/Admin only)
+// @route   PUT /api/meetings/:id
+// @access  Private
+router.put('/:id', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    // Check if user is organizer or admin
+    if (req.user.role !== 'admin' && req.user.role !== 'organizer') {
+      return res.status(403).json({ success: false, message: 'Not authorized to update this meeting' });
+    }
+
+    const { title, description, status } = req.body;
+
+    if (title !== undefined) meeting.title = title;
+    if (description !== undefined) meeting.description = description;
+    if (status !== undefined) meeting.status = status;
+
+    await meeting.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Meeting updated successfully',
       meeting
     });
   } catch (error) {

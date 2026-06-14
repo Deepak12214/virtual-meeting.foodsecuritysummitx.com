@@ -12,6 +12,11 @@ const meetingSchema = new mongoose.Schema(
       trim: true,
       default: '',
     },
+    stageType: {
+      type: String,
+      enum: ['none', 'main_stage', 'pitch'],
+      default: 'none',
+    },
     hmsRoomId: {
       type: String,
       required: [true, 'HMS Room ID is required'],

@@ -141,6 +141,23 @@ export async function endMeeting(meetingId: string): Promise<void> {
   if (!res.ok) throw new Error(data.message || 'Failed to end meeting');
 }
 
+/**
+ * Update meeting details (title, description, status).
+ */
+export async function updateMeeting(
+  meetingId: string,
+  payload: { title?: string; description?: string; status?: 'active' | 'scheduled' | 'completed' }
+): Promise<Meeting> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}`, {
+    method: 'PUT',
+    headers: getAuthHeaders(),
+    body: JSON.stringify(payload),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to update meeting details');
+  return data.meeting as Meeting;
+}
+
 // ─── Special Rooms ────────────────────────────────────────────────────────────
 
 /**
