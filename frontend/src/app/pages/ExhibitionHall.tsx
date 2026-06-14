@@ -1,18 +1,60 @@
-import { useState } from 'react';
+import { useState, useEffect, ReactNode } from 'react';
 import { Link } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
-import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal } from 'lucide-react';
-import { MOCK_BOOTHS, Booth } from '../data/mockData';
+import { Textarea } from '../components/ui/textarea';
+import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus } from 'lucide-react';
+import { fetchBooths, createBooth, uploadGenericFile, type Booth } from '../services/boothService';
+import { useAuth } from '../context/AuthContext';
+import { toast } from 'sonner';
 
 export function ExhibitionHall() {
+  const { user } = useAuth();
+  const [booths, setBooths] = useState<Booth[]>([]);
+  const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<'all' | 'sponsor' | 'exhibitor'>('all');
 
-  const filteredBooths = MOCK_BOOTHS.filter((booth) => {
+  // Add Booth Dialog states
+  const [addOpen, setAddOpen] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newCategory, setNewCategory] = useState<'sponsor' | 'exhibitor'>('exhibitor');
+  const [newTier, setNewTier] = useState<'platinum' | 'gold' | 'silver'>('silver');
+  const [newDescription, setNewDescription] = useState('');
+  const [newLogo, setNewLogo] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+  const [uploadingLogo, setUploadingLogo] = useState(false);
+
+  const handleLogoFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setUploadingLogo(true);
+    try {
+      const url = await uploadGenericFile(file);
+      setNewLogo(url);
+      toast.success('Logo image uploaded successfully!');
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to upload logo image.');
+    } finally {
+      setUploadingLogo(false);
+    }
+  };
+
+  const loadBooths = () => {
+    setLoading(true);
+    fetchBooths()
+      .then((data) => setBooths(data))
+      .catch((err) => console.error('Error fetching booths:', err))
+      .finally(() => setLoading(false));
+  };
+
+  useEffect(() => {
+    loadBooths();
+  }, []);
+
+  const filteredBooths = booths.filter((booth) => {
     const matchesSearch = booth.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
       booth.description.toLowerCase().includes(searchQuery.toLowerCase());
     const matchesCategory = selectedCategory === 'all' || booth.category === selectedCategory;
@@ -48,14 +90,71 @@ export function ExhibitionHall() {
     }
   };
 
+  const userHasBooth = user && booths.some((b) =>
+    b.representatives && b.representatives.some((r) => {
+      const repId = typeof r === 'object' ? (r._id || r.id) : r;
+      const currentUserId = user._id || user.id;
+      return String(repId) === String(currentUserId);
+    })
+  );
+
+  const canCreate = user && 
+    ['admin', 'exhibitor', 'sponsor'].includes(user.role) && 
+    (user.role === 'admin' || !userHasBooth);
+
+  const handleCreateBooth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!newName) {
+      toast.error('Please enter a booth name');
+      return;
+    }
+    setSubmitting(true);
+    try {
+      await createBooth({
+        name: newName,
+        category: newCategory,
+        tier: newCategory === 'sponsor' ? newTier : undefined,
+        description: newDescription,
+        logo: newLogo,
+        brochures: []
+      });
+      toast.success('Exhibitor booth created successfully!');
+      setAddOpen(false);
+      setNewName('');
+      setNewDescription('');
+      setNewLogo('');
+      loadBooths();
+    } catch (err: any) {
+      toast.error(err?.message || 'Failed to create booth');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[--color-primary]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       {/* Page Header */}
-      <div>
-        <h1 className="text-3xl font-bold">Exhibition Hall</h1>
-        <p className="text-[--color-text-secondary] mt-2">
-          Explore sponsor and exhibitor booths, download brochures, and connect with representatives
-        </p>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold">Exhibition Hall</h1>
+          <p className="text-[--color-text-secondary] mt-2">
+            Explore sponsor and exhibitor booths, download brochures, and connect with representatives
+          </p>
+        </div>
+        {canCreate && (
+          <Button onClick={() => setAddOpen(true)} className="gap-2 bg-primary hover:bg-primary/80 self-start md:self-center">
+            <Plus className="h-4 w-4" />
+            Add Exhibitor
+          </Button>
+        )}
       </div>
 
       {/* Search and Filters */}
@@ -162,6 +261,115 @@ export function ExhibitionHall() {
           </CardContent>
         </Card>
       )}
+
+      {/* Add Booth Modal */}
+      {addOpen && (
+        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg bg-white border border-slate-200 text-slate-900 shadow-2xl relative">
+            <CardHeader className="border-b border-slate-100">
+              <CardTitle className="text-xl font-bold text-slate-900">Add Sponsor or Exhibitor Booth</CardTitle>
+              <CardDescription className="text-slate-500">
+                Create a virtual booth. As the creator, you will automatically be added as a representative.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="pt-6">
+              <form onSubmit={handleCreateBooth} className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Booth Name</label>
+                  <Input
+                    placeholder="e.g. InnovateLab Technologies"
+                    value={newName}
+                    onChange={(e) => setNewName(e.target.value)}
+                    required
+                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <label className="text-sm font-semibold text-slate-700">Category</label>
+                    <select
+                      value={newCategory}
+                      onChange={(e) => setNewCategory(e.target.value as any)}
+                      className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                    >
+                      <option value="exhibitor">Exhibitor</option>
+                      <option value="sponsor">Sponsor</option>
+                    </select>
+                  </div>
+
+                  {newCategory === 'sponsor' && (
+                    <div className="space-y-2">
+                      <label className="text-sm font-semibold text-slate-700">Tier</label>
+                      <select
+                        value={newTier}
+                        onChange={(e) => setNewTier(e.target.value as any)}
+                        className="w-full h-10 px-3 rounded-md border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
+                      >
+                        <option value="platinum">Platinum</option>
+                        <option value="gold">Gold</option>
+                        <option value="silver">Silver</option>
+                      </select>
+                    </div>
+                  )}
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Description</label>
+                  <Textarea
+                    placeholder="Short description of products or platform..."
+                    value={newDescription}
+                    onChange={(e) => setNewDescription(e.target.value)}
+                    rows={3}
+                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-700">Logo Image File</label>
+                  {newLogo ? (
+                    <div className="flex items-center justify-between h-10 px-3 border border-slate-200 rounded-md bg-slate-50 text-xs">
+                      <div className="flex items-center gap-2">
+                        <img src={newLogo} alt="Uploaded logo preview" className="w-6 h-6 rounded object-cover" />
+                        <span className="text-slate-600 truncate max-w-[200px]">Logo Ready</span>
+                      </div>
+                      <Button type="button" variant="ghost" size="sm" onClick={() => setNewLogo('')} className="text-red-500 hover:text-red-600 h-7 px-2">
+                        Change
+                      </Button>
+                    </div>
+                  ) : (
+                    <div className="relative">
+                      <Input
+                        type="file"
+                        accept="image/*"
+                        onChange={handleLogoFileChange}
+                        required
+                        disabled={uploadingLogo}
+                        className="bg-white border border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500"
+                      />
+                      {uploadingLogo && (
+                        <div className="absolute right-3 top-2.5">
+                          <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
+                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={submitting} className="border-slate-300 text-slate-700 hover:bg-slate-50">
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={submitting || uploadingLogo} className="gap-2 bg-primary hover:bg-primary/80 text-white">
+                    {submitting && <Loader2 className="h-4 w-4 animate-spin" />}
+                    Create Booth
+                  </Button>
+                </div>
+              </form>
+            </CardContent>
+          </Card>
+        </div>
+      )}
     </div>
   );
 }
@@ -172,8 +380,8 @@ function BoothCard({
   getTierBadge,
 }: {
   booth: Booth;
-  getTierIcon: (tier?: string) => JSX.Element | null;
-  getTierBadge: (tier?: string) => JSX.Element | null;
+  getTierIcon: (tier?: string) => ReactNode;
+  getTierBadge: (tier?: string) => ReactNode;
 }) {
   return (
     <Link to={`/exhibition/${booth.id}`}>

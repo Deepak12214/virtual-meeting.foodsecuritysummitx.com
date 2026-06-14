@@ -15,22 +15,27 @@ import {
   Clock,
   AlertCircle,
 } from 'lucide-react';
-import { ANALYTICS_DATA, MOCK_SESSIONS, MOCK_BOOTHS } from '../../data/mockData';
+import { ANALYTICS_DATA, MOCK_SESSIONS } from '../../data/mockData';
 import { fetchMeetings, type Meeting } from '../../services/meetingService';
+import { fetchBooths, type Booth } from '../../services/boothService';
 
 export function OrganizerDashboard() {
   const [meetings, setMeetings] = useState<Meeting[]>([]);
+  const [booths, setBooths] = useState<Booth[]>([]);
 
   useEffect(() => {
     fetchMeetings()
       .then(setMeetings)
       .catch((err) => console.warn('Failed to load meetings in OrganizerDashboard:', err));
+    fetchBooths()
+      .then(setBooths)
+      .catch((err) => console.warn('Failed to load booths in OrganizerDashboard:', err));
   }, []);
 
   const pendingApprovals = 12;
   const activeSessions = MOCK_SESSIONS.filter((s) => s.isLive).length;
   const activeMeetingsCount = meetings.filter((m) => m.status === 'active').length;
-  const liveBooths = MOCK_BOOTHS.filter((b) => b.isLive).length;
+  const liveBooths = booths.filter((b) => b.isLive).length;
 
   const quickActions = [
     {

@@ -8,6 +8,7 @@ import { ExhibitionHall } from "./pages/ExhibitionHall";
 import { BoothDetail } from "./pages/BoothDetail";
 import { MeetingRooms } from "./pages/MeetingRooms";
 import { MeetingRoom } from "./pages/MeetingRoom";
+import { BoothMeetingRoom } from "./pages/BoothMeetingRoom";
 import { StartupPitchEnhanced } from "./pages/StartupPitchEnhanced";
 import { OrganizerDashboard } from "./pages/organizer/OrganizerDashboard";
 import { OrganizerUsers } from "./pages/organizer/OrganizerUsers";
@@ -36,6 +37,7 @@ export const router = createBrowserRouter([
       { path: "stage", Component: MainStageEnhanced },
       { path: "exhibition", Component: ExhibitionHall },
       { path: "exhibition/:boothId", Component: BoothDetail },
+      { path: "exhibition/meeting/:meetingId", Component: BoothMeetingRoom },
       { path: "meetings", Component: MeetingRooms },
       { path: "meetings/:meetingId", Component: MeetingRoom },
       { path: "pitch", Component: StartupPitchEnhanced },

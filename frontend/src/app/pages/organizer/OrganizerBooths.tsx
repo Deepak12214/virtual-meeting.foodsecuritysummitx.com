@@ -1,10 +1,29 @@
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../../components/ui/card';
 import { Button } from '../../components/ui/button';
 import { Badge } from '../../components/ui/badge';
-import { Store, Eye, Users, Plus, Edit } from 'lucide-react';
-import { MOCK_BOOTHS } from '../../data/mockData';
+import { Store, Eye, Users, Plus, Edit, Loader2 } from 'lucide-react';
+import { fetchBooths, type Booth } from '../../services/boothService';
 
 export function OrganizerBooths() {
+  const [booths, setBooths] = useState<Booth[]>([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchBooths()
+      .then(setBooths)
+      .catch((err) => console.warn('Failed to fetch booths:', err))
+      .finally(() => setLoading(false));
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <Loader2 className="h-8 w-8 animate-spin text-[--color-primary]" />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -25,14 +44,14 @@ export function OrganizerBooths() {
         <Card>
           <CardHeader>
             <CardDescription>Total Booths</CardDescription>
-            <CardTitle className="text-2xl">{MOCK_BOOTHS.length}</CardTitle>
+            <CardTitle className="text-2xl">{booths.length}</CardTitle>
           </CardHeader>
         </Card>
         <Card>
           <CardHeader>
             <CardDescription>Live Now</CardDescription>
             <CardTitle className="text-2xl">
-              {MOCK_BOOTHS.filter((b) => b.isLive).length}
+              {booths.filter((b) => b.isLive).length}
             </CardTitle>
           </CardHeader>
         </Card>
@@ -57,7 +76,7 @@ export function OrganizerBooths() {
         </CardHeader>
         <CardContent>
           <div className="space-y-3">
-            {MOCK_BOOTHS.map((booth) => (
+            {booths.map((booth) => (
               <div
                 key={booth.id}
                 className="flex items-start justify-between p-4 bg-[--color-surface] rounded-lg border border-[--color-border]"
