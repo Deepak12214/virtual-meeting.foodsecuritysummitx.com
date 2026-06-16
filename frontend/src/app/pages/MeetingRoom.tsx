@@ -163,7 +163,7 @@ export function MeetingRoom() {
           return hmsActions.join({
             userName: user.name,
             authToken: token,
-            settings: { isAudioMuted: false, isVideoMuted: false },
+            settings: { isAudioMuted: true, isVideoMuted: true },
           });
         })
         .then(() => {
@@ -209,7 +209,7 @@ export function MeetingRoom() {
           await hmsActions.join({
             userName: user?.name || 'Guest',
             authToken: token,
-            settings: { isAudioMuted: false, isVideoMuted: false },
+            settings: { isAudioMuted: true, isVideoMuted: true },
           });
           registerJoin(meetingId);
           setJoinStatus('admitted');
@@ -337,9 +337,6 @@ export function MeetingRoom() {
           if (localPeer && localPeer.id === data.peerId) {
             setJoinStatus('admitted');
             hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
-            // Unmute local media now that we're admitted
-            hmsActions.setLocalAudioEnabled(true).catch(() => {});
-            hmsActions.setLocalVideoEnabled(true).catch(() => {});
             toast.success('🎉 You have been admitted to the meeting!');
           }
         } else if (data.action === 'deny') {

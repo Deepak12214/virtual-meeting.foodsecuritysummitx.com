@@ -500,13 +500,13 @@ function ActiveMeetingRow({
         </div>
 
         {/* Highlighted Title */}
-        <h3 className="text-xl font-extrabold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors tracking-tight">
+        <h3 className="text-xl font-extrabold text-foreground tracking-tight">
           {meeting.title}
         </h3>
 
         {/* Highlighted Description */}
         {meeting.description && (
-          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
+          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl p-2">
             {meeting.description}
           </p>
         )}
@@ -569,13 +569,13 @@ function ScheduledMeetingRow({
         </div>
 
         {/* Highlighted Title */}
-        <h3 className="text-xl font-extrabold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors tracking-tight">
+        <h3 className="text-xl font-extrabold text-foreground tracking-tight">
           {meeting.title}
         </h3>
 
         {/* Highlighted Description */}
         {meeting.description && (
-          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
+          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl p-2">
             {meeting.description}
           </p>
         )}
