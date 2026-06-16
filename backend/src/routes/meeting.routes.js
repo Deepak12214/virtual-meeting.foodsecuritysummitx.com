@@ -127,9 +127,10 @@ router.get('/main-stage/room', protectUser, async (req, res) => {
       });
     }
 
+    const populatedMeeting = await Meeting.findById(meeting._id).populate('creator', 'name email role');
     res.status(200).json({
       success: true,
-      meeting
+      meeting: populatedMeeting
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
@@ -185,9 +186,10 @@ router.get('/pitch/room', protectUser, async (req, res) => {
       });
     }
 
+    const populatedMeeting = await Meeting.findById(meeting._id).populate('creator', 'name email role');
     res.status(200).json({
       success: true,
-      meeting
+      meeting: populatedMeeting
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });

@@ -43,7 +43,6 @@ import {
   WifiOff,
   RefreshCw,
 } from 'lucide-react';
-import { MOCK_SESSIONS } from '../data/mockData';
 import { LiveQA } from '../components/LiveQA';
 import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
 import { AdvancedTimer } from '../components/AdvancedTimer';
@@ -467,9 +466,7 @@ export function MainStageEnhanced() {
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
-  // Mock session metadata
-  const liveSession = MOCK_SESSIONS.find((s) => s.isLive);
-  const upcomingSessions = MOCK_SESSIONS.filter((s) => s.status === 'upcoming');
+
 
   // Role checks
   const isAdmin = user?.role === 'admin';
@@ -1164,18 +1161,46 @@ export function MainStageEnhanced() {
 
               {/* Session info */}
               <div className="p-4 border-t border-[--color-border]">
-                <h2 className="text-lg font-bold">{stageMeeting?.title || (liveSession?.title ?? 'Main Stage Broadcast')}</h2>
-                <p className="text-[--color-text-secondary] mt-0.5 text-sm">{stageMeeting?.description || (liveSession?.description ?? 'Broadcasting stage for virtual event keynotes and presentations.')}</p>
-                {liveSession && (
-                  <div className="flex items-center gap-2.5 mt-3">
-                    <div className="w-9 h-9 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-semibold text-sm">
-                      {liveSession.speaker.split(' ').map((n) => n[0]).join('')}
-                    </div>
-                    <div>
-                      <p className="font-medium text-sm">{liveSession.speaker}</p>
-                      <p className="text-xs text-[--color-text-secondary]">{liveSession.speakerTitle}</p>
+                <h2 className="text-lg font-bold">{stageMeeting?.title || 'Main Stage Broadcast'}</h2>
+                <p className="text-[--color-text-secondary] mt-0.5 text-sm">{stageMeeting?.description || 'Broadcasting stage for virtual event keynotes and presentations.'}</p>
+                {presentingPeers.length > 0 ? (
+                  <div className="mt-4 space-y-3">
+                    <p className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Speakers Live on Stage</p>
+                    <div className="flex flex-wrap gap-4">
+                      {presentingPeers.map((p) => {
+                        let meta: any = {};
+                        try { meta = JSON.parse(p.metadata || '{}'); } catch {}
+                        const speakerTitle = meta.title || (meta.platformRole === 'speaker' ? 'Speaker' : 'Presenter');
+                        const initials = p.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2);
+                        return (
+                          <div key={p.id} className="flex items-center gap-2.5 bg-[--color-surface] p-2 rounded-lg border border-[--color-border]">
+                            <div className="w-8 h-8 rounded-full bg-gradient-to-br from-indigo-500 to-violet-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                              {initials}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-xs text-[--color-text]">{p.name}</p>
+                              <p className="text-[10px] text-[--color-text-secondary]">{speakerTitle}</p>
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
+                ) : (
+                  stageMeeting?.creator && (
+                    <div className="mt-4 space-y-3">
+                      <p className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Host / Creator</p>
+                      <div className="flex items-center gap-2.5 bg-[--color-surface] p-2 rounded-lg border border-[--color-border] w-fit">
+                        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
+                          {stageMeeting.creator.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
+                        </div>
+                        <div>
+                          <p className="font-semibold text-xs text-[--color-text]">{stageMeeting.creator.name}</p>
+                          <p className="text-[10px] text-[--color-text-secondary]">{stageMeeting.creator.role || 'Organizer'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  )
                 )}
               </div>
             </CardContent>
