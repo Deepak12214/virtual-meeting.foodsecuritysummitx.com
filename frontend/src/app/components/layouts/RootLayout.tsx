@@ -99,9 +99,9 @@ export function RootLayout() {
   return (
     <div className="min-h-screen bg-[--color-surface] flex flex-col md:flex-row">
       {/* Sidebar for Desktop */}
-      <aside className="hidden md:flex flex-col w-64 bg-[--color-surface-elevated] border-r border-[--color-border] shrink-0 sticky top-0 h-screen">
+      <aside className="hidden md:flex flex-col w-64 bg-[--color-sidebar] border-r border-[--color-sidebar-border] shrink-0 sticky top-0 h-screen">
         {/* Sidebar Logo */}
-        <div className="h-16 flex items-center px-6 border-b border-[--color-border]">
+        <div className="h-16 flex items-center px-6 border-b border-[--color-sidebar-border] bg-[--color-sidebar]">
           <Link to="/" className="flex items-center gap-3">
             <img
               src={BRAND.logo}
@@ -112,53 +112,65 @@ export function RootLayout() {
         </div>
 
         {/* Sidebar Navigation Items */}
-        <nav className="flex-1 px-4 py-6 space-y-1 overflow-y-auto">
+        <nav className="flex-1 px-4 py-6 space-y-1.5 overflow-y-auto">
           {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive =
               location.pathname === item.path ||
               (item.path !== '/' && location.pathname.startsWith(item.path));
             return (
-              <Link key={item.path} to={item.path} className="block">
-                <Button
-                  variant={isActive ? 'default' : 'ghost'}
-                  size="sm"
-                  className="w-full justify-start gap-3 px-3 py-2 text-sm"
+              <Link key={item.path} to={item.path} className="block relative group no-underline">
+                <div
+                  className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 relative ${
+                    isActive
+                      ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 font-bold'
+                      : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
                 >
-                  <Icon className="h-4 w-4 shrink-0" />
+                  {/* Left Active Indicator Bar */}
+                  {isActive && (
+                    <span className="absolute left-0 top-3 bottom-3 w-1 bg-emerald-600 dark:bg-emerald-500 rounded-r-full" />
+                  )}
+                  <Icon className={`h-4.5 w-4.5 shrink-0 transition-colors ${
+                    isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400 group-hover:text-slate-600 dark:group-hover:text-slate-300'
+                  }`} />
                   <span>{item.label}</span>
-                </Button>
+                </div>
               </Link>
             );
           })}
         </nav>
 
         {/* Sidebar User Profile Menu */}
-        <div className="p-4 border-t border-[--color-border] bg-[--color-surface-elevated]">
+        <div className="p-4 border-t border-[--color-sidebar-border] bg-[--color-sidebar]">
           {isAuthenticated && user ? (
-            <div className="flex items-center justify-between gap-2">
-              <Link to="/profile" className="flex items-center gap-2 min-w-0 flex-1 hover:opacity-85">
-                <div className="h-8 w-8 rounded-full bg-[--color-primary]/10 flex items-center justify-center text-[--color-primary] font-semibold shrink-0">
+            <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-slate-100/40 dark:bg-slate-900/40 border border-[--color-sidebar-border]">
+              <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 no-underline">
+                <div className="h-8 w-8 rounded-full bg-emerald-100 dark:bg-emerald-950/50 text-emerald-700 dark:text-emerald-400 flex items-center justify-center font-bold shrink-0 text-sm border border-emerald-200/40">
                   {user.name.charAt(0).toUpperCase()}
                 </div>
                 <div className="min-w-0 flex-1">
-                  <p className="text-sm font-medium text-[--color-text-primary] truncate">{user.name}</p>
-                  <p className="text-xs text-[--color-text-secondary] truncate capitalize">{user.role}</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-slate-200 truncate leading-none mb-1">{user.name}</p>
+                  <p className="text-xs text-slate-505 dark:text-slate-400 truncate capitalize leading-none">{user.role.replace('_', ' ')}</p>
                 </div>
               </Link>
-              <Button variant="ghost" size="sm" onClick={handleLogout} className="p-2 h-auto" title="Sign Out">
+              <button 
+                onClick={handleLogout} 
+                className="p-1.5 hover:bg-slate-200/60 dark:hover:bg-slate-800/60 text-slate-500 dark:text-slate-400 hover:text-red-600 dark:hover:text-red-400 rounded-lg border-none bg-transparent cursor-pointer transition-all"
+                title="Sign Out"
+              >
                 <LogOut className="h-4 w-4" />
-              </Button>
+              </button>
             </div>
           ) : (
             <div className="space-y-2">
-              <Link to="/auth/login" className="block">
-                <Button variant="ghost" size="sm" className="w-full justify-center">
+              <Link to="/auth/login" className="block no-underline">
+                <Button variant="ghost" size="sm" className="w-full justify-center rounded-xl border border-[--color-sidebar-border]">
                   Login
                 </Button>
               </Link>
-              <Link to="/auth/signup" className="block">
-                <Button variant="default" size="sm" className="w-full justify-center">
+              <Link to="/auth/signup" className="block no-underline">
+                <Button variant="default" size="sm" className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">
                   Sign Up
                 </Button>
               </Link>
@@ -199,7 +211,7 @@ export function RootLayout() {
 
         {/* Mobile Navigation Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden border-b border-[--color-border] bg-[--color-surface-elevated] sticky top-16 z-40 max-h-[calc(100vh-4rem)] overflow-y-auto shadow-lg">
+          <div className="md:hidden border-b border-[--color-sidebar-border] bg-[--color-sidebar] sticky top-16 z-40 max-h-[calc(100vh-4rem)] overflow-y-auto shadow-lg animate-in fade-in slide-in-from-top-3 duration-200">
             <nav className="px-4 py-4 space-y-1">
               {visibleNavItems.map((item) => {
                 const Icon = item.icon;
@@ -211,42 +223,46 @@ export function RootLayout() {
                     key={item.path}
                     to={item.path}
                     onClick={() => setMobileMenuOpen(false)}
+                    className="block no-underline"
                   >
-                    <Button
-                      variant={isActive ? 'default' : 'ghost'}
-                      size="sm"
-                      className="w-full justify-start gap-3"
+                    <div
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold transition-all duration-200 relative ${
+                        isActive
+                          ? 'bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 font-bold'
+                          : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100/60 dark:hover:bg-slate-800/40 hover:text-slate-900 dark:hover:text-slate-200'
+                      }`}
                     >
-                      <Icon className="h-4 w-4" />
+                      {isActive && (
+                        <span className="absolute left-0 top-3 bottom-3 w-1 bg-emerald-600 dark:bg-emerald-500 rounded-r-full" />
+                      )}
+                      <Icon className={`h-4.5 w-4.5 shrink-0 ${isActive ? 'text-emerald-600 dark:text-emerald-400' : 'text-slate-400'}`} />
                       <span>{item.label}</span>
-                    </Button>
+                    </div>
                   </Link>
                 );
               })}
               
-              <div className="pt-4 mt-4 border-t border-[--color-border]">
+              <div className="pt-4 mt-4 border-t border-[--color-sidebar-border]">
                 {isAuthenticated ? (
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="w-full justify-start gap-3 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                  <button
+                    className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-500/10 border-none bg-transparent cursor-pointer transition-all"
                     onClick={() => {
                       setMobileMenuOpen(false);
                       handleLogout();
                     }}
                   >
-                    <LogOut className="h-4 w-4" />
+                    <LogOut className="h-4.5 w-4.5 shrink-0" />
                     <span>Sign Out</span>
-                  </Button>
+                  </button>
                 ) : (
                   <div className="grid grid-cols-2 gap-2 pt-2">
-                    <Link to="/auth/login" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="ghost" size="sm" className="w-full">
+                    <Link to="/auth/login" onClick={() => setMobileMenuOpen(false)} className="block no-underline">
+                      <Button variant="ghost" size="sm" className="w-full justify-center rounded-xl border border-[--color-sidebar-border]">
                         Login
                       </Button>
                     </Link>
-                    <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)}>
-                      <Button variant="default" size="sm" className="w-full">
+                    <Link to="/auth/signup" onClick={() => setMobileMenuOpen(false)} className="block no-underline">
+                      <Button variant="default" size="sm" className="w-full justify-center bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl">
                         Sign Up
                       </Button>
                     </Link>

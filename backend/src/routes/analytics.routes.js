@@ -4,6 +4,7 @@ const User = require('../models/User');
 const Meeting = require('../models/Meeting');
 const Question = require('../models/Question');
 const Booth = require('../models/Booth');
+const StageEngagement = require('../models/StageEngagement');
 const { protectUser } = require('../middleware/auth');
 
 // Middleware: Restrict access to roles: admin, organizer, exhibitor, sponsor
@@ -368,37 +369,54 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
     });
 
     // ─── 4. ENGAGEMENT REPORTS ───
-    const mainStageMeeting = await Meeting.findOne({ stageType: 'main_stage' });
-    const pitchMeeting = await Meeting.findOne({ stageType: 'pitch' });
+    const msHistorical = await StageEngagement.find({
+      stageType: 'main_stage',
+      date: { $gte: start, $lte: end }
+    });
 
-    // Main Stage Engagement
-    let mainStageViewers = 0;
-    let mainStageQuestionsTotal = 0;
-    let mainStageQuestionsApproved = 0;
+    let mainStageViewers = msHistorical.reduce((sum, item) => sum + item.viewersCount, 0);
+    let mainStageQuestionsTotal = msHistorical.reduce((sum, item) => sum + item.totalQuestions, 0);
+    let mainStageQuestionsApproved = msHistorical.reduce((sum, item) => sum + item.approvedQuestions, 0);
 
-    if (mainStageMeeting) {
-      mainStageViewers = mainStageMeeting.participants ? mainStageMeeting.participants.length : 0;
+    const activeMainStage = await Meeting.findOne({ stageType: 'main_stage', status: 'active' });
+    if (activeMainStage) {
+      mainStageViewers += activeMainStage.participants ? activeMainStage.participants.length : 0;
       const msQuestions = await Question.find({
-        meetingId: mainStageMeeting._id,
+        meetingId: activeMainStage._id,
         createdAt: { $gte: start, $lte: end }
       });
-      mainStageQuestionsTotal = msQuestions.length;
-      mainStageQuestionsApproved = msQuestions.filter(q => q.status === 'approved').length;
+      mainStageQuestionsTotal += msQuestions.length;
+      mainStageQuestionsApproved += msQuestions.filter(q => q.status === 'approved').length;
     }
 
     // Startup Pitch Engagement
-    let pitchStageViewers = 0;
-    let pitchStageQuestionsTotal = 0;
-    let pitchStageQuestionsApproved = 0;
+    const pitchHistorical = await StageEngagement.find({
+      stageType: 'pitch',
+      date: { $gte: start, $lte: end }
+    });
 
-    if (pitchMeeting) {
-      pitchStageViewers = pitchMeeting.participants ? pitchMeeting.participants.length : 0;
+    let pitchStageViewers = pitchHistorical.reduce((sum, item) => sum + item.viewersCount, 0);
+    let pitchStageJoiners = pitchHistorical.reduce((sum, item) => sum + (item.stageCount || 0), 0);
+    let pitchStageQuestionsTotal = pitchHistorical.reduce((sum, item) => sum + item.totalQuestions, 0);
+    let pitchStageQuestionsApproved = pitchHistorical.reduce((sum, item) => sum + item.approvedQuestions, 0);
+
+    const activePitchStage = await Meeting.findOne({ stageType: 'pitch', status: 'active' }).populate('participants');
+    if (activePitchStage) {
+      if (activePitchStage.participants) {
+        activePitchStage.participants.forEach(p => {
+          if (p.role === 'startup_participant') {
+            pitchStageJoiners++;
+          } else {
+            pitchStageViewers++;
+          }
+        });
+      }
       const pQuestions = await Question.find({
-        meetingId: pitchMeeting._id,
+        meetingId: activePitchStage._id,
         createdAt: { $gte: start, $lte: end }
       });
-      pitchStageQuestionsTotal = pQuestions.length;
-      pitchStageQuestionsApproved = pQuestions.filter(q => q.status === 'approved').length;
+      pitchStageQuestionsTotal += pQuestions.length;
+      pitchStageQuestionsApproved += pQuestions.filter(q => q.status === 'approved').length;
     }
 
     // Combine recent interactions timeline
@@ -489,6 +507,7 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
           },
           pitchStage: {
             viewersCount: pitchStageViewers,
+            stageCount: pitchStageJoiners,
             totalQuestions: pitchStageQuestionsTotal,
             approvedQuestions: pitchStageQuestionsApproved
           },

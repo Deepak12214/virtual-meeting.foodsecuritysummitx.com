@@ -698,42 +698,14 @@ export function Analytics() {
                 </div>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
-                <div className="grid grid-cols-3 gap-4 text-center">
+                <div className="grid grid-cols-2 gap-4 text-center">
                   <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-border">
                     <p className="text-2xl font-extrabold text-foreground">{activeData.engagement.pitchStage.viewersCount}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Total Viewers</p>
-                  </div>
-                  <div className="bg-slate-50 dark:bg-slate-900/40 p-4 rounded-xl border border-border">
-                    <p className="text-2xl font-extrabold text-foreground">{activeData.engagement.pitchStage.totalQuestions}</p>
-                    <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Questions Asked</p>
+                    <p className="text-[10px] text-muted-foreground font-bold uppercase mt-1">Stream Viewers</p>
                   </div>
                   <div className="bg-amber-50/50 dark:bg-amber-950/10 p-4 rounded-xl border border-amber-500/15 text-amber-600">
-                    <p className="text-2xl font-extrabold">{activeData.engagement.pitchStage.approvedQuestions}</p>
-                    <p className="text-[10px] font-bold uppercase mt-1">Approved Q&A</p>
-                  </div>
-                </div>
-
-                {/* Progress Indicators */}
-                <div className="space-y-3 pt-2">
-                  <div className="space-y-1">
-                    <div className="flex items-center justify-between text-xs">
-                      <span className="text-muted-foreground">Question Approval Rate</span>
-                      <span className="font-bold text-foreground">
-                        {activeData.engagement.pitchStage.totalQuestions > 0
-                          ? `${Math.round((activeData.engagement.pitchStage.approvedQuestions / activeData.engagement.pitchStage.totalQuestions) * 100)}%`
-                          : '100%'}
-                      </span>
-                    </div>
-                    <div className="h-2 bg-slate-100 dark:bg-slate-900 rounded-full overflow-hidden">
-                      <div 
-                        className="h-full bg-amber-500 transition-all duration-500" 
-                        style={{ 
-                          width: `${activeData.engagement.pitchStage.totalQuestions > 0 
-                            ? (activeData.engagement.pitchStage.approvedQuestions / activeData.engagement.pitchStage.totalQuestions) * 100 
-                            : 100}%` 
-                        }}
-                      ></div>
-                    </div>
+                    <p className="text-2xl font-extrabold">{activeData.engagement.pitchStage.stageCount}</p>
+                    <p className="text-[10px] font-bold uppercase mt-1">Joined Stage</p>
                   </div>
                 </div>
               </CardContent>

@@ -2,8 +2,61 @@ const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
 const Question = require('../models/Question');
+const StageEngagement = require('../models/StageEngagement');
 const { protectUser } = require('../middleware/auth');
 const { createRoom, generateJoinToken, mapPlatformRoleToHMSRole } = require('../utils/hms');
+
+// Helper: Save stage engagement statistics before a meeting is ended / completed
+async function saveStageEngagementStats(meetingId) {
+  try {
+    const meeting = await Meeting.findById(meetingId).populate('participants');
+    if (!meeting || !['main_stage', 'pitch'].includes(meeting.stageType)) {
+      return;
+    }
+
+    // 1. Get live metrics segmenting by user role for Pitch Ceremony stage
+    let viewersCount = 0;
+    let stageCount = 0;
+
+    if (meeting.stageType === 'pitch') {
+      if (meeting.participants) {
+        meeting.participants.forEach(p => {
+          if (p.role === 'startup_participant') {
+            stageCount++;
+          } else {
+            viewersCount++;
+          }
+        });
+      }
+    } else {
+      viewersCount = meeting.participants ? meeting.participants.length : 0;
+    }
+
+    const totalQuestions = await Question.countDocuments({ meetingId });
+    const approvedQuestions = await Question.countDocuments({ meetingId, status: 'approved' });
+
+    // 2. Determine date (today at 00:00:00 local time)
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // 3. Upsert and accumulate stats
+    await StageEngagement.findOneAndUpdate(
+      { date: today, stageType: meeting.stageType },
+      {
+        $inc: {
+          viewersCount: viewersCount,
+          stageCount: stageCount,
+          totalQuestions: totalQuestions,
+          approvedQuestions: approvedQuestions
+        }
+      },
+      { upsert: true, new: true }
+    );
+    console.log(`[Analytics] Accumulated stage engagement for ${meeting.stageType}: +${viewersCount} viewers, +${stageCount} stage joiners, +${totalQuestions} questions`);
+  } catch (error) {
+    console.error('[Analytics] Error saving stage engagement stats:', error);
+  }
+}
 
 // @desc    Create/Schedule a new meeting
 // @route   POST /api/meetings
@@ -69,6 +122,7 @@ router.get('/', protectUser, async (req, res) => {
       if (now >= endTime && meeting.status !== 'completed') {
         meeting.status = 'completed';
         await meeting.save();
+        await saveStageEngagementStats(meeting._id);
         await Question.deleteMany({ meetingId: meeting._id });
       } else if (meeting.status === 'scheduled' && now >= startTime) {
         meeting.status = 'active';
@@ -225,6 +279,7 @@ router.get('/:id', protectUser, async (req, res) => {
     if (now >= endTime && meeting.status !== 'completed') {
       meeting.status = 'completed';
       await meeting.save();
+      await saveStageEngagementStats(meeting._id);
       await Question.deleteMany({ meetingId: meeting._id });
     } else if (meeting.status === 'scheduled' && now >= startTime) {
       meeting.status = 'active';
@@ -266,6 +321,7 @@ router.put('/:id', protectUser, async (req, res) => {
       }
       meeting.status = status;
       if (status === 'completed') {
+        await saveStageEngagementStats(meeting._id);
         await Question.deleteMany({ meetingId: meeting._id });
       }
     }
@@ -371,6 +427,7 @@ router.post('/:id/end', protectUser, async (req, res) => {
 
     meeting.status = 'completed';
     await meeting.save();
+    await saveStageEngagementStats(meeting._id);
     await Question.deleteMany({ meetingId: meeting._id });
 
     res.status(200).json({

@@ -79,6 +79,7 @@ export interface EngagementAnalytics {
   };
   pitchStage: {
     viewersCount: number;
+    stageCount: number;
     totalQuestions: number;
     approvedQuestions: number;
   };
