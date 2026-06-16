@@ -6,6 +6,7 @@ const authRoutes = require('./routes/auth.routes');
 const meetingRoutes = require('./routes/meeting.routes');
 const adminRoutes = require('./routes/admin.routes');
 const boothRoutes = require('./routes/booth.routes');
+const questionRoutes = require('./routes/question.routes');
 const path = require('path');
 
 // Connect to Database
@@ -36,6 +37,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/meetings', meetingRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/booths', boothRoutes);
+app.use('/api/questions', questionRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // 404 Handler

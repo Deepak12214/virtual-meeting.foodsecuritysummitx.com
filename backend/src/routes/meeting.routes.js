@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Meeting = require('../models/Meeting');
+const Question = require('../models/Question');
 const { protectUser } = require('../middleware/auth');
 const { createRoom, generateJoinToken, mapPlatformRoleToHMSRole } = require('../utils/hms');
 
@@ -240,6 +241,9 @@ router.put('/:id', protectUser, async (req, res) => {
         meeting.scheduledTime = new Date();
       }
       meeting.status = status;
+      if (status === 'completed') {
+        await Question.deleteMany({ meetingId: meeting._id });
+      }
     }
     
     if (scheduledTime !== undefined) meeting.scheduledTime = scheduledTime;
@@ -343,6 +347,7 @@ router.post('/:id/end', protectUser, async (req, res) => {
 
     meeting.status = 'completed';
     await meeting.save();
+    await Question.deleteMany({ meetingId: meeting._id });
 
     res.status(200).json({
       success: true,

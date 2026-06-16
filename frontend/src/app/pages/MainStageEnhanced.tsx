@@ -43,7 +43,8 @@ import {
   WifiOff,
   RefreshCw,
 } from 'lucide-react';
-import { MOCK_SESSIONS, MOCK_QUESTIONS, Question } from '../data/mockData';
+import { MOCK_SESSIONS } from '../data/mockData';
+import { LiveQA } from '../components/LiveQA';
 import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
 import { OperationalComms } from '../components/OperationalComms';
 import { AdvancedTimer } from '../components/AdvancedTimer';
@@ -450,11 +451,6 @@ function StageRequestBanner({
 
 export function MainStageEnhanced() {
   const { user, hasAccess, refreshUser } = useAuth();
-
-  // Q&A state
-  const [questions, setQuestions] = useState<Question[]>(MOCK_QUESTIONS);
-  const [newQuestion, setNewQuestion] = useState('');
-  const [activeTab, setActiveTab] = useState<'qa'>('qa');
 
   // 100ms hooks
   const hmsActions = useHMSActions();
@@ -926,20 +922,7 @@ export function MainStageEnhanced() {
     }
   };
 
-  // ── Q&A handlers ────────────────────────────────────────────────────────────
-  const submitQuestion = () => {
-    if (!newQuestion.trim()) return;
-    setQuestions((prev) => [
-      ...prev,
-      { id: `q${prev.length + 1}`, text: newQuestion, askedBy: user?.name ?? 'Anonymous', timestamp: new Date(), status: 'pending' },
-    ]);
-    setNewQuestion('');
-  };
-  const moderateQ = (id: string, status: 'approved' | 'rejected') =>
-    setQuestions((prev) => prev.map((q) => (q.id === id ? { ...q, status } : q)));
 
-  const pendingQs = questions.filter((q) => q.status === 'pending');
-  const approvedQs = questions.filter((q) => q.status === 'approved');
 
   // ── Media handlers ──────────────────────────────────────────────────────────
   const toggleAudio = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
@@ -1294,96 +1277,12 @@ export function MainStageEnhanced() {
             />
           )}
 
-          {/* Q&A Panel */}
-          <Card>
-            <CardHeader className="pb-3">
-              <div className="flex items-center justify-between">
-                <CardTitle className="text-sm flex items-center gap-2">
-                  <MessageSquare className="h-4 w-4" />
-                  Live Q&A
-                </CardTitle>
-                {isModerator && pendingQs.length > 0 && (
-                  <Badge variant="destructive" className="text-[10px] h-5">
-                    {pendingQs.length} pending
-                  </Badge>
-                )}
-              </div>
-              <CardDescription className="text-xs">
-                {canAskQ ? 'Submit your questions to the speakers' : 'Q&A available to approved attendees'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              {canAskQ && (
-                <div className="flex gap-2">
-                  <Input
-                    placeholder="Ask a question…"
-                    value={newQuestion}
-                    onChange={(e) => setNewQuestion(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && submitQuestion()}
-                    className="text-xs h-8"
-                  />
-                  <Button size="sm" onClick={submitQuestion} className="h-8 px-3">
-                    <Send className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              )}
-
-              {isModerator && pendingQs.length > 0 && (
-                <>
-                  <div>
-                    <h4 className="text-xs font-medium mb-2 flex items-center gap-1.5">
-                      <AlertCircle className="h-3 w-3 text-yellow-500" />
-                      Pending ({pendingQs.length})
-                    </h4>
-                    <ScrollArea className="h-36">
-                      <div className="space-y-2 pr-1">
-                        {pendingQs.map((q) => (
-                          <div key={q.id} className="p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                            <p className="text-xs">{q.text}</p>
-                            <div className="flex items-center justify-between mt-1.5">
-                              <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
-                              <div className="flex gap-1">
-                                <Button size="sm" variant="ghost" className="h-5 px-1.5" onClick={() => moderateQ(q.id, 'approved')}>
-                                  <CheckCircle className="h-3 w-3 text-green-500" />
-                                </Button>
-                                <Button size="sm" variant="ghost" className="h-5 px-1.5" onClick={() => moderateQ(q.id, 'rejected')}>
-                                  <XCircle className="h-3 w-3 text-red-500" />
-                                </Button>
-                              </div>
-                            </div>
-                          </div>
-                        ))}
-                      </div>
-                    </ScrollArea>
-                  </div>
-                  <Separator />
-                </>
-              )}
-
-              <div>
-                <h4 className="text-xs font-medium mb-2">Approved ({approvedQs.length})</h4>
-                <ScrollArea className="h-48">
-                  <div className="space-y-2 pr-1">
-                    {approvedQs.length === 0 ? (
-                      <p className="text-xs text-[--color-text-secondary] text-center py-4">No approved questions yet</p>
-                    ) : (
-                      approvedQs.map((q) => (
-                        <div key={q.id} className="p-2 bg-[--color-surface] rounded-lg border border-[--color-border]">
-                          <p className="text-xs">{q.text}</p>
-                          <div className="flex items-center justify-between mt-1">
-                            <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
-                            <span className="text-[10px] text-[--color-text-secondary]">
-                              {q.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                            </span>
-                          </div>
-                        </div>
-                      ))
-                    )}
-                  </div>
-                </ScrollArea>
-              </div>
-            </CardContent>
-          </Card>
+          {/* Live Q&A Panel */}
+          <LiveQA
+            meetingId={stageMeeting?._id || stageMeeting?.id || ''}
+            isModerator={isModerator}
+            canAskQ={canAskQ}
+          />
         </div>
       </div>
     </div>
