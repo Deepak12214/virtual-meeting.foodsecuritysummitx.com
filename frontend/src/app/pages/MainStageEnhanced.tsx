@@ -46,7 +46,6 @@ import {
 import { MOCK_SESSIONS } from '../data/mockData';
 import { LiveQA } from '../components/LiveQA';
 import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
-import { OperationalComms } from '../components/OperationalComms';
 import { AdvancedTimer } from '../components/AdvancedTimer';
 import { QueueManagement } from '../components/QueueManagement';
 import { EmergencyControls } from '../components/EmergencyControls';
@@ -1262,7 +1261,6 @@ export function MainStageEnhanced() {
               scheduledTime={stageMeeting?.scheduledTime}
             />
           )}
-          {(isHost || isModerator || isOrganizer) && <OperationalComms />}
           {isAdmin && <EmergencyControls />}
 
           {/* Speaker Queue — only visible to hosts/admins */}

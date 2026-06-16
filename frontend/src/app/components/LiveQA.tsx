@@ -7,6 +7,7 @@ import { Input } from './ui/input';
 import { Separator } from './ui/separator';
 import { MessageSquare, Send, AlertCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { fetchQuestions, submitQuestion, approveQuestion, rejectQuestion, Question } from '../services/questionService';
+import { useAuth } from '../context/AuthContext';
 import { toast } from 'sonner';
 
 interface LiveQAProps {
@@ -16,6 +17,7 @@ interface LiveQAProps {
 }
 
 export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
+  const { user } = useAuth();
   const [questions, setQuestions] = useState<Question[]>([]);
   const [newQuestion, setNewQuestion] = useState('');
   const [submitting, setSubmitting] = useState(false);
@@ -218,6 +220,47 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
               </ScrollArea>
             </div>
             <Separator />
+          </>
+        )}
+
+        {!isModerator && questions.some(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id)) && (
+          <>
+            <div>
+              <h4 className="text-xs font-medium mb-2 flex items-center gap-1.5 text-indigo-400">
+                <AlertCircle className="h-3 w-3" />
+                My Submissions ({questions.filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id)).length})
+              </h4>
+              <div className="space-y-2 pr-1 max-h-36 overflow-y-auto">
+                {questions
+                  .filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id))
+                  .map((q) => (
+                    <div 
+                      key={q.id} 
+                      className={`p-2 rounded-lg border text-xs ${
+                        q.status === 'pending' 
+                          ? 'bg-yellow-500/10 border-yellow-500/20' 
+                          : 'bg-red-500/10 border-red-500/20'
+                      }`}
+                    >
+                      <p className="text-xs">{q.text}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-[10px] text-[--color-text-secondary]">Asked by you</span>
+                        <Badge 
+                          variant="outline" 
+                          className={`text-[9px] px-1.5 py-0 h-4 border-0 ${
+                            q.status === 'pending'
+                              ? 'text-yellow-500 bg-yellow-500/10 hover:bg-yellow-500/15'
+                              : 'text-red-500 bg-red-500/10 hover:bg-red-500/15'
+                          }`}
+                        >
+                          {q.status === 'pending' ? 'Pending Approval' : 'Rejected'}
+                        </Badge>
+                      </div>
+                    </div>
+                  ))}
+              </div>
+            </div>
+            <Separator className="my-2" />
           </>
         )}
 

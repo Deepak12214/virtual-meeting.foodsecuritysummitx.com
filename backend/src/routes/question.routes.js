@@ -77,8 +77,18 @@ router.get('/', protectUser, async (req, res) => {
 
     let query = { meetingId };
     if (!isModerator) {
-      // Normal attendees only see approved questions
-      query.status = 'approved';
+      // Normal attendees see approved questions, OR their own pending/rejected questions that haven't expired yet
+      query.$or = [
+        { status: 'approved' },
+        {
+          askedById: req.user._id,
+          status: { $in: ['pending', 'rejected'] },
+          $or: [
+            { expiresAt: { $exists: false } },
+            { expiresAt: { $gt: new Date() } }
+          ]
+        }
+      ];
     } else {
       // Moderators see approved questions, and pending questions that have not expired yet
       query.$or = [
@@ -144,14 +154,20 @@ router.delete('/:id', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
     }
 
-    const question = await Question.findByIdAndDelete(req.params.id);
+    const question = await Question.findById(req.params.id);
     if (!question) {
       return res.status(404).json({ success: false, message: 'Question not found' });
     }
 
+    question.status = 'rejected';
+    // Keep in DB for 2 minutes so user can see it was rejected, then TTL deletes it
+    question.expiresAt = new Date(Date.now() + 2 * 60 * 1000);
+    await question.save();
+
     res.status(200).json({
       success: true,
-      message: 'Question deleted/rejected successfully'
+      message: 'Question rejected successfully',
+      question
     });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
