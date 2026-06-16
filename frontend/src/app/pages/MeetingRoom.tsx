@@ -55,7 +55,7 @@ function PeerVideo({ peer }: { peer: HMSPeer }) {
   const { videoRef } = useVideo({ trackId: peer.videoTrack });
   return (
     <video
-      ref={videoRef}
+      ref={videoRef as any}
       autoPlay
       playsInline
       muted={peer.isLocal}

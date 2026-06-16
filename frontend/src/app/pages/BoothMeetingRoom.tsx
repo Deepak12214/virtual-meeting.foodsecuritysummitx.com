@@ -53,7 +53,7 @@ function PeerVideo({ peer }: { peer: HMSPeer }) {
   const { videoRef } = useVideo({ trackId: peer.videoTrack });
   return (
     <video
-      ref={videoRef}
+      ref={videoRef as any}
       autoPlay
       playsInline
       muted={peer.isLocal}
@@ -67,7 +67,7 @@ function ScreenShareView({ peer }: { peer: HMSPeer }) {
   const { videoRef } = useVideo({ trackId });
   return (
     <video
-      ref={videoRef}
+      ref={videoRef as any}
       autoPlay
       playsInline
       className="w-full h-full object-contain bg-black"

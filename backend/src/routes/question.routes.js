@@ -73,7 +73,7 @@ router.get('/', protectUser, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Meeting ID query parameter is required' });
     }
 
-    const isModerator = ['admin', 'organizer', 'moderator'].includes(req.user.role);
+    const isModerator = ['admin', 'organizer'].includes(req.user.role);
 
     let query = { meetingId };
     if (!isModerator) {
@@ -120,7 +120,7 @@ router.get('/', protectUser, async (req, res) => {
 // @access  Private
 router.put('/:id/approve', protectUser, async (req, res) => {
   try {
-    const isModerator = ['admin', 'organizer', 'moderator'].includes(req.user.role);
+    const isModerator = ['admin', 'organizer'].includes(req.user.role);
     if (!isModerator) {
       return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
     }
@@ -149,7 +149,7 @@ router.put('/:id/approve', protectUser, async (req, res) => {
 // @access  Private
 router.delete('/:id', protectUser, async (req, res) => {
   try {
-    const isModerator = ['admin', 'organizer', 'moderator'].includes(req.user.role);
+    const isModerator = ['admin', 'organizer'].includes(req.user.role);
     if (!isModerator) {
       return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
     }

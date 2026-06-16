@@ -28,17 +28,13 @@ export function Signup() {
   const [loading, setLoading] = useState(false);
 
   const roleOptions = [
-    { value: 'organizer', label: 'Organizer', description: 'Manage events, sessions, and booths' },
-    { value: 'stage_manager', label: 'Stage Manager', description: 'Manage stage stream and sessions' },
-    { value: 'free_visitor', label: 'Free Visitor', description: 'Watch stage and browse exhibition' },
     { value: 'attendee', label: 'Attendee', description: 'Full event access and networking' },
-    { value: 'startup', label: 'Startup', description: 'Pitch to investors' },
-    { value: 'investor', label: 'Investor', description: 'Meet startups and network' },
-    { value: 'exhibitor', label: 'Exhibitor', description: 'Showcase products and services' },
-    { value: 'sponsor', label: 'Sponsor', description: 'Premium booth and visibility' },
+    { value: 'organizer', label: 'Organizer', description: 'Manage events, sessions, and booths' },
     { value: 'speaker', label: 'Speaker', description: 'Present at main stage' },
-    { value: 'moderator', label: 'Moderator', description: 'Manage Q&A and session moderation' },
-    { value: 'host', label: 'Host', description: 'Manage session flow and presentations' },
+    { value: 'exhibitor', label: 'Exhibitor', description: 'Showcase products and services' },
+    { value: 'startup_participant', label: 'Startup Participant', description: 'Pitch and display your startup' },
+    { value: 'sponsor', label: 'Sponsor', description: 'Premium booth and visibility' },
+    { value: 'admin', label: 'Admin', description: 'Full platform administrative control' },
   ];
 
 
@@ -275,7 +271,7 @@ export function Signup() {
             </div>
           )}
 
-          {formData.role && formData.role !== 'free_visitor' && formData.role !== 'attendee' && !showOtpScreen && (
+          {formData.role && formData.role !== 'attendee' && !showOtpScreen && (
             <div className="mt-4 p-3 bg-blue-500/10 rounded-lg border border-blue-500/20">
               <p className="text-xs text-blue-600">
                 Your account will be pending approval by an organizer before you can access premium features.

@@ -24,11 +24,11 @@ export function StartupPitch() {
   const [startups, setStartups] = useState(MOCK_STARTUPS);
   const [pitchTimer, setPitchTimer] = useState(300); // 5 minutes in seconds
 
-  const canAccessPitch = hasAccess(['startup', 'investor', 'moderator', 'organizer', 'admin']);
+  const canAccessPitch = hasAccess(['startup_participant', 'organizer', 'admin']);
   const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
-  const isModerator = user?.role === 'moderator' || isOrganizer;
-  const isStartup = user?.role === 'startup';
-  const isInvestor = user?.role === 'investor';
+  const isModerator = isOrganizer;
+  const isStartup = user?.role === 'startup_participant';
+  const isInvestor = false;
 
   if (!canAccessPitch) {
     return (
@@ -47,7 +47,7 @@ export function StartupPitch() {
               <div>
                 <CardTitle>Access Restricted</CardTitle>
                 <CardDescription className="mt-2">
-                  Startup pitch sessions are only available to startups, investors, and event moderators.
+                  Startup pitch sessions are only available to startups and organizers.
                 </CardDescription>
               </div>
             </div>

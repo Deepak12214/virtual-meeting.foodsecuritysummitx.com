@@ -113,9 +113,6 @@ const mapPlatformRoleToHMSRole = (userRole) => {
     // Full broadcast control
     case 'admin':
     case 'organizer':
-    case 'stage_manager':
-    case 'host':
-    case 'moderator':
       return 'broadcaster';
 
     // Speakers join as viewer-on-stage so they can publish once approved
@@ -123,12 +120,10 @@ const mapPlatformRoleToHMSRole = (userRole) => {
       return 'viewer-on-stage';
 
     // Everyone else watches only
-    case 'investor':
-    case 'startup':
     case 'exhibitor':
+    case 'startup_participant':
     case 'sponsor':
     case 'attendee':
-    case 'free_visitor':
     default:
       return 'viewer';
   }

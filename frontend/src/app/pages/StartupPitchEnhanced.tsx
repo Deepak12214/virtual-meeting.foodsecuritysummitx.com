@@ -122,13 +122,13 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
 
 function PeerPitchVideo({ peer }: { peer: HMSPeer }) {
   const { videoRef } = useVideo({ trackId: peer.videoTrack });
-  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />;
+  return <video ref={videoRef as any} autoPlay playsInline className="w-full h-full object-cover" />;
 }
 
 function ScreenSharePitchView({ peer }: { peer: HMSPeer }) {
   const trackId = peer.auxiliaryTracks?.[0];
   const { videoRef } = useVideo({ trackId });
-  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain bg-black" />;
+  return <video ref={videoRef as any} autoPlay playsInline className="w-full h-full object-contain bg-black" />;
 }
 
 // ─── StartupPitchEnhanced Page ────────────────────────────────────────────────
@@ -148,12 +148,12 @@ export function StartupPitchEnhanced() {
   const [pitchMeeting, setPitchMeeting] = useState<Meeting | null>(null);
 
   // Role checks
-  const canAccess   = hasAccess(['startup', 'investor', 'moderator', 'host', 'organizer', 'admin']);
+  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin']);
   const isAdmin     = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost      = user?.role === 'host' || isOrganizer;
-  const isStartup   = user?.role === 'startup';
-  const isInvestor  = user?.role === 'investor';
+  const isHost      = isOrganizer;
+  const isStartup   = user?.role === 'startup_participant';
+  const isInvestor  = false;
 
   // ✅ Use store selectors — HMSPeer does NOT have isAudioEnabled/isVideoEnabled directly
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -215,7 +215,7 @@ export function StartupPitchEnhanced() {
               <div>
                 <CardTitle>Access Restricted</CardTitle>
                 <CardDescription className="mt-2">
-                  Available to startups, investors, and event moderators only.
+                  Available to startups and organizers only.
                 </CardDescription>
               </div>
             </div>

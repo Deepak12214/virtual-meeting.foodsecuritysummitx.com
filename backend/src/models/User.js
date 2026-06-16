@@ -31,18 +31,13 @@ const userSchema = new mongoose.Schema(
       enum: [
         'admin',
         'organizer',
-        'stage_manager',
-        'host',
-        'moderator',
         'speaker',
-        'investor',
-        'startup',
         'exhibitor',
+        'startup_participant',
         'sponsor',
-        'attendee',
-        'free_visitor'
+        'attendee'
       ],
-      default: 'free_visitor',
+      default: 'attendee',
     },
     company: {
       type: String,

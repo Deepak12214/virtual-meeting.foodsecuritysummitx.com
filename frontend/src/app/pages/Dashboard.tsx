@@ -138,7 +138,7 @@ export function Dashboard() {
       color: 'from-green-600 to-emerald-700',
       hoverBorder: 'hover:border-green-600/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-green-500/5',
-      roles: ['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin'],
+      roles: ['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin'],
     },
     {
       title: 'Startup Pitch',
@@ -148,7 +148,7 @@ export function Dashboard() {
       color: 'from-lime-500 to-green-600',
       hoverBorder: 'hover:border-lime-500/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-lime-500/5',
-      roles: ['startup', 'investor', 'moderator', 'organizer', 'admin'],
+      roles: ['startup_participant', 'organizer', 'admin'],
     },
   ];
 

@@ -3,16 +3,11 @@ import { createContext, useContext, useState, useEffect, ReactNode } from 'react
 export type UserRole =
   | 'admin'
   | 'organizer'
-  | 'stage_manager'
-  | 'host'
-  | 'moderator'
   | 'speaker'
-  | 'investor'
-  | 'startup'
   | 'exhibitor'
+  | 'startup_participant'
   | 'sponsor'
-  | 'attendee'
-  | 'free_visitor';
+  | 'attendee';
 
 export interface User {
   id: string;

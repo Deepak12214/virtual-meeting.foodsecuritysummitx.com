@@ -30,13 +30,13 @@ export function RootLayout() {
       path: '/meetings',
       label: 'Meetings',
       icon: Calendar,
-      roles: ['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'host', 'organizer', 'admin'],
+      roles: ['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin'],
     },
     {
       path: '/pitch',
       label: 'Startup Pitch',
       icon: Rocket,
-      roles: ['startup', 'investor', 'moderator', 'host', 'organizer', 'admin'],
+      roles: ['startup_participant', 'organizer', 'admin'],
     },
     {
       path: '/organizer',

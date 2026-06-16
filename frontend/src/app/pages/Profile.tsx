@@ -146,20 +146,20 @@ export function Profile() {
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Join Meetings</span>
-              <Badge className={user.role === 'free_visitor' ? 'bg-red-500' : 'bg-green-500'}>
-                {user.role === 'free_visitor' ? 'Restricted' : 'Allowed'}
+              <Badge className="bg-green-500">
+                Allowed
               </Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Submit Questions</span>
-              <Badge className={user.role === 'free_visitor' ? 'bg-red-500' : 'bg-green-500'}>
-                {user.role === 'free_visitor' ? 'Restricted' : 'Allowed'}
+              <Badge className="bg-green-500">
+                Allowed
               </Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Access Startup Pitch</span>
-              <Badge className={['startup', 'investor', 'moderator', 'organizer', 'admin'].includes(user.role) ? 'bg-green-500' : 'bg-red-500'}>
-                {['startup', 'investor', 'moderator', 'organizer', 'admin'].includes(user.role) ? 'Allowed' : 'Restricted'}
+              <Badge className={['startup_participant', 'organizer', 'admin'].includes(user.role) ? 'bg-green-500' : 'bg-red-500'}>
+                {['startup_participant', 'organizer', 'admin'].includes(user.role) ? 'Allowed' : 'Restricted'}
               </Badge>
             </div>
           </div>

@@ -38,9 +38,9 @@ export function MainStage() {
   const upcomingSessions = MOCK_SESSIONS.filter((s) => s.status === 'upcoming');
 
   const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
-  const isModerator = user?.role === 'moderator' || isOrganizer;
+  const isModerator = isOrganizer;
   const isSpeaker = user?.role === 'speaker' || isOrganizer;
-  const canAskQuestions = hasAccess(['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'organizer', 'admin']);
+  const canAskQuestions = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin']);
 
   const handleSubmitQuestion = () => {
     if (!newQuestion.trim()) return;

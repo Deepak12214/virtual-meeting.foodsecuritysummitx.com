@@ -55,22 +55,15 @@ interface Stats {
 const ROLE_COLORS: Record<string, string> = {
   admin: 'bg-red-500/15 text-red-600 border-red-500/30',
   organizer: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
-  stage_manager: 'bg-orange-500/15 text-orange-600 border-orange-500/30',
-  host: 'bg-blue-500/15 text-blue-600 border-blue-500/30',
-  moderator: 'bg-cyan-500/15 text-cyan-600 border-cyan-500/30',
   speaker: 'bg-indigo-500/15 text-indigo-600 border-indigo-500/30',
-  investor: 'bg-emerald-500/15 text-emerald-600 border-emerald-500/30',
-  startup: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30',
   exhibitor: 'bg-teal-500/15 text-teal-600 border-teal-500/30',
+  startup_participant: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30',
   sponsor: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
   attendee: 'bg-gray-500/15 text-gray-600 border-gray-500/30',
-  free_visitor: 'bg-slate-500/15 text-slate-500 border-slate-400/30',
 };
 
 const ALL_ROLES = [
-  'admin', 'organizer', 'stage_manager', 'host', 'moderator',
-  'speaker', 'investor', 'startup', 'exhibitor', 'sponsor',
-  'attendee', 'free_visitor',
+  'admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee',
 ];
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';

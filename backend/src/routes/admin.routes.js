@@ -141,7 +141,7 @@ router.patch('/users/:id/role', protectUser, async (req, res) => {
     }
 
     const { role } = req.body;
-    const validRoles = ['admin', 'organizer', 'stage_manager', 'host', 'moderator', 'speaker', 'investor', 'startup', 'exhibitor', 'sponsor', 'attendee', 'free_visitor'];
+    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee'];
 
     if (!role || !validRoles.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });

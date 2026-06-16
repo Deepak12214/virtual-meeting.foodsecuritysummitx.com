@@ -149,13 +149,13 @@ function PeerStageVideo({ peer }: { peer: HMSPeer }) {
     );
   }
 
-  return <video ref={videoRef} autoPlay playsInline muted={peer.isLocal} className="w-full h-full object-cover" />;
+  return <video ref={videoRef as any} autoPlay playsInline muted={peer.isLocal} className="w-full h-full object-cover" />;
 }
 
 function ScreenShareView({ peer }: { peer: HMSPeer }) {
   const trackId = peer.auxiliaryTracks?.[0];
   const { videoRef } = useVideo({ trackId });
-  return <video ref={videoRef} autoPlay playsInline className="w-full h-full object-contain bg-black" />;
+  return <video ref={videoRef as any} autoPlay playsInline className="w-full h-full object-contain bg-black" />;
 }
 
 // ─── Presenting Peer Video Tile with Admin Controls ──────────────────────────
@@ -469,10 +469,10 @@ export function MainStageEnhanced() {
   // Role checks
   const isAdmin = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost = user?.role === 'host' || isOrganizer;
-  const isModerator = user?.role === 'moderator' || isOrganizer;
+  const isHost = isOrganizer;
+  const isModerator = isOrganizer;
   const isSpeaker = user?.role === 'speaker' || isHost;
-  const canAskQ = hasAccess(['attendee', 'startup', 'investor', 'exhibitor', 'sponsor', 'speaker', 'moderator', 'host', 'organizer', 'admin']);
+  const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin']);
 
   // A "pure speaker" is someone with the speaker role who is NOT also a host/admin/organizer
   const isPureSpeaker = user?.role === 'speaker' && !isHost;
@@ -499,8 +499,6 @@ export function MainStageEnhanced() {
   // Control authority list for the sidebar widget
   const authorities = [
     ...(isAdmin || isOrganizer ? [{ role: user?.role ?? 'admin', name: user?.name ?? 'Admin', mode: 'full' as const }] : []),
-    ...(isHost && !isOrganizer ? [{ role: 'host', name: user?.name ?? 'Host', mode: 'presentation' as const }] : []),
-    ...(isModerator && !isOrganizer && !isHost ? [{ role: 'moderator', name: user?.name ?? 'Moderator', mode: 'limited' as const }] : []),
   ];
 
   // ── 1. Load Main Stage room (polling every 5 seconds for status updates) ──────
