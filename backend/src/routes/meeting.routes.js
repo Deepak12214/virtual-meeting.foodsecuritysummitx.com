@@ -62,7 +62,15 @@ router.get('/', protectUser, async (req, res) => {
 
     const now = new Date();
     for (let meeting of meetings) {
-      if (meeting.status === 'scheduled' && now >= new Date(meeting.scheduledTime)) {
+      const startTime = new Date(meeting.scheduledTime);
+      const durationVal = meeting.duration || 30;
+      const endTime = new Date(startTime.getTime() + durationVal * 60 * 1000);
+
+      if (now >= endTime && meeting.status !== 'completed') {
+        meeting.status = 'completed';
+        await meeting.save();
+        await Question.deleteMany({ meetingId: meeting._id });
+      } else if (meeting.status === 'scheduled' && now >= startTime) {
         meeting.status = 'active';
         await meeting.save();
       }
@@ -201,12 +209,26 @@ router.get('/pitch/room', protectUser, async (req, res) => {
 // @access  Private
 router.get('/:id', protectUser, async (req, res) => {
   try {
-    const meeting = await Meeting.findById(req.id || req.params.id)
+    let meeting = await Meeting.findById(req.id || req.params.id)
       .populate('creator', 'name email role')
       .populate('participants', 'name email role');
 
     if (!meeting) {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    const now = new Date();
+    const startTime = new Date(meeting.scheduledTime);
+    const durationVal = meeting.duration || 30;
+    const endTime = new Date(startTime.getTime() + durationVal * 60 * 1000);
+
+    if (now >= endTime && meeting.status !== 'completed') {
+      meeting.status = 'completed';
+      await meeting.save();
+      await Question.deleteMany({ meetingId: meeting._id });
+    } else if (meeting.status === 'scheduled' && now >= startTime) {
+      meeting.status = 'active';
+      await meeting.save();
     }
 
     res.status(200).json({

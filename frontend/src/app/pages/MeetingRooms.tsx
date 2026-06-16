@@ -4,7 +4,6 @@ import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '../components/ui/tabs';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import {
@@ -15,7 +14,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '../components/ui/dialog';
-import { Calendar, Clock, Users, Video, CheckCircle, AlertCircle, Plus, Share2 } from 'lucide-react';
+import { Calendar, Clock, Users, Video, AlertCircle, Plus, Share2, Play, Sparkles, Shield, Hourglass } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchMeetings,
@@ -24,7 +23,38 @@ import {
   type CreateMeetingPayload,
 } from '../services/meetingService';
 
-// ─── MeetingRooms Page ────────────────────────────────────────────────────────
+// Helper to calculate initial rounded schedule date (now + 10 mins)
+const getNextRoundedTime = () => {
+  const date = new Date();
+  date.setMinutes(date.getMinutes() + 10);
+  const yyyy = date.getFullYear();
+  const mm = String(date.getMonth() + 1).padStart(2, '0');
+  const dd = String(date.getDate()).padStart(2, '0');
+  const hh = String(date.getHours()).padStart(2, '0');
+  const min = String(date.getMinutes()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}T${hh}:${min}`;
+};
+
+// Helper to get formatted human-readable remaining time
+const getCountdownText = (targetDate: Date, nowTime: number) => {
+  const diffMs = targetDate.getTime() - nowTime;
+  if (diffMs <= 0) return 'Starting now...';
+
+  const diffMins = Math.floor(diffMs / 60000);
+  if (diffMins < 60) {
+    const diffSecs = Math.floor((diffMs % 60000) / 1000);
+    return `starts in ${diffMins}m ${diffSecs}s`;
+  }
+
+  const diffHours = Math.floor(diffMins / 60);
+  const remainingMins = diffMins % 60;
+  if (diffHours < 24) {
+    return `starts in ${diffHours}h ${remainingMins}m`;
+  }
+
+  const diffDays = Math.floor(diffHours / 24);
+  return `starts in ${diffDays}d ${diffHours % 24}h`;
+};
 
 export function MeetingRooms() {
   const { user } = useAuth();
@@ -33,17 +63,29 @@ export function MeetingRooms() {
   const [loading, setLoading] = useState(true);
   const [isCreateOpen, setIsCreateOpen] = useState(false);
 
-  // Form state
+  // Form states
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
+  const [isScheduled, setIsScheduled] = useState(false);
+  const [scheduledDate, setScheduledDate] = useState('');
   const [creating, setCreating] = useState(false);
+
+  // Client-side precise ticker for live updates
+  const [currentTime, setCurrentTime] = useState(Date.now());
 
   const canAccessMeetings = !!user;
   const canCreateMeetings = !!user;
 
-  // ── Load meetings ────────────────────────────────────────────────────────────
+  // ── 1. Live Ticker Hook ──────────────────────────────────────────────────────
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setCurrentTime(Date.now());
+    }, 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  // ── 2. Load Meetings ─────────────────────────────────────────────────────────
   const loadMeetings = async () => {
-    setLoading(true);
     try {
       const data = await fetchMeetings();
       setMeetings(data);
@@ -56,96 +98,69 @@ export function MeetingRooms() {
   };
 
   useEffect(() => {
-    if (canAccessMeetings) loadMeetings();
+    if (canAccessMeetings) {
+      setLoading(true);
+      loadMeetings();
+    }
   }, [canAccessMeetings]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Create meeting ────────────────────────────────────────────────────────────
+  // ── 3. Handle Create/Schedule Meeting ─────────────────────────────────────────
   const handleCreate = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!title.trim()) { toast.error('Title is required'); return; }
+    if (!title.trim()) {
+      toast.error('Title is required');
+      return;
+    }
 
     setCreating(true);
+    let finalScheduledTime: Date | string = new Date();
+
+    if (isScheduled) {
+      if (!scheduledDate) {
+        toast.error('Please choose a start date & time');
+        setCreating(false);
+        return;
+      }
+      finalScheduledTime = new Date(scheduledDate);
+      if (finalScheduledTime.getTime() < Date.now() - 60000) {
+        toast.error('Cannot schedule a meeting in the past');
+        setCreating(false);
+        return;
+      }
+    }
+
     const payload: CreateMeetingPayload = {
       title,
       description,
-      scheduledTime: new Date(),
-      duration: 30, // Locked to 30 minutes
+      scheduledTime: isScheduled ? finalScheduledTime.toISOString() : new Date().toISOString(),
+      duration: 30, // Locked to 30 mins
     };
 
     try {
       const newMeeting = await createMeeting(payload);
-      toast.success('Meeting created successfully!');
-      setIsCreateOpen(false);
-      setTitle(''); 
+      toast.success(
+        isScheduled
+          ? 'Meeting scheduled successfully!'
+          : 'Instant meeting room created!'
+      );
+      
+      // Reset Form State
+      setTitle('');
       setDescription('');
+      setIsScheduled(false);
+      setScheduledDate('');
+      setIsCreateOpen(false);
+      
       loadMeetings();
-      // Directly join the newly created meeting room
-      navigate(`/meetings/${newMeeting._id ?? newMeeting.id}`);
+
+      // For instant rooms, join directly
+      if (!isScheduled) {
+        navigate(`/meetings/${newMeeting._id ?? newMeeting.id}`);
+      }
     } catch (err: any) {
       toast.error(err?.message || 'Failed to create meeting');
     } finally {
       setCreating(false);
-    }
-  };
-
-  // ── Access guard ─────────────────────────────────────────────────────────────
-  if (!canAccessMeetings) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <h1 className="text-3xl font-bold">Meeting Rooms</h1>
-          <p className="text-[--color-text-secondary] mt-2">1-on-1 video meetings and networking sessions</p>
-        </div>
-        <Card className="bg-yellow-500/10 border-yellow-500/20">
-          <CardHeader>
-            <div className="flex items-start gap-3">
-              <AlertCircle className="h-5 w-5 text-yellow-600 mt-1" />
-              <div>
-                <CardTitle>Access Restricted</CardTitle>
-                <CardDescription className="mt-2">
-                  Meeting rooms are only available to approved attendees with paid access.
-                </CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check if a meeting is expired
-  const isExpired = (m: Meeting) => {
-    const startTime = new Date(m.scheduledTime).getTime();
-    const durationMs = (m.duration || 30) * 60 * 1000;
-    return Date.now() > (startTime + durationMs) || m.status === 'completed';
-  };
-
-  // Personal module filter: exclude 'Main Stage Broadcast' and 'Startup Pitch Ceremony'
-  const filteredMeetings = meetings.filter(
-    (m) => m.title !== 'Main Stage Broadcast' && m.title !== 'Startup Pitch Ceremony'
-  );
-
-  const activeMeetings    = filteredMeetings.filter((m) => !isExpired(m) && new Date(m.scheduledTime).getTime() <= Date.now());
-  const scheduledMeetings = filteredMeetings.filter((m) => !isExpired(m) && new Date(m.scheduledTime).getTime() > Date.now());
-  const completedMeetings = filteredMeetings.filter((m) => isExpired(m));
-
-  const getStatusBadge = (status: Meeting['status'], expired: boolean) => {
-    if (expired) {
-      return <Badge variant="secondary">Expired</Badge>;
-    }
-    switch (status) {
-      case 'active':
-        return (
-          <Badge className="gap-1 bg-green-500">
-            <span className="relative flex h-2 w-2">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75" />
-              <span className="relative inline-flex rounded-full h-2 w-2 bg-white" />
-            </span>
-            Active
-          </Badge>
-        );
-      case 'scheduled': return <Badge variant="outline">Scheduled</Badge>;
-      case 'completed': return <Badge variant="secondary">Expired</Badge>;
     }
   };
 
@@ -155,42 +170,170 @@ export function MeetingRooms() {
     toast.success('📋 Meeting link copied to clipboard!');
   };
 
+  // ── 4. Filtering Logic (Exclude Expired & Non-Personal stage rooms) ───────────
+  const filteredMeetings = meetings.filter(
+    (m) => m.title !== 'Main Stage Broadcast' && m.title !== 'Startup Pitch Ceremony'
+  );
+
+  const isExpired = (m: Meeting) => {
+    const startTime = new Date(m.scheduledTime).getTime();
+    const durationMs = (m.duration || 30) * 60 * 1000;
+    return currentTime > (startTime + durationMs) || m.status === 'completed';
+  };
+
+  const activeMeetings = filteredMeetings.filter((m) => {
+    if (isExpired(m)) return false;
+    const startTime = new Date(m.scheduledTime).getTime();
+    return m.status === 'active' || startTime <= currentTime;
+  });
+
+  const scheduledMeetings = filteredMeetings.filter((m) => {
+    if (isExpired(m)) return false;
+    const startTime = new Date(m.scheduledTime).getTime();
+    return m.status === 'scheduled' && startTime > currentTime;
+  });
+
+  // Guard view
+  if (!canAccessMeetings) {
+    return (
+      <div className="relative min-h-[70vh] flex items-center justify-center p-6">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(76,175,80,0.06),transparent_50%)] pointer-events-none" />
+        <Card className="w-full max-w-md bg-card border border-border shadow-2xl relative overflow-hidden">
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-green-600" />
+          <CardHeader className="text-center pt-8">
+            <div className="mx-auto w-12 h-12 rounded-2xl bg-emerald-500/10 flex items-center justify-center mb-4 border border-emerald-500/20">
+              <Shield className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground tracking-tight">Access Restricted</CardTitle>
+            <CardDescription className="text-muted-foreground mt-2">
+              Please sign in to access scheduled video meeting rooms and live networking spaces.
+            </CardDescription>
+          </CardHeader>
+        </Card>
+      </div>
+    );
+  }
+
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Meeting Rooms</h1>
-          <p className="text-[--color-text-secondary] mt-2">
-            Join your scheduled 1-on-1 meetings and networking sessions
+    <div className="relative min-h-[85vh] space-y-10 pb-16">
+      {/* Decorative top blur spotlight using emerald green */}
+      <div className="absolute top-[-10%] left-[10%] right-[10%] h-[300px] bg-[radial-gradient(ellipse_at_top,rgba(76,175,80,0.08),transparent_60%)] pointer-events-none" />
+
+      {/* Header section */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 relative z-10">
+        <div className="space-y-1">
+          <div className="flex items-center gap-2 text-emerald-600 dark:text-emerald-400 text-xs font-bold tracking-wider uppercase">
+            <Sparkles className="h-4 w-4 text-emerald-500" />
+            Networking & Video Hub
+          </div>
+          <h1 className="text-3xl font-extrabold tracking-tight text-foreground">
+            Meeting Rooms
+          </h1>
+          <p className="text-muted-foreground text-sm max-w-xl">
+            Create instant collaborative video spaces or schedule sessions. All meetings run for 30 minutes.
           </p>
         </div>
 
         {canCreateMeetings && (
           <Dialog open={isCreateOpen} onOpenChange={setIsCreateOpen}>
             <DialogTrigger asChild>
-              <Button className="gap-2">
-                <Plus className="h-4 w-4" />
-                Create Meeting
+              <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-medium shadow-md hover:shadow-emerald-500/10 transition-all border-none py-5 px-6 rounded-xl cursor-pointer">
+                <Plus className="h-5 w-5" />
+                Create Room
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-[425px]">
+            <DialogContent className="sm:max-w-[450px] bg-card border border-border shadow-2xl rounded-2xl p-6 text-foreground">
               <DialogHeader>
-                <DialogTitle>Create a Meeting</DialogTitle>
-                <CardDescription>Creates an instant 30-minute meeting room.</CardDescription>
+                <DialogTitle className="text-2xl font-bold tracking-tight text-foreground">Start a Discussion</DialogTitle>
+                <CardDescription className="text-muted-foreground mt-1">
+                  Launch an instant video room or schedule a session for the future (30 mins duration).
+                </CardDescription>
               </DialogHeader>
-              <form onSubmit={handleCreate} className="space-y-4 pt-4">
+              
+              <form onSubmit={handleCreate} className="space-y-5 pt-4">
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Title *</label>
-                  <Input required placeholder="e.g., Food Security Strategy Call" value={title} onChange={(e) => setTitle(e.target.value)} />
+                  <label className="text-sm font-medium text-foreground">Room Title *</label>
+                  <Input
+                    required
+                    placeholder="e.g., Food Security Strategy Session"
+                    value={title}
+                    onChange={(e) => setTitle(e.target.value)}
+                    className="bg-background border-border text-foreground placeholder-muted-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl py-4"
+                  />
                 </div>
                 <div className="space-y-2">
-                  <label className="text-sm font-medium">Description</label>
-                  <Textarea placeholder="Meeting goals and agenda…" value={description} onChange={(e) => setDescription(e.target.value)} />
+                  <label className="text-sm font-medium text-foreground">Description</label>
+                  <Textarea
+                    placeholder="Agenda, guidelines, or discussion topics..."
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    className="bg-background border-border text-foreground placeholder-muted-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl min-h-[90px]"
+                  />
                 </div>
+
+                {/* Scheduling Toggle */}
+                <div className="space-y-2">
+                  <label className="text-sm font-medium text-foreground">Meeting Timing</label>
+                  <div className="grid grid-cols-2 gap-3 p-1 bg-muted rounded-xl border border-border">
+                    <button
+                      type="button"
+                      onClick={() => setIsScheduled(false)}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none ${
+                        !isScheduled
+                          ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-semibold'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      ⚡ Instant
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setIsScheduled(true);
+                        if (!scheduledDate) {
+                          setScheduledDate(getNextRoundedTime());
+                        }
+                      }}
+                      className={`py-2 px-3 rounded-lg text-sm font-medium transition-all cursor-pointer flex items-center justify-center gap-1.5 border-none ${
+                        isScheduled
+                          ? 'bg-white dark:bg-slate-800 text-emerald-600 dark:text-emerald-400 shadow-sm font-semibold'
+                          : 'text-muted-foreground hover:text-foreground hover:bg-slate-100 dark:hover:bg-slate-800/50'
+                      }`}
+                    >
+                      📅 Schedule
+                    </button>
+                  </div>
+                </div>
+
+                {isScheduled && (
+                  <div className="space-y-2 animate-in fade-in slide-in-from-top-3 duration-200">
+                    <label className="text-sm font-medium text-foreground">Start Date & Time *</label>
+                    <Input
+                      type="datetime-local"
+                      required={isScheduled}
+                      value={scheduledDate}
+                      onChange={(e) => setScheduledDate(e.target.value)}
+                      className="bg-background border-border text-foreground focus:border-emerald-500 focus:ring-1 focus:ring-emerald-500 rounded-xl py-4 [color-scheme:light] dark:[color-scheme:dark]"
+                    />
+                  </div>
+                )}
+
                 <DialogFooter className="pt-4">
-                  <Button type="button" variant="outline" onClick={() => setIsCreateOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={creating}>{creating ? 'Creating…' : 'Create Room'}</Button>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => setIsCreateOpen(false)}
+                    className="border-border hover:bg-muted rounded-xl py-5 cursor-pointer text-foreground"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={creating}
+                    className="bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-5 px-6 shadow-md hover:shadow-emerald-500/10 border-none cursor-pointer"
+                  >
+                    {creating ? 'Creating...' : isScheduled ? 'Schedule Session' : 'Launch Room'}
+                  </Button>
                 </DialogFooter>
               </form>
             </DialogContent>
@@ -198,138 +341,274 @@ export function MeetingRooms() {
         )}
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card><CardHeader><CardDescription>Active Now</CardDescription><CardTitle className="text-2xl">{activeMeetings.length}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Scheduled</CardDescription><CardTitle className="text-2xl">{scheduledMeetings.length}</CardTitle></CardHeader></Card>
-        <Card><CardHeader><CardDescription>Completed / Expired</CardDescription><CardTitle className="text-2xl">{completedMeetings.length}</CardTitle></CardHeader></Card>
+      {/* Overview Stats Bar */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5 relative z-10">
+        <div className="p-6 rounded-2xl bg-card border border-border flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Live Active Rooms</p>
+            <p className="text-3xl font-extrabold text-foreground mt-1 tracking-tight">{activeMeetings.length}</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center">
+            <span className="relative flex h-3 w-3">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-3 w-3 bg-emerald-500" />
+            </span>
+          </div>
+        </div>
+
+        <div className="p-6 rounded-2xl bg-card border border-border flex items-center justify-between shadow-sm">
+          <div>
+            <p className="text-sm font-medium text-muted-foreground">Upcoming Sessions</p>
+            <p className="text-3xl font-extrabold text-foreground mt-1 tracking-tight">{scheduledMeetings.length}</p>
+          </div>
+          <div className="w-12 h-12 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <Calendar className="h-5 w-5 text-amber-600 dark:text-amber-500" />
+          </div>
+        </div>
       </div>
 
-      {/* Tabs */}
+      {/* Main Lists Layout in List Format */}
       {loading ? (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
-            <p className="text-[--color-text-secondary]">Loading meetings…</p>
-          </CardContent>
-        </Card>
+        <div className="py-20 text-center relative z-10">
+          <div className="w-10 h-10 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin mx-auto mb-4" />
+          <p className="text-muted-foreground text-sm">Fetching meeting rooms...</p>
+        </div>
       ) : (
-        <Tabs defaultValue="active" className="w-full">
-          <TabsList className="grid w-full grid-cols-3">
-            <TabsTrigger value="active">Active ({activeMeetings.length})</TabsTrigger>
-            <TabsTrigger value="scheduled">Scheduled ({scheduledMeetings.length})</TabsTrigger>
-            <TabsTrigger value="completed">Expired ({completedMeetings.length})</TabsTrigger>
-          </TabsList>
+        <div className="space-y-10 relative z-10">
+          
+          {/* Section 1: Active Rooms (List Form) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="space-y-1">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-xl font-bold text-foreground tracking-tight">Active Rooms & Discussions</h2>
+                  <span className="flex h-2.5 w-2.5 relative">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
+                  </span>
+                </div>
+                <p className="text-xs text-muted-foreground">Collaborative live spaces. Click to enter immediately.</p>
+              </div>
+              <Badge className="bg-emerald-500/10 border border-emerald-500/30 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-500/10 text-xs py-1 px-3">
+                {activeMeetings.length} Available
+              </Badge>
+            </div>
 
-          {(['active', 'scheduled', 'completed'] as const).map((tab) => {
-            const list = tab === 'active' ? activeMeetings : tab === 'scheduled' ? scheduledMeetings : completedMeetings;
-            const EmptyIcon = tab === 'active' ? Video : tab === 'scheduled' ? Calendar : CheckCircle;
-            const emptyMsg = tab === 'active' ? 'No active meetings at the moment' : tab === 'scheduled' ? 'No scheduled meetings' : 'No expired meetings yet';
+            {activeMeetings.length === 0 ? (
+              <div className="p-12 text-center rounded-2xl bg-slate-50/20 dark:bg-slate-900/10 border border-border border-dashed">
+                <Video className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-foreground font-semibold text-lg">No Active Rooms</h3>
+                <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
+                  There are no live meetings right now. Create an instant room to get started or schedule a session.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {activeMeetings.map((meeting) => (
+                  <ActiveMeetingRow
+                    key={meeting._id ?? meeting.id}
+                    meeting={meeting}
+                    onShare={handleShare}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
 
-            return (
-              <TabsContent key={tab} value={tab} className="space-y-4 mt-6">
-                {list.length === 0 ? (
-                  <Card>
-                    <CardContent className="py-12 text-center">
-                      <EmptyIcon className="h-12 w-12 mx-auto text-[--color-text-secondary] mb-4" />
-                      <p className="text-[--color-text-secondary]">{emptyMsg}</p>
-                    </CardContent>
-                  </Card>
-                ) : (
-                  list.map((meeting) => (
-                    <MeetingCard key={meeting._id ?? meeting.id} meeting={meeting} getStatusBadge={getStatusBadge} onShare={handleShare} />
-                  ))
-                )}
-              </TabsContent>
-            );
-          })}
-        </Tabs>
+          {/* Section 2: Upcoming Scheduled Sessions (List Form) */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between border-b border-border pb-3">
+              <div className="space-y-1">
+                <h2 className="text-xl font-bold text-foreground tracking-tight">Upcoming Scheduled Sessions</h2>
+                <p className="text-xs text-muted-foreground">Pre-planned virtual events. Will activate automatically when scheduled.</p>
+              </div>
+              <Badge className="bg-amber-500/10 border border-amber-500/30 text-amber-600 dark:text-amber-500 hover:bg-amber-500/10 text-xs py-1 px-3">
+                {scheduledMeetings.length} Scheduled
+              </Badge>
+            </div>
+
+            {scheduledMeetings.length === 0 ? (
+              <div className="p-12 text-center rounded-2xl bg-slate-50/20 dark:bg-slate-900/10 border border-border border-dashed">
+                <Calendar className="h-10 w-10 text-muted-foreground mx-auto mb-3" />
+                <h3 className="text-foreground font-semibold text-lg">No Scheduled Sessions</h3>
+                <p className="text-muted-foreground text-sm mt-1 max-w-sm mx-auto">
+                  No upcoming meetings. You can schedule discussions for later using the creation button.
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col gap-4">
+                {scheduledMeetings.map((meeting) => (
+                  <ScheduledMeetingRow
+                    key={meeting._id ?? meeting.id}
+                    meeting={meeting}
+                    currentTime={currentTime}
+                    onShare={handleShare}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
       )}
     </div>
   );
 }
 
-// ─── Meeting Card ─────────────────────────────────────────────────────────────
-
-function MeetingCard({
+// ─── Active Meeting List Row Component ──────────────────────────────────────
+function ActiveMeetingRow({
   meeting,
-  getStatusBadge,
   onShare,
 }: {
   meeting: Meeting;
-  getStatusBadge: (status: Meeting['status'], expired: boolean) => ReactNode;
+  onShare: (meeting: Meeting) => void;
+}) {
+  return (
+    <div className="bg-card text-card-foreground border border-border rounded-xl p-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 hover:border-emerald-500/35 transition-all duration-300 hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden group">
+      {/* Decorative vertical colored stripe on the left */}
+      <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-emerald-500" />
+      
+      <div className="flex-1 min-w-0 pl-3">
+        <div className="flex items-center gap-2.5 flex-wrap mb-2">
+          <Badge className="bg-emerald-500/10 hover:bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 gap-1 py-0.5 px-2.5 text-[10px] font-bold">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
+              <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-emerald-500" />
+            </span>
+            LIVE NOW
+          </Badge>
+          <span className="text-xs text-muted-foreground flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {meeting.duration || 30} mins
+          </span>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            <span className="w-5 h-5 rounded-full bg-muted text-foreground flex items-center justify-center text-[10px] font-bold">
+              {meeting.creator?.name?.slice(0, 2).toUpperCase() || 'OP'}
+            </span>
+            <span>Created by <strong className="text-foreground">{meeting.creator?.name || 'Organizer'}</strong></span>
+          </div>
+
+          {meeting.participants?.length > 0 && (
+            <>
+              <span className="text-slate-300 dark:text-slate-700">•</span>
+              <div className="flex items-center gap-1 text-xs text-muted-foreground">
+                <Users className="h-3.5 w-3.5 text-slate-400" />
+                <span>{meeting.participants.length} joined</span>
+              </div>
+            </>
+          )}
+        </div>
+
+        {/* Highlighted Title */}
+        <h3 className="text-xl font-extrabold text-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 transition-colors tracking-tight">
+          {meeting.title}
+        </h3>
+
+        {/* Highlighted Description */}
+        {meeting.description && (
+          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
+            {meeting.description}
+          </p>
+        )}
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-3 flex-shrink-0 pl-3 md:pl-0">
+        <Link to={`/meetings/${meeting._id ?? meeting.id}`}>
+          <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl py-4.5 px-5 font-bold text-sm shadow-sm hover:shadow-emerald-500/10 border-none cursor-pointer">
+            <Play className="h-4 w-4 fill-white" />
+            Join Room
+          </Button>
+        </Link>
+        <Button
+          variant="outline"
+          onClick={() => onShare(meeting)}
+          className="border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl p-4.5 cursor-pointer"
+          title="Copy meeting link"
+        >
+          <Share2 className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Scheduled Meeting List Row Component ───────────────────────────────────
+function ScheduledMeetingRow({
+  meeting,
+  currentTime,
+  onShare,
+}: {
+  meeting: Meeting;
+  currentTime: number;
   onShare: (meeting: Meeting) => void;
 }) {
   const date = new Date(meeting.scheduledTime);
-  const minutesUntil = Math.floor((date.getTime() - Date.now()) / 60000);
-  
-  const startTime = date.getTime();
-  const durationMs = (meeting.duration || 30) * 60 * 1000;
-  const expired = Date.now() > (startTime + durationMs) || meeting.status === 'completed';
+  const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedDate = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
 
   return (
-    <Card className={expired ? "opacity-60 bg-slate-900/10 border-slate-900/40" : ""}>
-      <CardHeader>
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-          <div className="flex items-start gap-3 flex-1">
-            <div className={`w-12 h-12 rounded-lg flex items-center justify-center ${
-              expired ? 'bg-gray-800 text-gray-500' :
-              meeting.status === 'active' || date.getTime() <= Date.now() ? 'bg-gradient-to-br from-green-500 to-emerald-500' :
-              'bg-gradient-to-br from-blue-500 to-cyan-500'
-            }`}>
-              <Calendar className="h-6 w-6 text-white" />
-            </div>
-            <div className="flex-1">
-              <div className="flex items-center gap-2 mb-1">
-                <CardTitle className={`text-lg ${expired ? 'line-through text-gray-500' : ''}`}>{meeting.title}</CardTitle>
-                {getStatusBadge(meeting.status, expired)}
-              </div>
-              {meeting.description && (
-                <p className="text-sm text-[--color-text-secondary] mb-1">{meeting.description}</p>
-              )}
-              <div className="flex flex-col gap-1 text-sm text-[--color-text-secondary]">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-3 w-3" />
-                  {date.toLocaleDateString()} {date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                  {' • '}{meeting.duration} min
-                  {!expired && meeting.status === 'scheduled' && minutesUntil > 0 && (
-                    <span className="text-xs text-indigo-500 font-medium">(starts in {minutesUntil} min)</span>
-                  )}
-                </div>
-                {meeting.participants?.length > 0 && (
-                  <div className="flex items-center gap-2">
-                    <Users className="h-3 w-3" />
-                    {meeting.participants.map((p) => p.name).join(', ')}
-                  </div>
-                )}
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            {!expired && (
-              <Button
-                variant="outline"
-                onClick={() => onShare(meeting)}
-                className="gap-1.5 h-9"
-              >
-                <Share2 className="h-4 w-4" />
-                Share
-              </Button>
-            )}
-            {!expired ? (
-              <Link to={`/meetings/${meeting._id ?? meeting.id}`}>
-                <Button className="gap-2 h-9">
-                  <Video className="h-4 w-4" />
-                  Join Now
-                </Button>
-              </Link>
-            ) : (
-              <Button variant="outline" disabled className="h-9">Ended</Button>
-            )}
-          </div>
+    <div className="bg-card text-card-foreground border border-border rounded-xl p-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 hover:border-amber-500/25 transition-all duration-300 hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden group">
+      {/* Decorative vertical colored stripe on the left */}
+      <div className="absolute left-0 top-0 bottom-0 w-[4px] bg-amber-500" />
+      
+      <div className="flex-1 min-w-0 pl-3">
+        <div className="flex items-center gap-2.5 flex-wrap mb-2">
+          <Badge className="bg-amber-500/10 hover:bg-amber-500/15 text-amber-600 dark:text-amber-500 border border-amber-500/20 gap-1 py-0.5 px-2.5 text-[10px] font-bold uppercase">
+            UPCOMING
+          </Badge>
+          <Badge variant="outline" className="text-amber-600 dark:text-amber-500 border-amber-500/20 bg-amber-500/5 text-[10px] gap-1 flex items-center font-bold px-2 py-0.5">
+            <Hourglass className="h-3 w-3 animate-pulse text-amber-500" />
+            {getCountdownText(date, currentTime)}
+          </Badge>
+          <span className="text-slate-300 dark:text-slate-700">•</span>
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 flex items-center gap-1">
+            <Clock className="h-3 w-3" />
+            {formattedDate} @ {formattedTime} ({meeting.duration || 30} min)
+          </span>
         </div>
-      </CardHeader>
-    </Card>
+
+        {/* Highlighted Title */}
+        <h3 className="text-xl font-extrabold text-foreground group-hover:text-amber-600 dark:group-hover:text-amber-500 transition-colors tracking-tight">
+          {meeting.title}
+        </h3>
+
+        {/* Highlighted Description */}
+        {meeting.description && (
+          <p className="text-slate-800 dark:text-slate-200 text-sm font-semibold mt-2 leading-relaxed max-w-4xl bg-slate-50 dark:bg-slate-900/50 p-3 rounded-lg border border-border">
+            {meeting.description}
+          </p>
+        )}
+
+        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mt-2.5">
+          <span className="w-4 h-4 rounded-full bg-muted text-foreground flex items-center justify-center text-[9px] font-bold">
+            {meeting.creator?.name?.slice(0, 2).toUpperCase() || 'OP'}
+          </span>
+          <span>Scheduled by <strong className="text-foreground">{meeting.creator?.name || 'Organizer'}</strong></span>
+        </div>
+      </div>
+
+      {/* Action Buttons */}
+      <div className="flex items-center gap-2 flex-shrink-0 pl-3 md:pl-0">
+        <Button
+          variant="outline"
+          onClick={() => onShare(meeting)}
+          className="border-border hover:bg-muted text-muted-foreground hover:text-foreground rounded-xl py-4.5 px-4 cursor-pointer text-xs"
+          title="Copy meeting link"
+        >
+          <Share2 className="h-4 w-4 mr-1.5" />
+          Copy Link
+        </Button>
+        
+        <Link to={`/meetings/${meeting._id ?? meeting.id}`}>
+          <Button
+            variant="outline"
+            className="border-emerald-500/30 text-emerald-600 dark:border-emerald-500/30 dark:text-emerald-400 hover:bg-emerald-600 hover:text-white rounded-xl py-4.5 px-4 font-bold text-xs transition-all cursor-pointer"
+          >
+            Enter Lobby
+          </Button>
+        </Link>
+      </div>
+    </div>
   );
 }
