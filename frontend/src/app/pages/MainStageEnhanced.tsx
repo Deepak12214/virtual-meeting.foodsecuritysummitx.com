@@ -44,10 +44,8 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { LiveQA } from '../components/LiveQA';
-import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
 import { AdvancedTimer } from '../components/AdvancedTimer';
 import { QueueManagement } from '../components/QueueManagement';
-import { EmergencyControls } from '../components/EmergencyControls';
 import { toast } from 'sonner';
 import { fetchMainStageRoom, fetchJoinToken, type Meeting } from '../services/meetingService';
 
@@ -1189,7 +1187,7 @@ export function MainStageEnhanced() {
                 ) : (
                   stageMeeting?.creator && (
                     <div className="mt-4 space-y-3">
-                      <p className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Host / Creator</p>
+                      <p className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Stage Member</p>
                       <div className="flex items-center gap-2.5 bg-[--color-surface] p-2 rounded-lg border border-[--color-border] w-fit">
                         <div className="w-8 h-8 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center text-white font-bold text-xs shadow-sm">
                           {stageMeeting.creator.name.split(' ').map((n) => n[0]).join('').toUpperCase().slice(0, 2)}
@@ -1277,7 +1275,6 @@ export function MainStageEnhanced() {
 
         {/* ── Right Sidebar ──────────────────────────────────────────────── */}
         <div className="lg:col-span-1 space-y-4">
-          {authorities.length > 0 && <ControlAuthorityIndicator authorities={authorities} />}
           {(isHost || isOrganizer) && (
             <AdvancedTimer 
               type="session" 
@@ -1286,7 +1283,6 @@ export function MainStageEnhanced() {
               scheduledTime={stageMeeting?.scheduledTime}
             />
           )}
-          {isAdmin && <EmergencyControls />}
 
           {/* Speaker Queue — only visible to hosts/admins */}
           {isHost && (

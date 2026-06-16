@@ -29,10 +29,8 @@ import {
   Loader2,
 } from 'lucide-react';
 import { MOCK_STARTUPS } from '../data/mockData';
-import { ControlAuthorityIndicator } from '../components/ControlAuthorityIndicator';
 import { AdvancedTimer } from '../components/AdvancedTimer';
 import { QueueManagement } from '../components/QueueManagement';
-import { EmergencyControls } from '../components/EmergencyControls';
 import { toast } from 'sonner';
 import { fetchPitchRoom, fetchJoinToken, type Meeting } from '../services/meetingService';
 
@@ -445,9 +443,7 @@ export function StartupPitchEnhanced() {
 
         {/* Sidebar */}
         <div className="lg:col-span-1 space-y-4">
-          {authorities.length > 0 && <ControlAuthorityIndicator authorities={authorities} />}
           {(isHost || isOrganizer) && currentStartup && <AdvancedTimer initialSeconds={300} type="pitch" canControl={isOrganizer} />}
-          {isAdmin && <EmergencyControls />}
           <QueueManagement
             items={startupQueue.filter((s) => s.status !== 'live')}
             type="startup"

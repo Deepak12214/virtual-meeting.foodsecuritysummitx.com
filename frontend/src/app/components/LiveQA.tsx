@@ -186,7 +186,7 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
                 <AlertCircle className="h-3 w-3 text-yellow-500" />
                 Pending ({pendingQs.length})
               </h4>
-              <ScrollArea className="h-36">
+              <ScrollArea className="h-64">
                 <div className="space-y-2 pr-1">
                   {pendingQs.map((q) => (
                     <div key={q.id} className="p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
@@ -230,7 +230,7 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
                 <AlertCircle className="h-3 w-3" />
                 My Submissions ({questions.filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id)).length})
               </h4>
-              <div className="space-y-2 pr-1 max-h-36 overflow-y-auto">
+              <div className="space-y-2 pr-1 max-h-64 overflow-y-auto">
                 {questions
                   .filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id))
                   .map((q) => (
@@ -266,7 +266,7 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
 
         <div>
           <h4 className="text-xs font-medium mb-2">Approved ({approvedQs.length})</h4>
-          <ScrollArea className="h-48">
+          <ScrollArea className="h-[450px]">
             <div className="space-y-2 pr-1">
               {approvedQs.length === 0 ? (
                 <p className="text-xs text-[--color-text-secondary] text-center py-4">No approved questions yet</p>
