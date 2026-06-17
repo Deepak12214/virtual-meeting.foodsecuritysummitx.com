@@ -41,6 +41,7 @@ app.use('/api/booths', boothRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/analytics', analyticsRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
+app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // 404 Handler
 app.use((req, res) => {
