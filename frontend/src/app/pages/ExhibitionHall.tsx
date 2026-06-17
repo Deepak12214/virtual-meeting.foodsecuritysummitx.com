@@ -113,7 +113,7 @@ export function ExhibitionHall() {
       await createBooth({
         name: newName,
         category: newCategory,
-        tier: newCategory === 'sponsor' ? newTier : undefined,
+        tier: undefined,
         description: newDescription,
         logo: newLogo,
         brochures: []
@@ -185,7 +185,7 @@ export function ExhibitionHall() {
             placeholder="Search booths, category, keywords..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9 h-10 bg-[--color-surface-elevated]/30 border-[--color-border] text-[--color-text] placeholder-[--color-text-secondary]/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-lg text-sm"
+            className="pl-9 h-10 bg-[--color-surface-elevated] border-[--color-border] text-[--color-text] placeholder-[--color-text-secondary]/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-lg text-sm"
           />
         </div>
         <div className="flex gap-1.5 shrink-0">
@@ -255,80 +255,63 @@ export function ExhibitionHall() {
 
       {/* Add Booth Modal */}
       {addOpen && (
-        <div className="fixed inset-0 bg-black/60 backdrop-blur-md z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-lg bg-[--color-surface] border border-[--color-border] text-[--color-text] shadow-2xl relative animate-scale-in">
+        <div className="fixed inset-0 bg-black/75 z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-lg bg-white border border-slate-200 text-slate-900 shadow-2xl relative animate-scale-in">
             <button 
               onClick={() => setAddOpen(false)} 
-              className="absolute top-4 right-4 p-1 hover:bg-[--color-surface-elevated] text-[--color-text-secondary] hover:text-[--color-text] rounded-lg transition-colors border-none bg-transparent cursor-pointer"
+              className="absolute top-4 right-4 p-1 hover:bg-slate-100 text-slate-500 hover:text-slate-800 rounded-lg transition-colors border-none bg-transparent cursor-pointer"
             >
               <X className="h-4.5 w-4.5" />
             </button>
-            <CardHeader className="border-b border-[--color-border]/60">
-              <CardTitle className="text-lg font-bold text-[--color-text]">Create Virtual Booth</CardTitle>
-              <CardDescription className="text-xs text-[--color-text-secondary]">
+            <CardHeader className="border-b border-slate-100">
+              <CardTitle className="text-lg font-bold text-slate-900">Create Virtual Booth</CardTitle>
+              <CardDescription className="text-xs text-slate-500">
                 Deploy a brand booth to showcase products. You will be assigned as a representative.
               </CardDescription>
             </CardHeader>
             <CardContent className="pt-5">
               <form onSubmit={handleCreateBooth} className="space-y-4">
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Booth Name</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Booth Name</label>
                   <Input
                     placeholder="e.g. Acme Tech Solutions"
                     value={newName}
                     onChange={(e) => setNewName(e.target.value)}
                     required
-                    className="bg-[--color-surface-elevated]/20 border-[--color-border] text-[--color-text] placeholder-[--color-text-secondary]/60 focus:ring-emerald-500 focus:border-emerald-500 h-10 rounded-lg text-sm"
+                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500 h-10 rounded-lg text-sm"
                   />
                 </div>
 
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Category</label>
-                    <select
-                      value={newCategory}
-                      onChange={(e) => setNewCategory(e.target.value as any)}
-                      className="w-full h-10 px-3 rounded-lg border border-[--color-border] bg-[--color-surface-elevated] text-[--color-text] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                    >
-                      <option value="exhibitor">Exhibitor</option>
-                      <option value="sponsor">Sponsor</option>
-                    </select>
-                  </div>
-
-                  {newCategory === 'sponsor' && (
-                    <div className="space-y-1.5">
-                      <label className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Tier</label>
-                      <select
-                        value={newTier}
-                        onChange={(e) => setNewTier(e.target.value as any)}
-                        className="w-full h-10 px-3 rounded-lg border border-[--color-border] bg-[--color-surface-elevated] text-[--color-text] text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
-                      >
-                        <option value="platinum">Platinum</option>
-                        <option value="gold">Gold</option>
-                        <option value="silver">Silver</option>
-                      </select>
-                    </div>
-                  )}
+                <div className="space-y-1.5">
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Category</label>
+                  <select
+                    value={newCategory}
+                    onChange={(e) => setNewCategory(e.target.value as any)}
+                    className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
+                  >
+                    <option value="exhibitor" className="bg-white text-slate-900">Exhibitor</option>
+                    <option value="sponsor" className="bg-white text-slate-900">Sponsor</option>
+                  </select>
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Description</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Description</label>
                   <Textarea
                     placeholder="Detail your company products, services, or core vision..."
                     value={newDescription}
                     onChange={(e) => setNewDescription(e.target.value)}
                     rows={3}
-                    className="bg-[--color-surface-elevated]/20 border-[--color-border] text-[--color-text] placeholder-[--color-text-secondary]/60 focus:ring-emerald-500 focus:border-emerald-500 rounded-lg text-sm"
+                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-emerald-500 focus:border-emerald-500 rounded-lg text-sm"
                   />
                 </div>
 
                 <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-[--color-text-secondary] uppercase tracking-wider">Logo Image File</label>
+                  <label className="text-xs font-bold text-slate-600 uppercase tracking-wider">Logo Image File</label>
                   {newLogo ? (
-                    <div className="flex items-center justify-between h-10 px-3 border border-[--color-border] rounded-lg bg-[--color-surface-elevated]/30 text-xs">
+                    <div className="flex items-center justify-between h-10 px-3 border border-slate-300 rounded-lg bg-slate-50 text-xs">
                       <div className="flex items-center gap-2">
                         <img src={getImageUrl(newLogo)} alt="Uploaded logo preview" className="w-6 h-6 rounded object-cover" />
-                        <span className="text-[--color-text-secondary] truncate max-w-[200px]">Logo Ready</span>
+                        <span className="text-slate-500 truncate max-w-[200px]">Logo Ready</span>
                       </div>
                       <Button type="button" variant="ghost" size="sm" onClick={() => setNewLogo('')} className="text-rose-500 hover:text-rose-600 h-7 px-2">
                         Change
@@ -342,7 +325,7 @@ export function ExhibitionHall() {
                         onChange={handleLogoFileChange}
                         required
                         disabled={uploadingLogo}
-                        className="bg-[--color-surface-elevated]/20 border-[--color-border] text-[--color-text] focus:ring-emerald-500 focus:border-emerald-500 h-10 rounded-lg text-xs pt-2"
+                        className="bg-white border border-slate-300 text-slate-900 focus:ring-emerald-500 focus:border-emerald-500 h-10 rounded-lg text-xs pt-2"
                       />
                       {uploadingLogo && (
                         <div className="absolute right-3 top-2.5">
@@ -353,8 +336,8 @@ export function ExhibitionHall() {
                   )}
                 </div>
 
-                <div className="flex justify-end gap-2 pt-4 border-t border-[--color-border]/60">
-                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={submitting} className="border-[--color-border] hover:bg-[--color-surface-elevated] text-[--color-text-secondary] hover:text-[--color-text] h-9 text-xs font-semibold">
+                <div className="flex justify-end gap-2 pt-4 border-t border-slate-200">
+                  <Button type="button" variant="outline" onClick={() => setAddOpen(false)} disabled={submitting} className="border-slate-300  text-slate-700 h-9 text-xs font-semibold bg-white">
                     Cancel
                   </Button>
                   <Button type="submit" disabled={submitting || uploadingLogo} className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white h-9 text-xs font-semibold px-4">
