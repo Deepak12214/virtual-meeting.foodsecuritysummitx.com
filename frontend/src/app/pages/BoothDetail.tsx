@@ -215,7 +215,7 @@ export function BoothDetail() {
     
     // Trigger download
     const link = document.createElement('a');
-    link.href = brochureUrl.startsWith('http') ? brochureUrl : `${import.meta.env.VITE_API_URL || 'http://localhost:5000'}${brochureUrl}`;
+    link.href = getImageUrl(brochureUrl);
     link.setAttribute('download', brochureName);
     document.body.appendChild(link);
     link.click();
