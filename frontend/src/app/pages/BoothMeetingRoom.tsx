@@ -57,7 +57,7 @@ function PeerVideo({ peer }: { peer: HMSPeer }) {
       autoPlay
       playsInline
       muted={peer.isLocal}
-      className="w-full h-full object-cover"
+      className="w-full h-full object-cover rounded-2xl"
     />
   );
 }
@@ -70,7 +70,7 @@ function ScreenShareView({ peer }: { peer: HMSPeer }) {
       ref={videoRef as any}
       autoPlay
       playsInline
-      className="w-full h-full object-contain bg-black"
+      className="w-full h-full object-contain bg-black rounded-2xl"
     />
   );
 }
@@ -79,8 +79,8 @@ function PeerMuteIcon({ peerId }: { peerId: string }) {
   const isAudioOn = useHMSStore(selectIsPeerAudioEnabled(peerId));
   if (isAudioOn) return null;
   return (
-    <div className="absolute top-4 right-4">
-      <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center">
+    <div className="absolute top-4 right-4 z-10">
+      <div className="w-8 h-8 rounded-full bg-red-500 flex items-center justify-center shadow-lg border border-red-400/25">
         <MicOff className="h-4 w-4 text-white" />
       </div>
     </div>
@@ -451,259 +451,364 @@ export function BoothMeetingRoom() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-[--color-primary]" />
+      <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-4">
+        <div className="relative w-12 h-12">
+          <div className="absolute inset-0 border-4 border-emerald-500/20 rounded-full" />
+          <div className="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
+        </div>
+        <p className="text-muted-foreground text-sm font-medium">Loading meeting configurations...</p>
       </div>
     );
   }
 
   if (!meeting) {
     return (
-      <div className="text-center py-12">
-        <AlertCircle className="h-12 w-12 text-red-500 mx-auto mb-4" />
-        <h2 className="text-2xl font-bold">Meeting Not Found</h2>
-        <p className="text-[--color-text-secondary] mt-2">The request room meeting is not active.</p>
+      <div className="text-center py-20 bg-card border border-border rounded-2xl max-w-md mx-auto">
+        <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
+        <h3 className="text-lg font-bold text-foreground">Meeting Not Found</h3>
+        <p className="text-muted-foreground text-sm mt-1">The requested booth meeting room is not active or may have been deleted.</p>
         <Link to="/exhibition">
-          <Button className="mt-6">Back to Exhibition Hall</Button>
+          <Button className="mt-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl border-none">
+            Back to Exhibition Hall
+          </Button>
         </Link>
       </div>
     );
   }
 
-  // Filter out lobby wait peers from the visible screens
-  const admittedPeers = peers.filter((p) => {
+  if (joinStatus === 'waiting') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(76,175,80,0.06),transparent_50%)] pointer-events-none" />
+        <Card className="w-full max-w-md border-border bg-card shadow-2xl relative overflow-hidden rounded-2xl">
+          <div className="h-1.5 bg-gradient-to-r from-emerald-500 to-green-600" />
+          
+          <CardHeader className="text-center pb-4 pt-6">
+            <div className="w-14 h-14 rounded-full bg-emerald-500/10 flex items-center justify-center mx-auto mb-4 border border-emerald-500/20">
+              <Loader2 className="w-6 h-6 text-emerald-600 animate-spin" />
+            </div>
+            <CardTitle className="text-2xl font-bold text-foreground">Asking to join...</CardTitle>
+            <CardDescription className="text-muted-foreground mt-1 text-sm">
+              You will automatically join the video call as soon as a booth representative approves your request.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-5 text-center pb-8 pt-2">
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-border text-left space-y-1">
+              <span className="text-[10px] text-emerald-600 dark:text-emerald-400 font-bold uppercase tracking-wider font-mono">
+                Booth Meeting Room
+              </span>
+              <h3 className="text-lg font-extrabold text-foreground truncate">{meeting.title}</h3>
+              {meeting.description && <p className="text-xs text-muted-foreground line-clamp-2">{meeting.description}</p>}
+            </div>
+
+            <div className="p-4 bg-slate-100 dark:bg-slate-900/40 rounded-xl border border-border text-left space-y-2">
+              <p className="text-xs text-slate-500 dark:text-slate-400 uppercase font-semibold">Your Profile Shared</p>
+              <p className="text-sm font-semibold text-foreground">{user?.name}</p>
+              <p className="text-xs text-muted-foreground">{user?.email}</p>
+              <p className="text-xs text-muted-foreground capitalize">
+                {user?.role?.replace('_', ' ')} • {user?.company || 'No Company'}
+              </p>
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 py-2.5 px-4 rounded-xl font-medium">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+              <span>Please keep this window open while waiting.</span>
+            </div>
+
+            <Button
+              variant="outline"
+              onClick={handleLeave}
+              className="w-full border-border hover:bg-muted text-muted-foreground hover:text-foreground gap-2 h-11 rounded-xl cursor-pointer"
+            >
+              <PhoneOff className="w-4 h-4" /> Cancel Request
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (joinStatus === 'denied') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[80vh] px-4">
+        <Card className="w-full max-w-md border-red-500/20 bg-card shadow-2xl relative overflow-hidden rounded-2xl text-center p-8">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <XCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold text-foreground">Request Declined</h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+            The representative of this booth has declined your request to join the meeting room.
+          </p>
+          <Button 
+            onClick={handleLeave} 
+            className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-11 rounded-xl border-none cursor-pointer mt-6"
+          >
+            Back to Booth
+          </Button>
+        </Card>
+      </div>
+    );
+  }
+
+  // Filter out peers that are still in the waiting room
+  const visiblePeers = peers.filter((p) => {
+    if (p.isLocal) {
+      return joinStatus === 'admitted';
+    }
     try {
       const meta = p.metadata ? JSON.parse(p.metadata) : {};
-      return meta.status === 'admitted';
+      return meta.status === 'admitted' || p.roleName === 'broadcaster';
     } catch {
-      return true; // fallback
+      return !!p.videoTrack || !!p.audioTrack;
     }
   });
 
-  const visiblePeers = isOrganizer ? admittedPeers : admittedPeers;
-
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
+    <div className="h-[calc(100vh-4rem)] md:h-screen -mx-4 sm:-mx-6 lg:-mx-8 -my-8 bg-slate-950 flex flex-col relative overflow-hidden text-white font-sans select-none">
+      
+      {/* ─── A. Top Bar (Overlay) ──────────────────────────────────────────────── */}
+      <div className="bg-slate-950/60 backdrop-blur-md border-b border-slate-900 px-6 h-16 flex items-center justify-between z-20 shrink-0 select-none">
         <div className="flex items-center gap-3">
-          <Link to={`/exhibition/${meeting.booth?._id || meeting.booth?.id}`}>
-            <Button variant="ghost" size="icon">
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-2xl font-bold">{meeting.title}</h1>
-            <p className="text-xs text-[--color-text-secondary]">
-              Booth Interaction Room • {meeting.booth?.name || 'Exhibitor Booth'}
-            </p>
+          <div className="flex items-center gap-1.5 text-xs text-emerald-400 font-bold tracking-wider bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-md uppercase">
+            <Radio className="h-3 w-3 animate-pulse text-emerald-400" />
+            LIVE BOOTH MEETING
+          </div>
+          <div className="h-4 w-px bg-slate-800" />
+          <div className="min-w-0">
+            <h1 className="text-base font-bold text-white truncate max-w-[200px] sm:max-w-md">
+              {meeting.title}
+            </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <Badge className="bg-red-500 text-white animate-pulse">Live</Badge>
-        </div>
+
+        <Button onClick={handleLeave} variant="ghost" className="text-slate-400 hover:text-white hover:bg-slate-900 gap-1.5 border-none h-9 rounded-lg">
+          <ArrowLeft className="h-4 w-4" />
+          <span>Exit Room</span>
+        </Button>
       </div>
 
-      {/* ── Waiting Lobby Screen ── */}
-      {joinStatus === 'waiting' && (
-        <Card className="max-w-md mx-auto py-12 text-center  shadow-2xl relative overflow-hidden">
-          <div className="absolute inset-0 bg-gradient-to-tr from-indigo-500/10 via-transparent to-purple-500/10" />
-          <CardContent className="space-y-6 relative z-10">
-            <Loader2 className="h-16 w-16 mx-auto animate-spin text-indigo-400" />
-            <div className="space-y-2">
-              <CardTitle className="text-xl font-bold">Lobby Waiting Room</CardTitle>
-              <CardDescription>
-                You will be connected automatically once a booth representative admits you.
-              </CardDescription>
+      {/* ─── B. Lobby Waiting Room Popup overlay for Organizer ───────────────────── */}
+      {isOrganizer && waitingList.length > 0 && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-lg z-30 px-4">
+          <div className="bg-amber-600/95 backdrop-blur-md text-white border border-amber-500/30 rounded-2xl p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                Lobby Waitlist Request ({waitingList.length})
+              </span>
+              <span className="text-xs bg-white/20 px-1.5 rounded uppercase text-[9px] font-bold">Lobby Approval</span>
             </div>
-            <div className="p-4 bg-slate-50 rounded-lg text-left border border-slate-200 space-y-2">
-              <p className="text-xs text-slate-500 uppercase font-semibold">Your Profile Shared</p>
-              <p className="text-sm font-semibold text-slate-900">{user?.name}</p>
-              <p className="text-xs text-slate-600">{user?.email}</p>
-              <p className="text-xs text-slate-600 capitalize">{user?.role?.replace('_', ' ')} • {user?.company || 'No Company'}</p>
+            <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+              {waitingList.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-2 bg-black/20 rounded-xl border border-white/5 gap-4">
+                  <span className="text-xs font-bold truncate">{p.name}</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-7 px-3 rounded-lg border-none" onClick={() => admitPeer(p.id)}>Admit</Button>
+                    <Button size="sm" variant="destructive" className="text-[11px] h-7 px-3 rounded-lg border-none" onClick={() => denyPeer(p.id)}>Deny</Button>
+                  </div>
+                </div>
+              ))}
             </div>
-            <Button variant="outline" onClick={handleLeave} className="w-full">
-              Cancel & Leave
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
-      {/* ── Access Denied Screen ── */}
-      {joinStatus === 'denied' && (
-        <Card className="max-w-md mx-auto py-12 text-center border-red-500/30 bg-red-500/[0.02]">
-          <CardContent className="space-y-6">
-            <XCircle className="h-16 w-16 mx-auto text-red-500" />
-            <div className="space-y-2">
-              <CardTitle className="text-xl font-bold">Access Denied</CardTitle>
-              <CardDescription>
-                The representative of the booth declined your request to join the meeting room.
-              </CardDescription>
+      {/* ─── C. Video Canvas (Expands dynamically to take maximum area) ───────────── */}
+      <div className="flex-1 w-full flex items-center justify-center p-6 bg-slate-950 relative overflow-hidden">
+        {/* Subtle background ambient light */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(76,175,80,0.03),transparent_60%)] pointer-events-none" />
+        
+        {!isConnected ? (
+          <div className="flex flex-col items-center justify-center space-y-4">
+            <div className="relative w-14 h-14">
+              <div className="absolute inset-0 border-4 border-emerald-500/20 rounded-full" />
+              <div className="absolute inset-0 border-4 border-emerald-500 border-t-transparent rounded-full animate-spin" />
             </div>
-            <Button onClick={handleLeave} className="w-full">
-              Back to Booth
-            </Button>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Active Video Grid ── */}
-      {joinStatus === 'admitted' && (
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Main Video Stream Panel */}
-          <div className="lg:col-span-3 space-y-6">
-            {screenSharePeer ? (
-              <div className="space-y-4">
-                <Card className="relative w-full aspect-video overflow-hidden bg-black border-none shadow-xl">
-                  <CardContent className="p-0 h-full w-full">
-                    <ScreenShareView peer={screenSharePeer} />
-                    <div className="absolute bottom-4 left-4 z-10">
-                      <Badge className="bg-black/50 backdrop-blur-sm text-white text-xs flex items-center gap-1.5">
-                        {screenSharePeer.name}'s Screen Share
-                      </Badge>
-                    </div>
-                  </CardContent>
-                </Card>
-                <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
-                  {visiblePeers.map((peer) => (
-                    <Card key={peer.id} className="relative aspect-video overflow-hidden bg-black/90 border-none group shadow-md">
-                      <CardContent className="p-0 h-full w-full">
-                        <PeerVideo peer={peer} />
-                        <div className="absolute bottom-4 left-4 z-10">
-                          <Badge className="bg-black/50 backdrop-blur-sm text-white text-[10px] flex items-center gap-1 px-1.5 py-0.5">
-                            {peer.name} {peer.isLocal ? '(You)' : ''}
-                          </Badge>
-                        </div>
-                        <PeerMuteIcon peerId={peer.id} />
-                      </CardContent>
-                    </Card>
-                  ))}
+            <p className="text-emerald-400 text-sm font-semibold tracking-wide animate-pulse">
+              Connecting to secure video stream...
+            </p>
+          </div>
+        ) : visiblePeers.length === 0 ? (
+          <div className="flex flex-col items-center justify-center text-center p-8 bg-slate-900/30 border border-slate-800/80 rounded-2xl max-w-sm">
+            <Users className="w-12 h-12 text-slate-500 mb-3" />
+            <h4 className="text-white font-bold text-lg">Waiting for connection...</h4>
+            <p className="text-slate-500 text-xs mt-1">Other participants have not joined Webrtc yet.</p>
+          </div>
+        ) : (
+          screenSharePeer ? (
+            /* Screen Share centerpiece layout */
+            <div className="w-full h-full max-h-[82vh] flex flex-col gap-4">
+              <div className="flex-1 min-h-[45vh] relative rounded-2xl overflow-hidden shadow-2xl border border-slate-900 bg-black">
+                <ScreenShareView peer={screenSharePeer} />
+                <div className="absolute bottom-4 left-4 z-10">
+                  <Badge className="bg-black/60 backdrop-blur-md text-white text-xs border border-white/5 py-1 px-3 flex items-center gap-1.5 select-none rounded-lg font-semibold">
+                    {screenSharePeer.name}'s Screen Share
+                  </Badge>
                 </div>
               </div>
-            ) : (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="flex-shrink-0 w-full overflow-x-auto py-2 flex gap-3 h-[18vh] max-h-[18vh] items-center justify-start [scrollbar-width:none]">
                 {visiblePeers.map((peer) => (
-                  <Card key={peer.id} className="relative aspect-video overflow-hidden bg-black/90 border-none group shadow-lg">
-                    <CardContent className="p-0 h-full w-full">
+                  <div key={peer.id} className="relative h-full aspect-video rounded-xl overflow-hidden shadow-md border border-slate-900 bg-slate-900 shrink-0">
+                    {peer.videoTrack ? (
                       <PeerVideo peer={peer} />
-                      <div className="absolute bottom-4 left-4 z-10">
-                        <Badge className="bg-black/50 backdrop-blur-sm text-white text-xs flex items-center gap-1.5">
-                          {peer.name} {peer.isLocal ? '(You)' : ''}
-                          {peer.roleName && (
-                            <span className="opacity-75 uppercase text-[9px] bg-white/20 px-1 rounded">
-                              {peer.roleName}
-                            </span>
-                          )}
-                        </Badge>
+                    ) : (
+                      <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-gradient-to-br from-slate-900 to-slate-800">
+                        <div className="w-10 h-10 rounded-full bg-slate-800 border border-slate-700/50 flex items-center justify-center font-extrabold text-sm shadow-inner text-emerald-400">
+                          {peer.name.split(' ').map((n) => n[0]).join('')}
+                        </div>
                       </div>
-                      <PeerMuteIcon peerId={peer.id} />
-                    </CardContent>
-                  </Card>
-                ))}
-
-                {visiblePeers.length === 0 && (
-                  <div className="col-span-2 aspect-video bg-black/95 rounded-xl border border-[--color-border] flex flex-col items-center justify-center text-center p-6">
-                    <Radio className="h-12 w-12 text-[--color-text-secondary] animate-pulse mb-3" />
-                    <p className="font-semibold text-sm">Waiting for live video feed...</p>
-                    <p className="text-xs text-[--color-text-secondary] mt-1">
-                      Connecting to representatives and active video streams.
-                    </p>
+                    )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                    <div className="absolute bottom-2 left-2 z-10">
+                      <span className="text-[10px] text-white bg-black/60 px-1.5 py-0.5 rounded font-semibold border border-white/5">
+                        {peer.name} {peer.isLocal ? '(You)' : ''}
+                      </span>
+                    </div>
+                    <PeerMuteIcon peerId={peer.id} />
                   </div>
-                )}
+                ))}
               </div>
+            </div>
+          ) : (
+            /* Regular Grid Layout */
+            <div className={`w-full h-full max-h-[82vh] grid gap-4 items-center justify-center ${
+              visiblePeers.length === 1 
+                ? 'max-w-4xl grid-cols-1' 
+                : visiblePeers.length === 2 
+                  ? 'max-w-6xl grid-cols-1 md:grid-cols-2' 
+                  : 'max-w-7xl grid-cols-1 sm:grid-cols-2 lg:grid-cols-3'
+            }`}>
+              {visiblePeers.map((peer) => (
+                <div key={peer.id} className="relative h-full w-full aspect-video rounded-2xl overflow-hidden shadow-2xl border border-slate-900 bg-slate-900 group">
+                  {peer.videoTrack ? (
+                    <PeerVideo peer={peer} />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center text-white bg-gradient-to-br from-slate-900 to-slate-800">
+                      <div className="w-20 h-20 rounded-full bg-slate-800 border border-slate-700/50 flex items-center justify-center font-extrabold text-3xl shadow-inner text-emerald-400">
+                        {peer.name.split(' ').map((n) => n[0]).join('')}
+                      </div>
+                      <p className="mt-3 text-xs font-semibold text-slate-400">Camera Off</p>
+                    </div>
+                  )}
+                  
+                  {/* Overlay details */}
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent pointer-events-none" />
+                  <div className="absolute bottom-4 left-4 z-10">
+                    <Badge className="bg-black/60 backdrop-blur-md text-white text-xs border border-white/5 py-1 px-3 flex items-center gap-1.5 select-none rounded-lg font-semibold">
+                      {peer.name} {peer.isLocal ? '(You)' : ''}
+                      {peer.roleName && (
+                        <span className="opacity-80 text-[8px] bg-emerald-500/20 text-emerald-400 border border-emerald-500/20 px-1.5 py-0.5 rounded font-bold uppercase tracking-wider scale-90">
+                          {peer.roleName === 'broadcaster' ? 'Host' : 'Viewer'}
+                        </span>
+                      )}
+                    </Badge>
+                  </div>
+                  <PeerMuteIcon peerId={peer.id} />
+                </div>
+              ))}
+            </div>
+          )
+        )}
+      </div>
+
+      {/* ─── D. Control Bar (Overlay bottom) ─────────────────────────────────────── */}
+      {isConnected && (
+        <div className="bg-slate-950/90 backdrop-blur-xl border-t border-slate-900 px-6 py-4 flex flex-col md:flex-row items-center justify-between gap-4 z-20 w-full relative shrink-0 select-none">
+          
+          {/* Left Side: Timer & Participant Count */}
+          <div className="flex items-center gap-3 text-sm text-slate-400 shrink-0">
+            <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800">
+              <Clock className="h-4 w-4 text-emerald-400" />
+              <span className="font-mono font-bold text-white text-sm">
+                Live (Unlimited)
+              </span>
+            </div>
+            <div className="flex items-center gap-2 bg-slate-900/60 px-3 py-1.5 rounded-xl border border-slate-800">
+              <Users className="h-4 w-4 text-emerald-400 animate-pulse" />
+              <span className="font-semibold text-white">
+                {visiblePeers.length} active
+              </span>
+            </div>
+          </div>
+
+          {/* Center: Floating Media Buttons */}
+          <div className="flex items-center gap-3">
+            <Button
+              variant="ghost"
+              onClick={toggleAudio}
+              className={`w-12 h-12 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer border ${
+                isAudioEnabled
+                  ? 'bg-slate-900 border-slate-800 text-white hover:bg-slate-800'
+                  : 'bg-red-500/20 border-red-500/30 text-red-500 hover:bg-red-500/30'
+              }`}
+              title={isAudioEnabled ? 'Mute Microphone' : 'Unmute Microphone'}
+            >
+              {isAudioEnabled ? <Mic className="h-5 w-5" /> : <MicOff className="h-5 w-5" />}
+            </Button>
+
+            <Button
+              variant="ghost"
+              onClick={toggleVideo}
+              className={`w-12 h-12 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer border ${
+                isVideoEnabled
+                  ? 'bg-slate-900 border-slate-800 text-white hover:bg-slate-800'
+                  : 'bg-red-500/20 border-red-500/30 text-red-500 hover:bg-red-500/30'
+              }`}
+              title={isVideoEnabled ? 'Stop Video' : 'Start Video'}
+            >
+              {isVideoEnabled ? <Video className="h-5 w-5" /> : <VideoOff className="h-5 w-5" />}
+            </Button>
+
+            {isOrganizer && (
+              <Button
+                variant="ghost"
+                onClick={toggleScreen}
+                className={`w-12 h-12 rounded-full p-0 flex items-center justify-center transition-all cursor-pointer border ${
+                  amIScreenSharing
+                    ? 'bg-emerald-500/20 border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/35'
+                    : 'bg-slate-900 border-slate-800 text-white hover:bg-slate-800'
+                }`}
+                title={amIScreenSharing ? 'Stop Screen Share' : 'Share Screen'}
+              >
+                <Share2 className="h-5 w-5" />
+              </Button>
+            )}
+
+            <div className="h-8 w-px bg-slate-900 mx-1" />
+
+            {isOrganizer ? (
+              <Button
+                onClick={handleEndForAll}
+                className="bg-red-600 hover:bg-red-500 text-white font-semibold flex items-center gap-2 px-5 py-4 rounded-xl shadow-lg shadow-red-500/10 cursor-pointer border-none h-11"
+                title="End meeting for all"
+              >
+                <PhoneOff className="h-4 w-4" />
+                End Room
+              </Button>
+            ) : (
+              <Button
+                onClick={handleLeave}
+                className="bg-red-600 hover:bg-red-500 text-white font-semibold flex items-center gap-2 px-5 py-4 rounded-xl shadow-lg shadow-red-500/10 cursor-pointer border-none h-11"
+                title="Leave meeting"
+              >
+                <PhoneOff className="h-4 w-4" />
+                Leave Room
+              </Button>
             )}
           </div>
 
-          {/* Organizer Lobby Controller Panel */}
-          {isOrganizer && (
-            <div className="lg:col-span-1">
-              <Card className="h-full border-[--color-border] bg-[--color-surface]">
-                <CardHeader className="border-b border-[--color-border] pb-4">
-                  <CardTitle className="text-base flex items-center gap-2">
-                    <Users className="h-4 w-4 text-[--color-primary]" />
-                    Lobby Admission Requests
-                  </CardTitle>
-                  <CardDescription className="text-xs">
-                    Admit or deny attendees waiting to join your live booth room.
-                  </CardDescription>
-                </CardHeader>
-                <CardContent className="p-4">
-                  <div className="space-y-3 max-h-[350px] overflow-y-auto pr-1">
-                    {waitingList.map((peer) => (
-                      <div key={peer.id} className="flex flex-col gap-2 p-3 bg-[--color-surface-elevated] rounded-lg border border-[--color-border] text-xs">
-                        <div className="flex flex-col">
-                          <span className="font-bold">{peer.name}</span>
-                          <span className="text-[10px] text-[--color-text-secondary]">Attendee waiting</span>
-                        </div>
-                        <div className="flex gap-2">
-                          <Button size="sm" className="flex-1 text-[11px] h-7 bg-green-600 hover:bg-green-700" onClick={() => admitPeer(peer.id)}>
-                            Admit
-                          </Button>
-                          <Button size="sm" variant="outline" className="flex-1 text-[11px] h-7 text-red-500 border-red-500/30 hover:bg-red-500/10" onClick={() => denyPeer(peer.id)}>
-                            Deny
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {waitingList.length === 0 && (
-                      <div className="text-center py-12 text-[--color-text-secondary]">
-                        <CheckCircle className="h-8 w-8 text-green-500/40 mx-auto mb-2" />
-                        <p className="text-xs">Lobby Queue is Empty</p>
-                        <p className="text-[10px] text-[--color-text-secondary] mt-1">Pending requests will show up here.</p>
-                      </div>
-                    )}
-                  </div>
-                </CardContent>
-              </Card>
+          {/* Right Side: Room Info */}
+          <div className="flex items-center gap-2 shrink-0">
+            <div className="text-xs text-slate-500 font-mono select-none px-2">
+              Room ID: {meetingId?.slice(-6) || 'Room'}
             </div>
-          )}
+          </div>
+
         </div>
-      )}
-
-      {/* Controls Bar */}
-      {isConnected && joinStatus === 'admitted' && (
-        <Card>
-          <CardContent className="p-6">
-            <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-              <div className="flex items-center gap-4">
-                <div className="flex items-center gap-2">
-                  <Clock className="h-5 w-5 text-[--color-text-secondary]" />
-                  <span className="text-lg font-mono font-semibold">Live (Unlimited)</span>
-                </div>
-                <div className="h-6 w-px bg-[--color-border]" />
-                <div className="flex items-center gap-2">
-                  <Users className="h-5 w-5 text-[--color-text-secondary]" />
-                  <span>{visiblePeers.length} peer(s)</span>
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Button variant={isAudioEnabled ? 'default' : 'destructive'} size="lg" onClick={toggleAudio} className="gap-2">
-                  {isAudioEnabled ? <><Mic className="h-5 w-5" />Mute</> : <><MicOff className="h-5 w-5" />Unmute</>}
-                </Button>
-                <Button variant={isVideoEnabled ? 'default' : 'secondary'} size="lg" onClick={toggleVideo} className="gap-2">
-                  {isVideoEnabled ? <><Video className="h-5 w-5" />Camera On</> : <><VideoOff className="h-5 w-5" />Camera Off</>}
-                </Button>
-                {isOrganizer && (
-                  <Button variant={amIScreenSharing ? 'secondary' : 'outline'} size="lg" onClick={toggleScreen} className="gap-2">
-                    <Share2 className="h-5 w-5" />
-                    {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
-                  </Button>
-                )}
-                <div className="h-10 w-px bg-[--color-border]" />
-                {isOrganizer ? (
-                  <Button variant="destructive" size="lg" onClick={handleEndForAll} className="gap-2">
-                    <PhoneOff className="h-5 w-5" />End Room
-                  </Button>
-                ) : (
-                  <Button variant="destructive" size="lg" onClick={handleLeave} className="gap-2">
-                    <PhoneOff className="h-5 w-5" />Leave
-                  </Button>
-                )}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
       )}
     </div>
   );
