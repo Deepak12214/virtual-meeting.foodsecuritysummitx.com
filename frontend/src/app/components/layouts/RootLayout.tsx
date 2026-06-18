@@ -50,12 +50,12 @@ export function RootLayout() {
       icon: BarChart3,
       roles: ['organizer', 'admin', 'exhibitor', 'sponsor'],
     },
-    {
-      path: '/logs',
-      label: 'Op Logs',
-      icon: Settings,
-      roles: ['organizer', 'admin'],
-    },
+    // {
+    //   path: '/logs',
+    //   label: 'Op Logs',
+    //   icon: Settings,
+    //   roles: ['organizer', 'admin'],
+    // },
   ];
 
   const currentPath = location.pathname;
