@@ -318,18 +318,23 @@ export function BoothDetail() {
       {/* Back Button & Tabs */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <Link to="/exhibition">
-          <Button variant="ghost" className="gap-2">
+          <Button variant="ghost" className="gap-2 text-muted-foreground hover:text-foreground hover:bg-muted border-none rounded-xl">
             <ArrowLeft className="h-4 w-4" />
             Back to Exhibition Hall
           </Button>
         </Link>
         
         {isRep && (
-          <div className="flex gap-2 bg-[--color-surface] p-1 rounded-lg border border-[--color-border]">
+          <div className="flex gap-2 bg-muted/30 p-1.5 rounded-xl border border-border">
             <Button
               variant={activeTab === 'details' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('details')}
+              className={`rounded-lg font-semibold text-xs transition-all cursor-pointer ${
+                activeTab === 'details'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-none'
+              }`}
             >
               Booth Details
             </Button>
@@ -337,12 +342,16 @@ export function BoothDetail() {
               variant={activeTab === 'leads' ? 'default' : 'ghost'}
               size="sm"
               onClick={() => setActiveTab('leads')}
-              className="gap-1.5"
+              className={`gap-1.5 rounded-lg font-semibold text-xs transition-all cursor-pointer ${
+                activeTab === 'leads'
+                  ? 'bg-emerald-600 hover:bg-emerald-500 text-white shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/50 border-none'
+              }`}
             >
               <UserCheck className="h-4 w-4" />
               Leads Tracker
               {leads.length > 0 && (
-                <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-[10px]">
+                <Badge variant="secondary" className="ml-1 px-1.5 py-0.5 text-[10px] bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 border-none font-bold">
                   {leads.length}
                 </Badge>
               )}
@@ -354,205 +363,211 @@ export function BoothDetail() {
       {activeTab === 'details' ? (
         <>
           {/* Booth Header Card */}
-          <Card>
-            <CardHeader>
+          <Card className="border-border bg-card/60 backdrop-blur-md overflow-hidden relative shadow-md">
+            <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
+            <CardContent className="p-6 md:p-8 pt-8">
               <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                <img
-                  src={getImageUrl(booth.logo)}
-                  alt={booth.name}
-                  className="w-24 h-24 md:w-32 md:h-32 rounded-xl object-cover border border-[--color-border] shadow-sm"
-                />
-                <div className="flex-1 space-y-2">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <h1 className="text-3xl font-bold">{booth.name}</h1>
+                <div className="relative group shrink-0 mx-auto md:mx-0">
+                  <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300" />
+                  <img
+                    src={getImageUrl(booth.logo)}
+                    alt={booth.name}
+                    className="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl object-cover border border-border/50 bg-white/10 dark:bg-black/20 shadow-md"
+                  />
+                </div>
+                
+                <div className="flex-1 space-y-3 min-w-0 text-center md:text-left">
+                  <div className="flex items-center gap-2.5 flex-wrap justify-center md:justify-start">
+                    <h1 className="text-3xl font-extrabold text-foreground tracking-tight">{booth.name}</h1>
                     {booth.tier && getTierIcon(booth.tier)}
                   </div>
                   
-                  <div className="flex flex-wrap gap-2 items-center">
+                  <div className="flex flex-wrap gap-2 items-center justify-center md:justify-start">
                     {booth.tier && getTierBadge(booth.tier)}
                     {booth.isLive ? (
-                      <Badge className="gap-1 bg-green-500 text-white animate-pulse">
+                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 text-[11px] font-semibold gap-1.5 animate-pulse rounded-lg">
                         <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
                         </span>
                         Live Room Active
                       </Badge>
                     ) : (
-                      <Badge variant="secondary">Offline</Badge>
+                      <Badge variant="secondary" className="bg-muted text-muted-foreground border-none px-2.5 py-0.5 text-[11px]">Offline</Badge>
                     )}
-                    <Badge variant="secondary" className="gap-1 text-xs">
+                    <Badge variant="secondary" className="gap-1.5 text-xs bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 px-2.5 py-0.5">
                       <Eye className="h-3.5 w-3.5" />
                       {booth.visitCount} visits
                     </Badge>
                   </div>
                   
-                  <p className="text-[--color-text-secondary] leading-relaxed max-w-3xl">
+                  <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl">
                     {booth.description}
                   </p>
                 </div>
                 
-                <div className="flex flex-col gap-2 self-start md:self-center">
+                <div className="flex flex-col gap-2 w-full md:w-auto shrink-0 self-stretch md:self-center justify-center md:items-end">
                   {isRep && (
-                    <Button variant="outline" className="gap-2" onClick={handleOpenEdit}>
+                    <Button variant="outline" className="gap-2 border-border hover:bg-muted text-foreground font-semibold rounded-xl h-10 w-full md:w-auto cursor-pointer" onClick={handleOpenEdit}>
                       <Edit className="h-4 w-4" />
                       Edit Booth Details
                     </Button>
                   )}
                   {canClaim && (
-                    <Button variant="secondary" className="gap-2 bg-amber-500/10 hover:bg-amber-500/20 text-amber-500 border border-amber-500/20" onClick={handleClaimBooth} disabled={claiming}>
+                    <Button variant="secondary" className="gap-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl h-10 w-full md:w-auto cursor-pointer" onClick={handleClaimBooth} disabled={claiming}>
                       {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
                       Claim representative rights
                     </Button>
                   )}
                 </div>
               </div>
-            </CardHeader>
+            </CardContent>
           </Card>
 
           <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
             {/* Left Main Content */}
             <div className="lg:col-span-2 space-y-6">
               {/* Connect with Representatives */}
-              <Card className={booth.isLive ? "border-green-500/30 bg-green-500/[0.02]" : ""}>
-                <CardHeader>
-                  <CardTitle className="text-xl">Connect with Representatives</CardTitle>
-                  <CardDescription>
+              <Card className={`border-border bg-card/40 backdrop-blur-md shadow-sm transition-all duration-300 ${booth.isLive ? "border-emerald-500/30 bg-emerald-500/[0.01]" : ""}`}>
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-bold text-foreground">Connect with Representatives</CardTitle>
+                  <CardDescription className="text-muted-foreground text-sm">
                     Join a live video meeting to discuss solutions, request details, and ask questions.
                   </CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="space-y-4 pt-0">
                   {booth.isLive ? (
-                    <div className="space-y-4">
-                      <div className="p-4 bg-green-500/10 rounded-lg border border-green-500/20">
-                        <p className="text-sm font-semibold text-green-600 mb-1">
-                          Live room is active!
-                        </p>
-                        <p className="text-xs text-[--color-text-secondary]">
-                          When you join, your profile information will be shared with the exhibitor representatives.
-                        </p>
+                    <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent rounded-2xl border border-emerald-500/20 space-y-4">
+                      <div className="flex items-start gap-3">
+                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
+                          <Video className="h-5 w-5 text-emerald-500 animate-pulse" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold text-foreground">Live Room is Active!</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            Connect now to speak directly with an exhibitor representative. Your profile information will be shared with the representatives.
+                          </p>
+                        </div>
                       </div>
                       
                       <div className="flex flex-col sm:flex-row gap-3">
-                        <Button className="flex-1 gap-2 bg-green-600 hover:bg-green-700" size="lg" onClick={handleJoinMeeting}>
-                          <Video className="h-5 w-5" />
+                        <Button className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/10 rounded-xl h-11 cursor-pointer" size="lg" onClick={handleJoinMeeting}>
+                          <Video className="h-4 w-4" />
                           Join Live Meeting
                         </Button>
                         {isRep && (
-                          <Button variant="destructive" size="lg" onClick={handleEndMeeting}>
+                          <Button variant="destructive" size="lg" className="font-semibold rounded-xl h-11 cursor-pointer" onClick={handleEndMeeting}>
                             End Meeting
                           </Button>
                         )}
                       </div>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      <div className="p-6 bg-[--color-surface] rounded-lg border border-[--color-border] text-center">
-                        <p className="text-sm text-[--color-text-secondary] mb-4">
-                          No live meeting room is active at the moment.
-                        </p>
-                        {isRep && (
-                          <Button className="gap-2" size="lg" onClick={handleStartMeeting}>
-                            <Video className="h-5 w-5" />
-                            Start Live Meeting
-                          </Button>
-                        )}
+                    <div className="p-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl space-y-4">
+                      <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto text-muted-foreground/60">
+                        <Video className="h-5 w-5" />
                       </div>
+                      <div className="space-y-1">
+                        <p className="text-sm font-semibold text-foreground">No live meeting active at the moment</p>
+                        <p className="text-xs text-muted-foreground">Booth representatives are currently offline. Check back later.</p>
+                      </div>
+                      {isRep && (
+                        <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 shadow-lg shadow-emerald-500/10 cursor-pointer" size="lg" onClick={handleStartMeeting}>
+                          <Video className="h-4 w-4" />
+                          Start Live Meeting
+                        </Button>
+                      )}
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Brochures & Downloads */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Download Brochures</CardTitle>
-                  <CardDescription>
+              <Card className="border-border bg-card/40 backdrop-blur-md shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-xl font-bold text-foreground">Download Brochures</CardTitle>
+                  <CardDescription className="text-muted-foreground text-sm">
                     Access product specifications, platform resources, and case studies.
                   </CardDescription>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   {booth.brochures && booth.brochures.length > 0 ? (
                     <div className="grid grid-cols-1 gap-3">
                       {booth.brochures.map((brochure, index) => (
                         <div
                           key={index}
-                          className="flex items-center justify-between p-4 bg-[--color-surface] rounded-lg border border-[--color-border] hover:bg-[--color-surface-elevated] transition-colors"
+                          className="group flex items-center justify-between p-4 bg-muted/20 border border-border rounded-2xl hover:bg-muted/40 hover:border-emerald-500/25 transition-all duration-350 shadow-sm"
                         >
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-gradient-to-br from-blue-500 to-cyan-500 flex items-center justify-center">
+                          <div className="flex items-center gap-3.5 min-w-0">
+                            <div className="w-11 h-11 rounded-xl bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center shadow-md shrink-0">
                               <FileText className="h-5 w-5 text-white" />
                             </div>
-                            <div>
-                              <span className="font-semibold text-sm block">{brochure.name}</span>
-                              <span className="text-[10px] text-[--color-text-secondary]">PDF Document</span>
+                            <div className="min-w-0">
+                              <span className="font-bold text-sm text-foreground block truncate group-hover:text-emerald-500 transition-colors leading-normal">{brochure.name}</span>
+                              <span className="text-[10px] text-muted-foreground uppercase font-mono tracking-wider">PDF Document</span>
                             </div>
                           </div>
                           <Button
                             size="sm"
                             variant="outline"
-                            className="gap-1.5"
+                            className="gap-1.5 border-border hover:bg-muted text-foreground font-semibold rounded-xl shrink-0 h-9 cursor-pointer"
                             onClick={() => handleDownload(brochure.name, brochure.url)}
                           >
-                            <Download className="h-4 w-4" />
+                            <Download className="h-3.5 w-3.5" />
                             Download
                           </Button>
                         </div>
                       ))}
                     </div>
                   ) : (
-                    <div className="p-4 bg-[--color-surface] rounded-lg border border-[--color-border] text-center">
-                      <p className="text-sm text-[--color-text-secondary]">No brochures available for download.</p>
+                    <div className="p-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl">
+                      <p className="text-sm text-muted-foreground">No brochures available for download at the moment.</p>
                     </div>
                   )}
                 </CardContent>
               </Card>
 
               {/* Privacy Notice */}
-              <Card className="bg-blue-500/5 border-blue-500/20">
-                <CardContent className="p-4">
-                  <div className="flex items-start gap-3">
-                    <CheckCircle className="h-5 w-5 text-blue-500 mt-0.5 flex-shrink-0" />
-                    <div>
-                      <h4 className="text-sm font-semibold text-blue-600">Lead Sharing Notice</h4>
-                      <p className="text-xs text-[--color-text-secondary] mt-1">
-                        By connecting to the live meeting or downloading documents, your basic profile details (Name, Contact, Company, and Role) will be shared with the representatives of {booth.name} for business follow-up.
-                      </p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="p-4 bg-amber-500/5 dark:bg-amber-500/[0.02] border border-amber-500/15 rounded-2xl flex items-start gap-3">
+                <CheckCircle className="h-5 w-5 text-amber-500 mt-0.5 flex-shrink-0" />
+                <div>
+                  <h4 className="text-xs font-extrabold text-amber-600 dark:text-amber-500 uppercase tracking-wider">Lead Sharing Notice</h4>
+                  <p className="text-xs text-muted-foreground mt-1 leading-relaxed">
+                    By connecting to the live meeting or downloading documents, your basic profile details (Name, Contact, Company, and Role) will be shared with the representatives of {booth.name} for business follow-up.
+                  </p>
+                </div>
+              </div>
             </div>
 
             {/* Sidebar */}
             <div className="lg:col-span-1 space-y-6">
               {/* Representatives Card */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-lg flex items-center gap-2">
-                    <Users className="h-5 w-5 text-[--color-text-secondary]" />
+              <Card className="border-border bg-card/40 backdrop-blur-md shadow-sm">
+                <CardHeader className="pb-4">
+                  <CardTitle className="text-lg font-bold text-foreground flex items-center gap-2">
+                    <Users className="h-4 w-4 text-emerald-500" />
                     Representatives
                   </CardTitle>
                 </CardHeader>
-                <CardContent>
+                <CardContent className="pt-0">
                   <div className="space-y-4">
                     {booth.representatives && booth.representatives.length > 0 ? (
                       booth.representatives.map((rep: any, index: number) => (
-                        <div key={index} className="flex items-center gap-3">
-                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white font-semibold shadow-sm">
+                        <div key={index} className="flex items-center gap-3.5 p-2 rounded-xl hover:bg-muted/30 transition-all duration-200">
+                          <div className="w-10 h-10 rounded-full bg-gradient-to-br from-emerald-500 to-teal-500 flex items-center justify-center text-white font-extrabold shadow-sm border border-emerald-400/20">
                             {rep.name ? rep.name.split(' ').map((n: string) => n[0]).join('') : 'R'}
                           </div>
                           <div>
-                            <p className="font-semibold text-sm">{rep.name || 'Representative'}</p>
-                            <p className="text-xs text-[--color-text-secondary] capitalize">
+                            <p className="font-bold text-sm text-foreground leading-normal">{rep.name || 'Representative'}</p>
+                            <p className="text-xs text-muted-foreground capitalize">
                               {rep.role ? rep.role.replace('_', ' ') : 'Representative'}
                             </p>
                           </div>
                         </div>
                       ))
                     ) : (
-                      <div className="text-center py-4">
-                        <p className="text-xs text-[--color-text-secondary]">No logged representatives. Active reps will be auto-linked.</p>
+                      <div className="text-center py-6 text-muted-foreground/80">
+                        <p className="text-xs">No active representatives. Active representatives will be auto-linked.</p>
                       </div>
                     )}
                   </div>
@@ -561,32 +576,32 @@ export function BoothDetail() {
 
               {/* Your Profile Card */}
               {user && (
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-sm">Details</CardTitle>
+                <Card className="border-border bg-card/40 backdrop-blur-md shadow-sm">
+                  <CardHeader className="pb-4">
+                    <CardTitle className="text-sm font-bold text-foreground">Your Profile Details</CardTitle>
                   </CardHeader>
-                  <CardContent className="space-y-3 text-xs">
-                    <div className="flex justify-between border-b border-[--color-border] pb-2">
-                      <span className="text-[--color-text-secondary]">Name</span>
-                      <span className="font-medium">{user.name}</span>
+                  <CardContent className="space-y-3.5 text-xs pt-0">
+                    <div className="flex justify-between border-b border-border pb-2.5">
+                      <span className="text-muted-foreground">Name</span>
+                      <span className="font-bold text-foreground">{user.name}</span>
                     </div>
-                    <div className="flex justify-between border-b border-[--color-border] pb-2">
-                      <span className="text-[--color-text-secondary]">Email</span>
-                      <span className="font-medium">{user.email}</span>
+                    <div className="flex justify-between border-b border-border pb-2.5">
+                      <span className="text-muted-foreground">Email</span>
+                      <span className="font-bold text-foreground truncate max-w-[160px]">{user.email}</span>
                     </div>
-                    <div className="flex justify-between border-b border-[--color-border] pb-2">
-                      <span className="text-[--color-text-secondary]">Phone</span>
-                      <span className="font-medium">{user.phone}</span>
+                    <div className="flex justify-between border-b border-border pb-2.5">
+                      <span className="text-muted-foreground">Phone</span>
+                      <span className="font-bold text-foreground">{user.phone}</span>
                     </div>
                     {user.company && (
-                      <div className="flex justify-between border-b border-[--color-border] pb-2">
-                        <span className="text-[--color-text-secondary]">Company</span>
-                        <span className="font-medium">{user.company}</span>
+                      <div className="flex justify-between border-b border-border pb-2.5">
+                        <span className="text-muted-foreground">Company</span>
+                        <span className="font-bold text-foreground">{user.company}</span>
                       </div>
                     )}
                     <div className="flex justify-between">
-                      <span className="text-[--color-text-secondary]">Role</span>
-                      <span className="font-medium capitalize">{user.role.replace('_', ' ')}</span>
+                      <span className="text-muted-foreground">Role</span>
+                      <span className="font-bold text-foreground capitalize">{user.role.replace('_', ' ')}</span>
                     </div>
                   </CardContent>
                 </Card>
@@ -596,80 +611,80 @@ export function BoothDetail() {
         </>
       ) : (
         /* Leads Tracker Dashboard */
-        <Card>
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        <Card className="border-border bg-card/60 backdrop-blur-md shadow-md">
+          <CardHeader className="pb-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
-                <CardTitle className="text-xl">Visitor Leads Tracker</CardTitle>
-                <CardDescription>
+                <CardTitle className="text-xl font-bold text-foreground">Visitor Leads Tracker</CardTitle>
+                <CardDescription className="text-muted-foreground text-sm">
                   Real-time list of visitors who joined meetings or downloaded resources from your booth.
                 </CardDescription>
               </div>
-              <Button variant="outline" size="sm" onClick={loadLeads} className="gap-1.5" disabled={loadingLeads}>
+              <Button variant="outline" size="sm" onClick={loadLeads} className="gap-2 border-border hover:bg-muted text-foreground font-semibold rounded-xl h-9 self-start sm:self-center cursor-pointer" disabled={loadingLeads}>
                 <Loader2 className={`h-4 w-4 ${loadingLeads ? 'animate-spin' : ''}`} />
                 Sync Leads
               </Button>
             </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-0">
             {loadingLeads ? (
               <div className="flex items-center justify-center min-h-[200px]">
-                <Loader2 className="h-6 w-6 animate-spin text-[--color-primary]" />
+                <Loader2 className="h-6 w-6 animate-spin text-emerald-500" />
               </div>
             ) : leads.length > 0 ? (
-              <div className="overflow-x-auto rounded-lg border border-[--color-border]">
+              <div className="overflow-x-auto rounded-xl border border-border bg-muted/10">
                 <table className="w-full border-collapse text-left text-sm">
                   <thead>
-                    <tr className="bg-[--color-surface-elevated] text-[--color-text-secondary] border-b border-[--color-border]">
-                      <th className="p-4 font-semibold">Date & Time</th>
-                      <th className="p-4 font-semibold">Visitor Name</th>
-                      <th className="p-4 font-semibold">Role</th>
-                      <th className="p-4 font-semibold">Company</th>
-                      <th className="p-4 font-semibold">Contact Details</th>
-                      <th className="p-4 font-semibold">Interaction Action</th>
+                    <tr className="bg-muted/30 text-muted-foreground border-b border-border text-xs uppercase tracking-wider font-bold">
+                      <th className="p-4">Date & Time</th>
+                      <th className="p-4">Visitor Name</th>
+                      <th className="p-4">Role</th>
+                      <th className="p-4">Company</th>
+                      <th className="p-4">Contact Details</th>
+                      <th className="p-4">Interaction Action</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-[--color-border]">
+                  <tbody className="divide-y divide-border text-foreground">
                     {leads.map((lead) => {
                       const visitor = lead.user;
                       if (!visitor) return null;
                       return (
-                        <tr key={lead._id || Math.random().toString()} className="hover:bg-[--color-surface]/50 transition-colors">
-                          <td className="p-4 whitespace-nowrap text-xs text-[--color-text-secondary]">
+                        <tr key={lead._id || Math.random().toString()} className="hover:bg-muted/20 transition-colors">
+                          <td className="p-4 whitespace-nowrap text-xs text-muted-foreground">
                             <div className="flex items-center gap-1.5">
-                              <Clock className="h-3.5 w-3.5" />
+                              <Clock className="h-3.5 w-3.5 text-emerald-500" />
                               {new Date(lead.timestamp).toLocaleString()}
                             </div>
                           </td>
-                          <td className="p-4 font-medium whitespace-nowrap">
+                          <td className="p-4 font-bold whitespace-nowrap">
                             {visitor.name}
                           </td>
                           <td className="p-4 whitespace-nowrap capitalize text-xs">
                             {visitor.role.replace('_', ' ')}
                           </td>
-                          <td className="p-4 whitespace-nowrap font-medium text-xs">
+                          <td className="p-4 whitespace-nowrap font-semibold text-xs">
                             {visitor.company || '-'}
                           </td>
                           <td className="p-4 text-xs space-y-1">
-                            <div className="flex items-center gap-1">
-                              <Mail className="h-3 w-3 text-[--color-text-secondary]" />
-                              {visitor.email}
+                            <div className="flex items-center gap-1.5">
+                              <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-mono">{visitor.email}</span>
                             </div>
-                            <div className="flex items-center gap-1">
-                              <Phone className="h-3 w-3 text-[--color-text-secondary]" />
-                              {visitor.phone}
+                            <div className="flex items-center gap-1.5">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-mono">{visitor.phone}</span>
                             </div>
                           </td>
                           <td className="p-4 whitespace-nowrap">
                             {lead.action === 'join_meeting' ? (
-                              <Badge className="bg-green-500 text-white gap-1 py-1">
-                                <Video className="h-3 w-3" />
+                              <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 gap-1 py-1 rounded-lg text-xs font-semibold">
+                                <Video className="h-3.5 w-3.5" />
                                 Joined Video Meeting
                               </Badge>
                             ) : (
-                              <Badge className="bg-blue-500 text-white gap-1 py-1">
-                                <DownloadCloud className="h-3 w-3" />
-                                Downloaded Brochure: {lead.details || 'Document'}
+                              <Badge className="bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 gap-1 py-1 rounded-lg text-xs font-semibold max-w-[220px] truncate">
+                                <DownloadCloud className="h-3.5 w-3.5" />
+                                Brochure: {lead.details || 'Document'}
                               </Badge>
                             )}
                           </td>
@@ -680,10 +695,10 @@ export function BoothDetail() {
                 </table>
               </div>
             ) : (
-              <div className="p-12 text-center border border-dashed border-[--color-border] rounded-lg">
-                <Users className="h-12 w-12 mx-auto text-[--color-text-secondary] mb-3" />
-                <h4 className="font-semibold text-sm mb-1">No Leads Found</h4>
-                <p className="text-xs text-[--color-text-secondary]">Leads will automatically show up when users click download or enter meetings.</p>
+              <div className="p-12 text-center border border-dashed border-border rounded-2xl bg-muted/5">
+                <Users className="h-12 w-12 mx-auto text-muted-foreground/45 mb-3 animate-pulse" />
+                <h4 className="font-bold text-sm text-foreground mb-1">No Visitor Leads Found</h4>
+                <p className="text-xs text-muted-foreground max-w-sm mx-auto">Visitor interactions (downloads or meeting room entries) will automatically register here.</p>
               </div>
             )}
           </CardContent>
@@ -692,34 +707,35 @@ export function BoothDetail() {
 
       {/* Edit Details Overlay Modal */}
       {editOpen && (
-        <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
-          <Card className="w-full max-w-2xl bg-white border border-slate-200 text-slate-900 shadow-2xl relative overflow-hidden">
-            <CardHeader className="border-b border-slate-100">
-              <CardTitle className="text-xl font-bold text-slate-900">Edit Booth Details</CardTitle>
-              <CardDescription className="text-slate-500">
-                Modify name, logo, description, and upload up to 3 brochures.
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-2xl bg-card border border-border text-foreground shadow-2xl relative overflow-hidden animate-scale-in rounded-2xl">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
+            <CardHeader className="border-b border-border pb-4">
+              <CardTitle className="text-xl font-bold">Edit Booth Details</CardTitle>
+              <CardDescription className="text-muted-foreground text-sm">
+                Modify your brand name, logo image, company description, and upload brochures (max 3).
               </CardDescription>
             </CardHeader>
-            <CardContent className="space-y-4 max-h-[75vh] overflow-y-auto pt-6">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="space-y-5 max-h-[75vh] overflow-y-auto pt-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Booth Title (Card Title)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Booth Title</label>
                   <Input
                     value={editName}
                     onChange={(e) => setEditName(e.target.value)}
                     placeholder="Enter booth name..."
-                    className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="bg-muted/30 border-border text-foreground placeholder-muted-foreground/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl h-10"
                   />
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-sm font-semibold text-slate-700">Booth Logo</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Booth Logo</label>
                   <div className="flex items-center gap-3">
                     {editLogoUrl && (
                       <img
                         src={editLogoFile ? URL.createObjectURL(editLogoFile) : getImageUrl(editLogoUrl)}
                         alt="Preview"
-                        className="w-10 h-10 rounded-md object-cover border border-slate-200"
+                        className="w-10 h-10 rounded-lg object-cover border border-border/50 shrink-0"
                       />
                     )}
                     <Input
@@ -732,76 +748,74 @@ export function BoothDetail() {
                           setEditLogoUrl(URL.createObjectURL(file));
                         }
                       }}
-                      className="text-xs bg-white border border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500 flex-1"
+                      className="text-xs bg-muted/30 border-border text-foreground focus:ring-emerald-500 focus:border-emerald-500 flex-1 pt-2 rounded-xl h-10 cursor-pointer"
                     />
                   </div>
                 </div>
               </div>
 
-              <Separator className="bg-slate-100" />
-
               <div className="space-y-2">
-                <label className="text-sm font-semibold text-slate-700">Booth Description</label>
+                <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Booth Description</label>
                 <Textarea
                   value={editDescription}
                   onChange={(e) => setEditDescription(e.target.value)}
-                  placeholder="Enter a descriptive pitch for your booth..."
+                  placeholder="Enter a descriptive pitch for your company, vision, or products..."
                   rows={4}
-                  className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                  className="bg-muted/30 border-border text-foreground placeholder-muted-foreground/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl"
                 />
               </div>
 
-              <Separator className="bg-slate-100" />
+              <Separator className="bg-border" />
 
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <label className="text-sm font-semibold text-black">Brochure PDFs (Max 3)</label>
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Brochure PDFs (Max 3)</label>
                   <Button
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="gap-1 border-slate-300 text-black hover:bg-primary"
+                    className="gap-1.5 border-border hover:bg-muted text-foreground font-semibold rounded-lg h-8 px-3 cursor-pointer"
                     onClick={addBrochureRow}
                     disabled={editBrochures.length >= 3}
                   >
-                    <Plus className="h-4 w-4" />
+                    <Plus className="h-4 w-4 text-emerald-500" />
                     Add Brochure
                   </Button>
                 </div>
 
                 <div className="space-y-3">
                   {editBrochures.map((brochure, index) => (
-                    <div key={index} className="p-3 bg-slate-50 rounded-lg border border-slate-200 space-y-2 relative">
+                    <div key={index} className="p-4 bg-muted/10 rounded-xl border border-border space-y-3 relative">
                       <div className="flex items-center gap-2 justify-between">
-                        <span className="text-xs font-semibold text-slate-500">Brochure #{index + 1}</span>
+                        <span className="text-xs font-extrabold text-muted-foreground uppercase tracking-wide">Brochure #{index + 1}</span>
                         <Button
                           type="button"
                           variant="ghost"
                           size="sm"
                           onClick={() => removeBrochureRow(index)}
-                          className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                          className="h-7 w-7 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10 rounded-lg cursor-pointer"
                         >
                           <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-1">
-                          <span className="text-xs text-slate-500">Custom Name/Title</span>
+                          <span className="text-xs text-muted-foreground">Custom Name/Title</span>
                           <Input
                             placeholder="e.g. Platform Whitepaper"
                             value={brochure.name}
                             onChange={(e) => updateBrochureField(index, 'name', e.target.value)}
-                            className="bg-white border border-slate-300 text-slate-900 placeholder-slate-400 focus:ring-indigo-500 focus:border-indigo-500"
+                            className="bg-card border-border text-foreground placeholder-muted-foreground/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl h-10"
                           />
                         </div>
 
                         <div className="space-y-1">
-                          <span className="text-xs text-slate-500">Upload PDF File</span>
+                          <span className="text-xs text-muted-foreground">Upload PDF File</span>
                           {brochure.url && !brochure.file ? (
-                            <div className="flex items-center justify-between h-9 px-3 bg-white border border-slate-200 rounded-md text-xs">
-                              <span className="truncate max-w-[150px] text-slate-700 font-medium">{brochure.name || 'Uploaded Document'}</span>
-                              <Badge className="bg-blue-500/10 text-blue-600 border-none hover:bg-blue-500/10 font-normal">Ready</Badge>
+                            <div className="flex items-center justify-between h-10 px-3 bg-muted/30 border border-border rounded-xl text-xs">
+                              <span className="truncate max-w-[150px] text-foreground font-medium">{brochure.name || 'Uploaded Document'}</span>
+                              <Badge className="bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border-none font-bold py-0.5 px-2">Ready</Badge>
                             </div>
                           ) : (
                             <Input
@@ -811,7 +825,7 @@ export function BoothDetail() {
                                 const file = e.target.files?.[0];
                                 if (file) handleFileChange(index, file);
                               }}
-                              className="text-xs bg-white border border-slate-300 text-slate-900 focus:ring-indigo-500 focus:border-indigo-500"
+                              className="text-xs bg-card border-border text-foreground focus:ring-emerald-500 focus:border-emerald-500 pt-2 rounded-xl h-10 cursor-pointer"
                             />
                           )}
                         </div>
@@ -820,18 +834,18 @@ export function BoothDetail() {
                   ))}
 
                   {editBrochures.length === 0 && (
-                    <p className="text-xs text-slate-400 text-center py-4 bg-slate-50 rounded-lg border border-dashed border-slate-200">
+                    <p className="text-xs text-muted-foreground text-center py-6 bg-muted/10 rounded-xl border border-dashed border-border">
                       No brochures added yet. Click "Add Brochure" to upload one.
                     </p>
                   )}
                 </div>
               </div>
 
-              <div className="flex justify-end gap-2 pt-4 border-t border-slate-100">
-                <Button variant="outline" onClick={() => setEditOpen(false)} disabled={uploading} className="border-slate-300 text-slate-700 hover:bg-slate-50">
+              <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                <Button variant="outline" onClick={() => setEditOpen(false)} disabled={uploading} className="border-border text-foreground hover:bg-muted font-semibold rounded-xl h-10 px-4 cursor-pointer">
                   Cancel
                 </Button>
-                <Button onClick={handleSaveDetails} disabled={uploading} className="gap-2 bg-primary hover:bg-primary-dark text-white">
+                <Button onClick={handleSaveDetails} disabled={uploading} className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 px-4 cursor-pointer">
                   {uploading && <Loader2 className="h-4 w-4 animate-spin" />}
                   Save Details
                 </Button>

@@ -156,7 +156,7 @@ export function BoothMeetingRoom() {
           return hmsActions.join({
             userName: user.name,
             authToken: token,
-            settings: { isAudioMuted: false, isVideoMuted: false },
+            settings: { isAudioMuted: true, isVideoMuted: true },
           });
         })
         .then(() => {
@@ -181,7 +181,7 @@ export function BoothMeetingRoom() {
                 return hmsActions.join({
                   userName: user.name,
                   authToken: token,
-                  settings: { isAudioMuted: false, isVideoMuted: false },
+                  settings: { isAudioMuted: true, isVideoMuted: true },
                 });
               })
               .then(() => {
@@ -220,7 +220,7 @@ export function BoothMeetingRoom() {
           await hmsActions.join({
             userName: user?.name || 'Guest',
             authToken: token,
-            settings: { isAudioMuted: false, isVideoMuted: false },
+            settings: { isAudioMuted: true, isVideoMuted: true },
           });
           setJoinStatus('admitted');
           hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
@@ -346,8 +346,6 @@ export function BoothMeetingRoom() {
           if (localPeer && localPeer.id === data.peerId) {
             setJoinStatus('admitted');
             hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
-            hmsActions.setLocalAudioEnabled(true).catch(() => {});
-            hmsActions.setLocalVideoEnabled(true).catch(() => {});
             toast.success('🎉 You have been admitted to the booth meeting!');
           }
         } else if (data.action === 'deny') {
