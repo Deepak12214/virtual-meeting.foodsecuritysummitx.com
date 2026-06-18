@@ -99,18 +99,22 @@ export function Login() {
 
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-[--color-surface] to-[--color-surface-elevated] flex items-center justify-center p-4">
-      <div className="w-full max-w-md">
+    <div className="min-h-screen bg-gradient-to-br from-background to-muted/30 flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background atmospheric glowing blobs */}
+      <div className="absolute top-[-20%] left-[-20%] w-[60%] h-[60%] bg-[radial-gradient(circle_at_center,rgba(16,185,129,0.08),transparent_50%)] pointer-events-none" />
+      <div className="absolute bottom-[-20%] right-[-20%] w-[60%] h-[60%] bg-[radial-gradient(circle_at_center,rgba(99,102,241,0.08),transparent_50%)] pointer-events-none" />
+      
+      <div className="w-full max-w-md relative z-10">
         {/* Logo */}
         <div className="text-center mb-8 animate-fade-in">
-          <div className="inline-flex items-center justify-center mb-4">
+          <div className="inline-flex items-center justify-center mb-4 transition-transform hover:scale-105 duration-350">
             <img
               src={BRAND.logo}
               alt={BRAND.name}
-              className="h-20 w-auto object-contain"
+              className="h-20 w-auto object-contain drop-shadow-[0_4px_12px_rgba(0,0,0,0.05)]"
             />
           </div>
-          <p className="text-sm text-[--color-text-secondary] mt-1">
+          <p className="text-xs text-muted-foreground mt-1 font-medium tracking-wide uppercase">
             {mode === 'login' && (showOtpScreen ? 'Verify email address' : 'Sign in to access the summit')}
             {mode === 'forgot' && 'Reset your password'}
             {mode === 'reset' && 'Enter OTP and set new password'}
@@ -118,15 +122,17 @@ export function Login() {
         </div>
 
         {/* Form Container */}
-        <div className="bg-[--color-surface-elevated] rounded-lg border border-[--color-border] p-6 shadow-lg">
+        <div className="bg-card/60 backdrop-blur-xl rounded-3xl border border-border p-8 shadow-2xl relative overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
+          
           {error && (
-            <div className="bg-red-500/10 border border-red-500/20 text-red-500 text-sm rounded-lg p-3 mb-4">
-              {error}
+            <div className="bg-red-500/10 border border-red-500/25 text-red-500 text-xs rounded-xl p-3.5 mb-5 flex items-center gap-2">
+              <span className="font-semibold">{error}</span>
             </div>
           )}
           {success && (
-            <div className="bg-green-500/10 border border-green-500/20 text-green-500 text-sm rounded-lg p-3 mb-4">
-              {success}
+            <div className="bg-emerald-500/10 border border-emerald-500/25 text-emerald-600 dark:text-emerald-400 text-xs rounded-xl p-3.5 mb-5 flex items-center gap-2">
+              <span className="font-semibold">{success}</span>
             </div>
           )}
 
@@ -134,8 +140,8 @@ export function Login() {
           {showOtpScreen && mode === 'login' ? (
             <form onSubmit={handleVerifyOTP} className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="loginOtp" className="flex items-center gap-2">
-                  <ShieldCheck className="h-4 w-4 text-[--color-primary]" />
+                <Label htmlFor="loginOtp" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-emerald-500 animate-pulse" />
                   Enter 6-Digit OTP
                 </Label>
                 <Input
@@ -145,16 +151,16 @@ export function Login() {
                   maxLength={6}
                   value={otp}
                   onChange={(e) => setOtp(e.target.value)}
-                  className="text-center tracking-widest font-bold text-lg"
+                  className="text-center tracking-widest font-bold text-lg h-12 bg-muted/30 border-border rounded-xl text-foreground focus:ring-emerald-500/20 focus:border-emerald-500"
                   required
                 />
               </div>
-              <Button type="submit" className="w-full" disabled={loading}>
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading}>
                 {loading ? 'Verifying...' : 'Verify & Sign In'}
               </Button>
               <button
                 type="button"
-                className="w-full text-center text-xs text-[--color-text-secondary] hover:underline mt-2"
+                className="w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline mt-2 transition-colors cursor-pointer bg-transparent border-none"
                 onClick={() => {
                   setShowOtpScreen(false);
                   setSuccess('');
@@ -167,10 +173,10 @@ export function Login() {
             <>
               {/* LOGIN MODE */}
               {mode === 'login' && (
-                <form onSubmit={handleLoginSubmit} className="space-y-4">
+                <form onSubmit={handleLoginSubmit} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="email" className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[--color-text-secondary]" />
+                    <Label htmlFor="email" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       Email Address
                     </Label>
                     <Input
@@ -179,20 +185,21 @@ export function Login() {
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 h-10"
                       required
                     />
                   </div>
 
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label htmlFor="password" className="flex items-center gap-2">
-                        <Lock className="h-4 w-4 text-[--color-text-secondary]" />
+                      <Label htmlFor="password" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                        <Lock className="h-4 w-4 text-muted-foreground" />
                         Password
                       </Label>
                       <button
                         type="button"
                         onClick={() => setMode('forgot')}
-                        className="text-xs text-[--color-primary] hover:underline"
+                        className="text-xs font-semibold text-emerald-600 dark:text-emerald-400 hover:underline cursor-pointer bg-transparent border-none"
                       >
                         Forgot Password?
                       </button>
@@ -204,19 +211,20 @@ export function Login() {
                         placeholder="••••••••"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 pr-10 h-10"
                         required
                       />
                       <button
                         type="button"
                         onClick={() => setShowPassword(!showPassword)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-[--color-text-secondary] hover:text-[--color-text-primary]"
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer bg-transparent border-none p-0 flex items-center"
                       >
                         {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading}>
                     {loading ? 'Signing in...' : 'Sign In'}
                   </Button>
                 </form>
@@ -224,10 +232,10 @@ export function Login() {
 
               {/* FORGOT PASSWORD MODE */}
               {mode === 'forgot' && (
-                <form onSubmit={handleForgotPassword} className="space-y-4">
+                <form onSubmit={handleForgotPassword} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="resetEmail" className="flex items-center gap-2">
-                      <Mail className="h-4 w-4 text-[--color-text-secondary]" />
+                    <Label htmlFor="resetEmail" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Mail className="h-4 w-4 text-muted-foreground" />
                       Registered Email Address
                     </Label>
                     <Input
@@ -236,15 +244,16 @@ export function Login() {
                       placeholder="you@example.com"
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
+                      className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 h-10"
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading}>
                     {loading ? 'Sending OTP...' : 'Send Reset Code'}
                   </Button>
                   <button
                     type="button"
-                    className="w-full text-center text-xs text-[--color-text-secondary] hover:underline mt-2"
+                    className="w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline mt-2 transition-colors cursor-pointer bg-transparent border-none"
                     onClick={() => {
                       setMode('login');
                       setError('');
@@ -258,10 +267,10 @@ export function Login() {
 
               {/* RESET PASSWORD MODE */}
               {mode === 'reset' && (
-                <form onSubmit={handleResetPassword} className="space-y-4">
+                <form onSubmit={handleResetPassword} className="space-y-5">
                   <div className="space-y-2">
-                    <Label htmlFor="resetOtp" className="flex items-center gap-2">
-                      <ShieldCheck className="h-4 w-4 text-[--color-primary]" />
+                    <Label htmlFor="resetOtp" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <ShieldCheck className="h-4 w-4 text-emerald-500" />
                       Enter Reset OTP
                     </Label>
                     <Input
@@ -271,13 +280,13 @@ export function Login() {
                       maxLength={6}
                       value={otp}
                       onChange={(e) => setOtp(e.target.value)}
-                      className="text-center tracking-widest font-bold text-lg"
+                      className="text-center tracking-widest font-bold text-lg h-12 bg-muted/30 border-border rounded-xl text-foreground focus:ring-emerald-500/20 focus:border-emerald-500"
                       required
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label htmlFor="newPassword" className="flex items-center gap-2">
-                      <Lock className="h-4 w-4 text-[--color-text-secondary]" />
+                    <Label htmlFor="newPassword" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+                      <Lock className="h-4 w-4 text-muted-foreground" />
                       New Password
                     </Label>
                     <Input
@@ -286,15 +295,16 @@ export function Login() {
                       placeholder="Min 6 characters"
                       value={newPassword}
                       onChange={(e) => setNewPassword(e.target.value)}
+                      className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 h-10"
                       required
                     />
                   </div>
-                  <Button type="submit" className="w-full" disabled={loading}>
+                  <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading}>
                     {loading ? 'Resetting Password...' : 'Reset Password'}
                   </Button>
                   <button
                     type="button"
-                    className="w-full text-center text-xs text-[--color-text-secondary] hover:underline mt-2"
+                    className="w-full text-center text-xs text-muted-foreground hover:text-foreground hover:underline mt-2 transition-colors cursor-pointer bg-transparent border-none"
                     onClick={() => {
                       setMode('login');
                       setError('');
@@ -310,18 +320,16 @@ export function Login() {
 
           {/* SIGNUP LINK */}
           {mode === 'login' && !showOtpScreen && (
-            <div className="mt-4 text-center">
-              <p className="text-sm text-[--color-text-secondary]">
-                Don't have an account?{' '}
-                <Link to="/auth/signup" className="text-[--color-primary] hover:underline">
+            <div className="mt-6 text-center border-t border-border/80 pt-4">
+              <p className="text-xs text-muted-foreground">
+                Don't have an account?
+                <Link to="/auth/signup" className="font-semibold text-emerald-600 dark:text-emerald-400 hover:underline">
                   Sign up
                 </Link>
               </p>
             </div>
           )}
         </div>
-
-
       </div>
     </div>
   );
