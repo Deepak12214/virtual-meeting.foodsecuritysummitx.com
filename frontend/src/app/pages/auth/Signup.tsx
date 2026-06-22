@@ -7,6 +7,7 @@ import { Label } from '../../components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '../../components/ui/select';
 import { ShieldCheck, Mail, Lock, User, Phone } from 'lucide-react';
 import { BRAND } from '../../config/branding';
+import { COUNTRY_CODES } from '../../data/countries';
 
 export function Signup() {
   const { signup, verifyOTP } = useAuth();
@@ -15,6 +16,7 @@ export function Signup() {
   const [formData, setFormData] = useState({
     name: '',
     email: '',
+    countryCode: '+91',
     phone: '',
     password: '',
     role: '' as UserRole,
@@ -50,21 +52,34 @@ export function Signup() {
       setLoading(false);
       return;
     }
+    const rawPhone = formData.phone.trim();
+    if (!formData.countryCode) {
+      setError('Please select a country code');
+      setLoading(false);
+      return;
+    }
 
-    if (formData.phone.length < 10) {
+    if (formData.countryCode === '+91' && rawPhone.length !== 10) {
       setError('Please enter a valid 10-digit phone number');
       setLoading(false);
       return;
     }
 
+    if (rawPhone.length < 7 || rawPhone.length > 15) {
+      setError('Please enter a valid phone number (7 to 15 digits)');
+      setLoading(false);
+      return;
+    }
+
     try {
+      const combinedPhone = `${formData.countryCode} ${rawPhone}`;
       const res = await signup(
         formData.email,
         formData.password,
         formData.name,
         formData.role,
         formData.company,
-        formData.phone
+        combinedPhone
       );
 
       if (res?.requiresOTP) {
@@ -200,17 +215,41 @@ export function Signup() {
               <div className="space-y-2">
                 <Label htmlFor="phone" className="text-xs font-bold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
                   <Phone className="h-4 w-4 text-muted-foreground" />
-                  Phone Number
+                  Phone Number <span className="text-red-500">*</span>
                 </Label>
-                <Input
-                  id="phone"
-                  type="tel"
-                  placeholder="9876543210"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                  className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 h-10"
-                  required
-                />
+                <div className="flex gap-2">
+                  <div className="w-[120px] shrink-0">
+                    <Select
+                      value={formData.countryCode}
+                      onValueChange={(value) => setFormData({ ...formData, countryCode: value })}
+                    >
+                      <SelectTrigger id="countryCode" className="bg-muted/30 border-border text-foreground rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500 h-10 w-full">
+                        <SelectValue placeholder="+91" />
+                      </SelectTrigger>
+                      <SelectContent className="bg-card border-border text-foreground rounded-xl max-h-[200px] overflow-y-auto z-50">
+                        {COUNTRY_CODES.map((item) => (
+                          <SelectItem key={item.country} value={item.code} className="focus:bg-muted focus:text-foreground cursor-pointer">
+                            {item.code} ({item.country})
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="flex-1">
+                    <Input
+                      id="phone"
+                      type="tel"
+                      placeholder="9876543210"
+                      value={formData.phone}
+                      onChange={(e) => {
+                        const val = e.target.value.replace(/\D/g, '');
+                        setFormData({ ...formData, phone: val });
+                      }}
+                      className="bg-muted/30 border-border rounded-xl text-foreground placeholder-muted-foreground/75 focus:ring-emerald-500/20 focus:border-emerald-500 h-10 w-full"
+                      required
+                    />
+                  </div>
+                </div>
               </div>
 
               <div className="space-y-2">
