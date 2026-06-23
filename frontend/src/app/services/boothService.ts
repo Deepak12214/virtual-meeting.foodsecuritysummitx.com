@@ -56,6 +56,7 @@ export interface Booth {
   isLive: boolean;
   visitCount: number;
   meeting?: any;
+  meetings?: BoothMeeting[];
 }
 
 export interface BoothMeeting {
@@ -193,10 +194,11 @@ export async function uploadBrochureFile(id: string, file: File): Promise<string
 /**
  * Create/provision live meeting room for booth (unlimited timer).
  */
-export async function createBoothMeeting(id: string): Promise<{ booth: Booth; meeting: BoothMeeting }> {
+export async function createBoothMeeting(id: string, payload?: { title?: string; description?: string }): Promise<{ booth: Booth; meeting: BoothMeeting }> {
   const res = await fetch(`${API_URL}/booths/${id}/meeting/create`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: payload ? JSON.stringify(payload) : undefined,
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to start live meeting');
@@ -206,10 +208,11 @@ export async function createBoothMeeting(id: string): Promise<{ booth: Booth; me
 /**
  * End active meeting room for booth.
  */
-export async function endBoothMeeting(id: string): Promise<Booth> {
+export async function endBoothMeeting(id: string, meetingId?: string): Promise<Booth> {
   const res = await fetch(`${API_URL}/booths/${id}/meeting/end`, {
     method: 'POST',
     headers: getAuthHeaders(),
+    body: meetingId ? JSON.stringify({ meetingId }) : undefined,
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to end live meeting');

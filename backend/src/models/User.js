@@ -38,7 +38,8 @@ const userSchema = new mongoose.Schema(
         'attendee',
         'host',
         'moderator',
-        'investor'
+        'investor',
+        'sub_exhibitor'
       ],
       default: 'attendee',
     },
@@ -61,6 +62,11 @@ const userSchema = new mongoose.Schema(
     },
     verifyToken: String,
     verifyTokenExpiry: Date,
+    authProvider: {
+      type: String,
+      enum: ['local', 'google'],
+      default: 'local'
+    },
   },
   { timestamps: true }
 );

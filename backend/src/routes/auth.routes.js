@@ -23,7 +23,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, phone and password' });
     }
 
-    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor'];
+    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor', 'sub_exhibitor'];
     if (!validRoles.includes(finalRole)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });
     }
@@ -36,6 +36,9 @@ router.post('/register', async (req, res) => {
 
 
     if (userExists) {
+      if (userExists.authProvider === 'google') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with Google. Please use Google Sign-In.' });
+      }
       if (userExists.isVerified) {
         return res.status(400).json({ success: false, message: 'Email already registered. Please login.' });
       } else {
@@ -137,6 +140,10 @@ router.post('/login', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) {
       return res.status(401).json({ success: false, message: 'Invalid email or password' });
+    }
+
+    if (user.authProvider === 'google') {
+      return res.status(400).json({ success: false, message: 'This email is registered with Google. Please use Google Sign-In.' });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -257,6 +264,91 @@ router.get('/me', protectUser, async (req, res) => {
       createdAt: req.user.createdAt,
     },
   });
+});
+
+// @desc    Google Sign-In / Sign-Up
+// @route   POST /api/auth/google-login
+// @access  Public
+router.post('/google-login', async (req, res) => {
+  try {
+    const { email, name, phone, role, company } = req.body;
+    if (!email || !name) {
+      return res.status(400).json({ success: false, message: 'Please provide email and name' });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (user.authProvider === 'local') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with standard email and password. Please log in with password.' });
+      }
+      // User exists and is registered via Google
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
+      }
+      
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          role: user.role,
+          company: user.company || '',
+          isApproved: user.isApproved,
+          createdAt: user.createdAt,
+        },
+      });
+    } else {
+      // Create new user with authProvider = 'google'
+      const finalRole = role || 'attendee';
+      const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor', 'sub_exhibitor'];
+      if (!validRoles.includes(finalRole)) {
+        return res.status(400).json({ success: false, message: 'Invalid role provided' });
+      }
+
+      const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator', 'investor'];
+      const isApproved = autoApproveRoles.includes(finalRole);
+
+      // Generate a random dummy password because schema requires it
+      const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+      user = await User.create({
+        name,
+        email,
+        phone: phone || 'N/A', // user might not have phone via Google auth
+        password: dummyPassword,
+        role: finalRole,
+        company: company || '',
+        isVerified: true, // Google accounts are pre-verified
+        isApproved,
+        authProvider: 'google',
+      });
+
+      const token = generateToken(user._id);
+      return res.status(201).json({
+        success: true,
+        message: 'Registration and login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          company: user.company,
+          isApproved: user.isApproved,
+          createdAt: user.createdAt,
+        },
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
 });
 
 module.exports = router;

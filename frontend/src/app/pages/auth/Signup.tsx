@@ -38,6 +38,7 @@ export function Signup() {
     { value: 'sponsor', label: 'Sponsor', description: 'Premium booth and visibility' },
     { value: 'investor', label: 'Investor', description: 'Watch pitches and evaluate startups' },
     { value: 'admin', label: 'Admin', description: 'Full platform administrative control' },
+    { value: 'sub_exhibitor', label: 'Sub-Exhibitor', description: 'Manage booth meetings and leads' },
   ];
 
 

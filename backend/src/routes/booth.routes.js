@@ -63,7 +63,7 @@ const isRepresentative = (booth, user) => {
     return true;
   }
 
-  if ((user.role === 'exhibitor' || user.role === 'sponsor') &&
+  if ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
     user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase()) {
     return true;
   }
@@ -242,9 +242,15 @@ router.post('/:id/claim', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booth not found' });
     }
 
-    const allowedRoles = ['exhibitor', 'sponsor', 'admin'];
+    const allowedRoles = ['exhibitor', 'sponsor', 'admin', 'sub_exhibitor'];
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Only exhibitors, sponsors, or admins can claim representatives rights' });
+      return res.status(403).json({ success: false, message: 'Only exhibitors, sponsors, sub-exhibitors, or admins can claim representative rights' });
+    }
+
+    if (['sub_exhibitor', 'exhibitor'].includes(req.user.role) && req.user.role !== 'admin') {
+      if (!req.user.company || req.user.company.trim().toLowerCase() !== booth.name.trim().toLowerCase()) {
+        return res.status(400).json({ success: false, message: 'You can only claim representative rights for a booth matching your company name' });
+      }
     }
 
     // Prevent duplicate association
@@ -286,7 +292,14 @@ router.get('/:id', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booth not found' });
     }
 
-    res.status(200).json({ success: true, booth });
+    const meetings = await BoothMeeting.find({ booth: booth._id })
+      .populate('creator', 'name email role')
+      .sort({ createdAt: -1 });
+
+    const boothObj = booth.toObject();
+    boothObj.meetings = meetings;
+
+    res.status(200).json({ success: true, booth: boothObj });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
@@ -394,13 +407,9 @@ router.post('/:id/meeting/create', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to start a meeting for this booth' });
     }
 
-    // End existing meeting
-    if (booth.meeting) {
-      await BoothMeeting.findByIdAndUpdate(booth.meeting, { status: 'completed' });
-    }
-
-    const meetingTitle = `${booth.name} Live Interaction Room`;
-    const meetingDesc = `Connect with representatives from ${booth.name}`;
+    const { title, description } = req.body;
+    const meetingTitle = title || `${booth.name} Live Interaction Room`;
+    const meetingDesc = description || `Connect with representatives from ${booth.name}`;
 
     let hmsRoom;
     try {
@@ -444,12 +453,23 @@ router.post('/:id/meeting/end', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to end this meeting' });
     }
 
-    if (booth.meeting) {
-      await BoothMeeting.findByIdAndUpdate(booth.meeting, { status: 'completed' });
+    const { meetingId } = req.body;
+    const targetMeetingId = meetingId || booth.meeting;
+
+    if (targetMeetingId) {
+      await BoothMeeting.findByIdAndUpdate(targetMeetingId, { status: 'completed' });
     }
 
-    booth.meeting = undefined;
-    booth.isLive = false;
+    // Recalculate remaining active meetings
+    const activeMeetings = await BoothMeeting.find({ booth: booth._id, status: 'active' }).sort({ createdAt: -1 });
+
+    if (activeMeetings.length > 0) {
+      booth.meeting = activeMeetings[0]._id;
+      booth.isLive = true;
+    } else {
+      booth.meeting = undefined;
+      booth.isLive = false;
+    }
     await booth.save();
 
     res.status(200).json({ success: true, message: 'Booth meeting ended', booth });
