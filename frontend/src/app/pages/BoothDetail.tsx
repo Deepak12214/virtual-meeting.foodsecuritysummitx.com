@@ -66,6 +66,11 @@ export function BoothDetail() {
   const [uploading, setUploading] = useState(false);
   const [claiming, setClaiming] = useState(false);
 
+  // New meeting states
+  const [createMeetingOpen, setCreateMeetingOpen] = useState(false);
+  const [meetingTitle, setMeetingTitle] = useState('');
+  const [meetingDescription, setMeetingDescription] = useState('');
+
   // Load booth details
   const loadBoothDetails = async () => {
     if (!boothId) return;
@@ -102,12 +107,16 @@ export function BoothDetail() {
   const isRep = booth && user && (
     user.role === 'admin' ||
     (booth.representatives && booth.representatives.some((r: any) => (r._id || r) === user.id)) ||
-    (user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase())
+    ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
+     user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase())
   );
 
   // Check if current user is eligible to claim representative rights
-  const canClaim = booth && user && !isRep && (
-    user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'admin'
+  const isLinkedRep = booth && user && booth.representatives && booth.representatives.some((r: any) => (r._id || r) === user.id);
+  const canClaim = booth && user && !isLinkedRep && (
+    user.role === 'admin' ||
+    ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
+     user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase())
   );
 
   // Claim representative rights
@@ -165,11 +174,19 @@ export function BoothDetail() {
   }
 
   // Live meeting actions
-  const handleStartMeeting = async () => {
+  const handleStartMeeting = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
     try {
-      toast.promise(createBoothMeeting(booth.id), {
+      const payload = {
+        title: meetingTitle.trim() || undefined,
+        description: meetingDescription.trim() || undefined
+      };
+      toast.promise(createBoothMeeting(booth.id, payload), {
         loading: 'Starting video meeting room...',
         success: ({ meeting }) => {
+          setCreateMeetingOpen(false);
+          setMeetingTitle('');
+          setMeetingDescription('');
           loadBoothDetails();
           navigate(`/exhibition/meeting/${meeting._id || meeting.id}`);
           return 'Meeting room started! Redirecting...';
@@ -181,9 +198,9 @@ export function BoothDetail() {
     }
   };
 
-  const handleEndMeeting = async () => {
+  const handleEndMeeting = async (meetingId?: string) => {
     try {
-      await endBoothMeeting(booth.id);
+      await endBoothMeeting(booth.id, meetingId);
       toast.success('Live meeting ended successfully.');
       loadBoothDetails();
     } catch (err: any) {
@@ -191,18 +208,12 @@ export function BoothDetail() {
     }
   };
 
-  const handleJoinMeeting = async () => {
-    const meetingId = booth.meeting?._id || booth.meeting?.id || booth.meeting;
-    if (!meetingId) {
-      toast.error('No active meeting found for this booth.');
-      return;
-    }
-
+  const handleJoinMeeting = async (meetingId: string, meetingTitle: string) => {
     if (!isRep) {
-      await logBoothLead(booth.id, 'join_meeting');
+      await logBoothLead(booth.id, 'join_meeting', meetingTitle);
     }
 
-    toast.success('Joining live meeting...');
+    toast.success(`Joining meeting: ${meetingTitle}...`);
     navigate(`/exhibition/meeting/${meetingId}`);
   };
 
@@ -430,37 +441,75 @@ export function BoothDetail() {
               {/* Connect with Representatives */}
               <Card className={`border-border bg-card/40 backdrop-blur-md shadow-sm transition-all duration-300 ${booth.isLive ? "border-emerald-500/30 bg-emerald-500/[0.01]" : ""}`}>
                 <CardHeader className="pb-4">
-                  <CardTitle className="text-xl font-bold text-foreground">Connect with Representatives</CardTitle>
-                  <CardDescription className="text-muted-foreground text-sm">
-                    Join a live video meeting to discuss solutions, request details, and ask questions.
-                  </CardDescription>
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+                    <div>
+                      <CardTitle className="text-xl font-bold text-foreground">Connect with Representatives</CardTitle>
+                      <CardDescription className="text-muted-foreground text-sm">
+                        Join a live video meeting to discuss solutions, request details, and ask questions.
+                      </CardDescription>
+                    </div>
+                    {isRep && (
+                      <Button
+                        onClick={() => setCreateMeetingOpen(true)}
+                        className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 shadow-lg shadow-emerald-500/10 cursor-pointer text-xs"
+                      >
+                        <Plus className="h-4 w-4" />
+                        Create Meeting Room
+                      </Button>
+                    )}
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-0">
-                  {booth.isLive ? (
-                    <div className="p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent rounded-2xl border border-emerald-500/20 space-y-4">
-                      <div className="flex items-start gap-3">
-                        <div className="w-10 h-10 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center flex-shrink-0">
-                          <Video className="h-5 w-5 text-emerald-500 animate-pulse" />
-                        </div>
-                        <div>
-                          <p className="text-sm font-bold text-foreground">Live Room is Active!</p>
-                          <p className="text-xs text-muted-foreground mt-1">
-                            Connect now to speak directly with an exhibitor representative. Your profile information will be shared with the representatives.
-                          </p>
-                        </div>
-                      </div>
-                      
-                      <div className="flex flex-col sm:flex-row gap-3">
-                        <Button className="flex-1 gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/10 rounded-xl h-11 cursor-pointer" size="lg" onClick={handleJoinMeeting}>
-                          <Video className="h-4 w-4" />
-                          Join Live Meeting
-                        </Button>
-                        {isRep && (
-                          <Button variant="destructive" size="lg" className="font-semibold rounded-xl h-11 cursor-pointer" onClick={handleEndMeeting}>
-                            End Meeting
-                          </Button>
-                        )}
-                      </div>
+                  {booth.meetings && booth.meetings.filter(m => m.status === 'active').length > 0 ? (
+                    <div className="grid grid-cols-1 gap-4">
+                      {booth.meetings.filter(m => m.status === 'active').map((meeting) => {
+                        const mId = meeting._id || meeting.id || '';
+                        return (
+                          <div
+                            key={mId}
+                            className="p-5 bg-gradient-to-r from-emerald-500/10 via-teal-500/5 to-transparent rounded-2xl border border-emerald-500/20 flex flex-col md:flex-row justify-between items-start md:items-center gap-4"
+                          >
+                            <div className="space-y-1.5 flex-1 min-w-0">
+                              <div className="flex items-center gap-2 flex-wrap">
+                                <span className="font-extrabold text-sm text-foreground block truncate leading-normal">{meeting.title}</span>
+                                <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 text-[10px] font-semibold gap-1 rounded-lg">
+                                  <Video className="h-3 w-3 animate-pulse" />
+                                  Active Room
+                                </Badge>
+                              </div>
+                              <p className="text-xs text-muted-foreground leading-relaxed">
+                                {meeting.description || 'No description provided.'}
+                              </p>
+                              {meeting.creator && (
+                                <p className="text-[10px] text-muted-foreground font-medium">
+                                  Host: <span className="font-semibold text-foreground">{(meeting.creator.name || meeting.creator)}</span>
+                                </p>
+                              )}
+                            </div>
+                            
+                            <div className="flex gap-2 w-full md:w-auto shrink-0 justify-end">
+                              <Button
+                                className="flex-1 md:flex-initial gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold shadow-lg shadow-emerald-500/10 rounded-xl h-10 cursor-pointer text-xs"
+                                size="sm"
+                                onClick={() => handleJoinMeeting(mId, meeting.title)}
+                              >
+                                <Video className="h-3.5 w-3.5" />
+                                Join Room
+                              </Button>
+                              {isRep && (
+                                <Button
+                                  variant="destructive"
+                                  size="sm"
+                                  className="font-semibold rounded-xl h-10 cursor-pointer text-xs"
+                                  onClick={() => handleEndMeeting(mId)}
+                                >
+                                  End Room
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   ) : (
                     <div className="p-8 text-center bg-muted/20 border border-dashed border-border rounded-2xl space-y-4">
@@ -468,13 +517,17 @@ export function BoothDetail() {
                         <Video className="h-5 w-5" />
                       </div>
                       <div className="space-y-1">
-                        <p className="text-sm font-semibold text-foreground">No live meeting active at the moment</p>
+                        <p className="text-sm font-semibold text-foreground">No live meeting rooms active at the moment</p>
                         <p className="text-xs text-muted-foreground">Booth representatives are currently offline. Check back later.</p>
                       </div>
                       {isRep && (
-                        <Button className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 shadow-lg shadow-emerald-500/10 cursor-pointer" size="lg" onClick={handleStartMeeting}>
+                        <Button
+                          className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 shadow-lg shadow-emerald-500/10 cursor-pointer"
+                          size="lg"
+                          onClick={() => setCreateMeetingOpen(true)}
+                        >
                           <Video className="h-4 w-4" />
-                          Start Live Meeting
+                          Start Live Meeting Room
                         </Button>
                       )}
                     </div>
@@ -851,6 +904,67 @@ export function BoothDetail() {
                 </Button>
               </div>
             </CardContent>
+          </Card>
+        </div>
+      )}
+
+      {/* Create Meeting Room Modal */}
+      {createMeetingOpen && (
+        <div className="fixed inset-0 bg-background/80 backdrop-blur-md z-50 flex items-center justify-center p-4">
+          <Card className="w-full max-w-md bg-card border border-border text-foreground shadow-2xl relative overflow-hidden animate-scale-in rounded-2xl">
+            <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
+            <CardHeader className="border-b border-border pb-4">
+              <CardTitle className="text-xl font-bold">Create Live Meeting Room</CardTitle>
+              <CardDescription className="text-muted-foreground text-sm">
+                Name your meeting room and add a description so attendees know what it's for.
+              </CardDescription>
+            </CardHeader>
+            <form onSubmit={handleStartMeeting}>
+              <CardContent className="space-y-4 pt-6">
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Room Title</label>
+                  <Input
+                    value={meetingTitle}
+                    onChange={(e) => setMeetingTitle(e.target.value)}
+                    placeholder="e.g. Technical Product Q&A, Business Chat..."
+                    className="bg-muted/30 border-border text-foreground placeholder-muted-foreground/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl h-10"
+                    required
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Description</label>
+                  <Textarea
+                    value={meetingDescription}
+                    onChange={(e) => setMeetingDescription(e.target.value)}
+                    placeholder="Describe what attendees can discuss in this room..."
+                    rows={3}
+                    className="bg-muted/30 border-border text-foreground placeholder-muted-foreground/70 focus:ring-emerald-500 focus:border-emerald-500 rounded-xl"
+                  />
+                </div>
+
+                <div className="flex justify-end gap-2 pt-4 border-t border-border">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setCreateMeetingOpen(false);
+                      setMeetingTitle('');
+                      setMeetingDescription('');
+                    }}
+                    className="border-border text-foreground hover:bg-muted font-semibold rounded-xl h-10 px-4 cursor-pointer"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    className="gap-2 bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-10 px-4 cursor-pointer"
+                  >
+                    Start Room
+                  </Button>
+                </div>
+              </CardContent>
+            </form>
           </Card>
         </div>
       )}
