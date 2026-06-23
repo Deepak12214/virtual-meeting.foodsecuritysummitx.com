@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth, UserRole } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
@@ -8,9 +8,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { ShieldCheck, Mail, Lock, User, Phone } from 'lucide-react';
 import { BRAND } from '../../config/branding';
 import { COUNTRY_CODES } from '../../data/countries';
+import { toast } from 'sonner';
 
 export function Signup() {
-  const { signup, verifyOTP } = useAuth();
+  const { signup, googleLogin, verifyOTP } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -28,6 +29,89 @@ export function Signup() {
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+
+  const decodeJwt = (token: string) => {
+    try {
+      const base64Url = token.split('.')[1];
+      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+      const jsonPayload = decodeURIComponent(
+        window
+          .atob(base64)
+          .split('')
+          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
+          .join('')
+      );
+      return JSON.parse(jsonPayload);
+    } catch (e) {
+      console.error('Error decoding Google JWT token', e);
+      return null;
+    }
+  };
+
+  const handleGoogleCredentialResponse = async (response: any) => {
+    setError('');
+    setSuccess('');
+    setGoogleLoading(true);
+    try {
+      const decoded = decodeJwt(response.credential);
+      if (!decoded || !decoded.email) {
+        throw new Error('Could not retrieve user details from Google credentials.');
+      }
+      await googleLogin(decoded.email, decoded.name || 'Google User', formData.role, formData.company);
+      toast.success('Successfully registered and signed in with Google!');
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Google Registration/Login failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleMockGoogleLogin = async () => {
+    setError('');
+    setSuccess('');
+    setGoogleLoading(true);
+    try {
+      const testEmail = prompt("Enter a test Google email (or leave empty to generate random):") || `google-${Math.random().toString(36).slice(2, 7)}@example.com`;
+      const testName = `Google User ${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
+      await googleLogin(testEmail, testName, formData.role, formData.company);
+      toast.success(`Registered and signed in as: ${testEmail}`);
+      navigate('/');
+    } catch (err: any) {
+      setError(err.message || 'Mock Google Sign-In failed.');
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    const script = document.createElement('script');
+    script.src = 'https://accounts.google.com/gsi/client';
+    script.async = true;
+    script.defer = true;
+    document.body.appendChild(script);
+
+    script.onload = () => {
+      if ((window as any).google) {
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1088494793617-mockid.apps.googleusercontent.com';
+        (window as any).google.accounts.id.initialize({
+          client_id: clientId,
+          callback: handleGoogleCredentialResponse,
+        });
+        (window as any).google.accounts.id.renderButton(
+          document.getElementById('google-signup-button'),
+          { theme: 'outline', size: 'large', width: '380' }
+        );
+      }
+    };
+
+    return () => {
+      const btn = document.getElementById('google-signup-button');
+      if (btn) btn.innerHTML = ''; // Clear loaded buttons to prevent multiple buttons
+      document.body.removeChild(script);
+    };
+  }, [formData.role, formData.company]);
 
   const roleOptions = [
     { value: 'attendee', label: 'Attendee', description: 'Full event access and networking' },
@@ -284,9 +368,37 @@ export function Signup() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading}>
-                {loading ? 'Creating account...' : 'Sign Up'}
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading || googleLoading}>
+                {loading || googleLoading ? 'Creating account...' : 'Sign Up'}
               </Button>
+
+              <div className="relative my-5">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border"></div>
+                </div>
+                <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-bold">
+                  <span className="bg-card px-2 text-muted-foreground">Or connect with</span>
+                </div>
+              </div>
+
+              <div className="space-y-3">
+                <div id="google-signup-button" className="w-full min-h-[40px] flex justify-center"></div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMockGoogleLogin}
+                  disabled={googleLoading || loading}
+                  className="w-full border-border hover:bg-muted text-foreground font-semibold rounded-xl h-10 cursor-pointer flex items-center justify-center gap-2 text-xs"
+                >
+                  <img
+                    src="https://www.gstatic.com/images/branding/product/1x/gsa_64dp.png"
+                    alt="Google Logo"
+                    className="w-4 h-4"
+                  />
+                  Mock Google Sign-Up (For Testing)
+                </Button>
+              </div>
             </form>
           )}
 

@@ -40,6 +40,7 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<{ message: string }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ message: string }>;
   logout: () => void;
+  googleLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
@@ -110,6 +111,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(data.user);
     }
     return {};
+  };
+
+  const googleLogin = async (email: string, name: string, role?: UserRole, company?: string) => {
+    const res = await fetch(`${API_URL}/auth/google-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, name, role, company }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Google authentication failed');
+    }
+
+    if (data.success && data.token && data.user) {
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+    }
   };
 
   const signup = async (
@@ -227,6 +249,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         login,
+        googleLogin,
         signup,
         verifyOTP,
         forgotPassword,
