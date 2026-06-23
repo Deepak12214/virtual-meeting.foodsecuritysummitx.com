@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useBlocker } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -491,10 +492,10 @@ export function MainStageEnhanced() {
   const isHost = user?.role === 'host' || isOrganizer;
   const isModerator = user?.role === 'moderator' || isOrganizer;
   const isSpeaker = user?.role === 'speaker' || isHost;
-  const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin', 'host', 'moderator']);
+  const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin', 'host', 'moderator', 'investor']);
 
   // A "pure speaker" is someone with the speaker role who is NOT also a host/admin/organizer
-  const isPureSpeaker = user?.role === 'speaker' && !isHost;
+  const isPureSpeaker = !!user && ['speaker', 'startup_participant', 'sponsor', 'exhibitor', 'investor'].includes(user.role) && !isHost;
 
   // Store selectors for local media state
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -514,6 +515,37 @@ export function MainStageEnhanced() {
 
   // Ref to avoid duplicate queue entries on rapid re-renders
   const requestSentRef = useRef(false);
+
+  // ── Navigation blocker & confirmation ──────────────────────────────────────────
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      requestStatus === 'live' && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      const confirmLeave = window.confirm('Are you sure you want to exit? You are currently live on the stage.');
+      if (confirmLeave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (requestStatus === 'live') {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to exit?';
+        return 'Are you sure you want to exit?';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [requestStatus]);
 
   // Control authority list for the sidebar widget
   const authorities = [
@@ -540,7 +572,6 @@ export function MainStageEnhanced() {
   // ── 2. Join HMS room (with retry support + 15s timeout) ──────────────────────
   useEffect(() => {
     if (!stageMeeting || !user) return;
-    if (user.role === 'attendee') return;
     if (stageMeeting.status !== 'active') {
       hmsActions.leave().catch(() => {});
       return;
@@ -570,7 +601,12 @@ export function MainStageEnhanced() {
         });
       })
       .then(() => {
-        if (!left) setHmsConnecting(false);
+        if (left) {
+          console.log('Unmounted during join, leaving main stage room...');
+          hmsActions.leave().catch(() => {});
+        } else {
+          setHmsConnecting(false);
+        }
       })
       .catch((err) => {
         console.error('HMS stage join error:', err);
@@ -585,7 +621,7 @@ export function MainStageEnhanced() {
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       hmsActions.leave().catch(() => {});
     };
-  }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt, hmsActions]);
 
   // Keep isConnectedRef in sync with live isConnected state (fixes stale closure in setTimeout)
   useEffect(() => {
@@ -1135,17 +1171,7 @@ export function MainStageEnhanced() {
             <CardContent className="p-0">
               <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center">
 
-                {user?.role === 'attendee' ? (
-                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-955 via-slate-900 to-gray-955">
-                    <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20 shadow-lg">
-                      <AlertCircle className="w-8 h-8 text-red-500 animate-pulse" />
-                    </div>
-                    <h3 className="text-xl font-bold tracking-tight text-red-400">Access Restricted</h3>
-                    <p className="text-sm text-gray-400 text-center mt-2 max-w-sm">
-                      As an attendee, you cannot join the Main Stage live meeting call. However, you can submit questions for the session in the Q&A panel on the right.
-                    </p>
-                  </div>
-                ) : stageMeeting && stageMeeting.status !== 'active' ? (
+                {stageMeeting && stageMeeting.status !== 'active' ? (
                   <StageOfflineScreen
                     scheduledTime={stageMeeting.scheduledTime}
                     status={stageMeeting.status}

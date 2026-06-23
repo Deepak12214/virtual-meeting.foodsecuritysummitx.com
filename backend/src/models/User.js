@@ -37,7 +37,8 @@ const userSchema = new mongoose.Schema(
         'sponsor',
         'attendee',
         'host',
-        'moderator'
+        'moderator',
+        'investor'
       ],
       default: 'attendee',
     },

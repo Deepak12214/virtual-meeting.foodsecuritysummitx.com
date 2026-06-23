@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { useBlocker } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -471,15 +472,15 @@ export function StartupPitchEnhanced() {
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
   // Role checks
-  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin', 'host', 'moderator']);
+  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin', 'host', 'moderator', 'speaker', 'attendee', 'sponsor', 'exhibitor', 'investor']);
   const isAdmin     = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
   const isHost      = user?.role === 'host' || user?.role === 'moderator' || isOrganizer;
   const isStartup   = user?.role === 'startup_participant';
-  const isInvestor  = false;
+  const isInvestor  = user?.role === 'investor';
 
-  // A "pure startup participant" is someone who has the startup participant role and is NOT admin/organizer
-  const isPureStartup = isStartup && !isHost;
+  // A "pure startup participant" is someone who can request to go live (startup, sponsor, exhibitor, investor) and is NOT admin/organizer/host
+  const isPureStartup = !!user && ['startup_participant', 'sponsor', 'exhibitor', 'investor'].includes(user.role) && !isHost;
 
   // Store selectors for local media state
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -499,6 +500,37 @@ export function StartupPitchEnhanced() {
 
   // Ref to avoid duplicate queue entries
   const requestSentRef = useRef(false);
+
+  // ── Navigation blocker & confirmation ──────────────────────────────────────────
+  const blocker = useBlocker(
+    ({ currentLocation, nextLocation }) =>
+      requestStatus === 'live' && currentLocation.pathname !== nextLocation.pathname
+  );
+
+  useEffect(() => {
+    if (blocker.state === 'blocked') {
+      const confirmLeave = window.confirm('Are you sure you want to exit? You are currently live on the stage.');
+      if (confirmLeave) {
+        blocker.proceed();
+      } else {
+        blocker.reset();
+      }
+    }
+  }, [blocker]);
+
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (requestStatus === 'live') {
+        e.preventDefault();
+        e.returnValue = 'Are you sure you want to exit?';
+        return 'Are you sure you want to exit?';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [requestStatus]);
 
   // Control authority list for the sidebar widget
   const authorities = [
@@ -555,7 +587,12 @@ export function StartupPitchEnhanced() {
         });
       })
       .then(() => {
-        if (!left) setHmsConnecting(false);
+        if (left) {
+          console.log('Unmounted during join, leaving pitch stage room...');
+          hmsActions.leave().catch(() => {});
+        } else {
+          setHmsConnecting(false);
+        }
       })
       .catch((err) => {
         console.error('HMS pitch join error:', err);
@@ -570,7 +607,7 @@ export function StartupPitchEnhanced() {
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       hmsActions.leave().catch(() => {});
     };
-  }, [pitchMeeting?._id, pitchMeeting?.id, pitchMeeting?.status, user, connectionAttempt]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [pitchMeeting?._id, pitchMeeting?.id, pitchMeeting?.status, user, connectionAttempt, hmsActions]);
 
   useEffect(() => {
     isConnectedRef.current = isConnected || false;
@@ -913,7 +950,7 @@ export function StartupPitchEnhanced() {
               <div>
                 <CardTitle className="text-yellow-700">Access Restricted</CardTitle>
                 <CardDescription className="mt-2 text-yellow-600">
-                  Startup pitch sessions are only available to startups and organizers.
+                  Startup pitch sessions require an approved account to view.
                 </CardDescription>
               </div>
             </div>

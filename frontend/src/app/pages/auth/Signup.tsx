@@ -36,6 +36,7 @@ export function Signup() {
     { value: 'exhibitor', label: 'Exhibitor', description: 'Showcase products and services' },
     { value: 'startup_participant', label: 'Startup Participant', description: 'Pitch and display your startup' },
     { value: 'sponsor', label: 'Sponsor', description: 'Premium booth and visibility' },
+    { value: 'investor', label: 'Investor', description: 'Watch pitches and evaluate startups' },
     { value: 'admin', label: 'Admin', description: 'Full platform administrative control' },
   ];
 

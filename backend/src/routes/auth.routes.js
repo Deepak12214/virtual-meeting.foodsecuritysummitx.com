@@ -23,7 +23,7 @@ router.post('/register', async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name, email, phone and password' });
     }
 
-    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator'];
+    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor'];
     if (!validRoles.includes(finalRole)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });
     }
@@ -31,7 +31,7 @@ router.post('/register', async (req, res) => {
     const userExists = await User.findOne({ email });
     
     // Check if roles require approval
-    const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator'];
+    const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator', 'investor'];
     const isApproved = autoApproveRoles.includes(finalRole);
 
 
