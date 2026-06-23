@@ -35,7 +35,9 @@ const userSchema = new mongoose.Schema(
         'exhibitor',
         'startup_participant',
         'sponsor',
-        'attendee'
+        'attendee',
+        'host',
+        'moderator'
       ],
       default: 'attendee',
     },

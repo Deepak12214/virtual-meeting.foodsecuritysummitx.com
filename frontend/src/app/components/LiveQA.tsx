@@ -122,6 +122,10 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
     }
   };
 
+  const isAdmin = user?.role === 'admin';
+  const isHost = user?.role === 'host' || user?.role === 'organizer' || isAdmin;
+  const isModeratorRole = user?.role === 'moderator' || user?.role === 'organizer' || isAdmin;
+
   const pendingQs = questions.filter((q) => q.status === 'pending');
   const approvedQs = questions.filter((q) => q.status === 'approved');
 
@@ -139,7 +143,7 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
             <MessageSquare className="h-4 w-4" />
             Live Q&A
           </CardTitle>
-          {isModerator && pendingQs.length > 0 && (
+          {isHost && pendingQs.length > 0 && (
             <Badge variant="destructive" className="text-[10px] h-5">
               {pendingQs.length} pending
             </Badge>
@@ -179,43 +183,83 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
           </div>
         )}
 
-        {isModerator && pendingQs.length > 0 && (
+        {/* ── Admin / Host Moderation Queue ── */}
+        {isHost && pendingQs.length > 0 && (
           <>
             <div>
-              <h4 className="text-xs font-medium mb-2 flex items-center gap-1.5">
+              <h4 className="text-xs font-medium mb-2 flex items-center gap-1.5 text-yellow-500">
                 <AlertCircle className="h-3 w-3 text-yellow-500" />
-                Pending ({pendingQs.length})
+                Moderation Queue ({pendingQs.length})
               </h4>
               <ScrollArea className="h-64">
                 <div className="space-y-2 pr-1">
-                  {pendingQs.map((q) => (
-                    <div key={q.id} className="p-2 bg-yellow-500/10 rounded-lg border border-yellow-500/20">
-                      <p className="text-xs">{q.text}</p>
-                      <div className="flex items-center justify-between mt-1.5">
-                        <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
-                        <div className="flex gap-1">
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-5 px-1.5 hover:bg-green-500/20" 
-                            onClick={() => handleApprove(q.id)}
-                            title="Approve"
-                          >
-                            <CheckCircle className="h-3 w-3 text-green-500" />
-                          </Button>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-5 px-1.5 hover:bg-red-500/20" 
-                            onClick={() => handleReject(q.id)}
-                            title="Reject & Delete"
-                          >
-                            <XCircle className="h-3 w-3 text-red-500" />
-                          </Button>
+                  {pendingQs.map((q) => {
+                    const needsAdminApprove = !q.adminApproved;
+                    const needsHostApprove = q.adminApproved && !q.hostApproved;
+
+                    return (
+                      <div key={q.id} className="p-2.5 bg-yellow-500/10 rounded-lg border border-yellow-500/20 space-y-1.5">
+                        <p className="text-xs">{q.text}</p>
+                        <div className="flex items-center justify-between mt-1.5">
+                          <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
+                          <div className="flex items-center gap-1">
+                            {/* Badges for status */}
+                            {needsAdminApprove && (
+                              <Badge variant="outline" className="text-[8px] px-1 bg-amber-500/10 border-amber-500/20 text-amber-500 border-none scale-90">
+                                Pending Admin
+                              </Badge>
+                            )}
+                            {needsHostApprove && (
+                              <Badge variant="outline" className="text-[8px] px-1 bg-indigo-500/10 border-indigo-500/20 text-indigo-400 border-none scale-90">
+                                Pending Host
+                              </Badge>
+                            )}
+
+                            {/* Approval Action */}
+                            {isAdmin && needsAdminApprove && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-5 px-1.5 hover:bg-green-500/20" 
+                                onClick={() => handleApprove(q.id)}
+                                title="Approve as Admin"
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                              </Button>
+                            )}
+
+                            {!isAdmin && isHost && needsAdminApprove && (
+                              <span className="text-[9px] text-gray-400 font-medium px-1">
+                                Awaiting Admin
+                              </span>
+                            )}
+
+                            {isHost && needsHostApprove && (
+                              <Button 
+                                size="sm" 
+                                variant="ghost" 
+                                className="h-5 px-1.5 hover:bg-green-500/20" 
+                                onClick={() => handleApprove(q.id)}
+                                title="Approve as Host"
+                              >
+                                <CheckCircle className="h-3.5 w-3.5 text-green-400" />
+                              </Button>
+                            )}
+
+                            <Button 
+                              size="sm" 
+                              variant="ghost" 
+                              className="h-5 px-1.5 hover:bg-red-500/20" 
+                              onClick={() => handleReject(q.id)}
+                              title="Reject & Delete"
+                            >
+                              <XCircle className="h-3.5 w-3.5 text-red-500" />
+                            </Button>
+                          </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               </ScrollArea>
             </div>
@@ -223,69 +267,89 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
           </>
         )}
 
-        {!isModerator && questions.some(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id)) && (
+        {/* ── Normal User Q&A: My Submissions ── */}
+        {!isHost && questions.length > 0 && (
           <>
             <div>
               <h4 className="text-xs font-medium mb-2 flex items-center gap-1.5 text-indigo-400">
                 <AlertCircle className="h-3 w-3" />
-                My Submissions ({questions.filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id)).length})
+                My Submissions ({questions.length})
               </h4>
               <div className="space-y-2 pr-1 max-h-64 overflow-y-auto">
-                {questions
-                  .filter(q => (q.status === 'pending' || q.status === 'rejected') && (q.askedById === user?.id || q.askedById === user?.id))
-                  .map((q) => (
+                {questions.map((q) => {
+                  let statusBadge = "Pending Admin Approval";
+                  let badgeColor = "text-yellow-500 bg-yellow-500/10";
+                  if (q.status === 'approved') {
+                    statusBadge = "Approved";
+                    badgeColor = "text-green-500 bg-green-500/10";
+                  } else if (q.status === 'rejected') {
+                    statusBadge = "Rejected";
+                    badgeColor = "text-red-500 bg-red-500/10";
+                  } else if (q.adminApproved && !q.hostApproved) {
+                    statusBadge = "Pending Host Approval";
+                    badgeColor = "text-indigo-400 bg-indigo-500/10";
+                  }
+
+                  return (
                     <div 
                       key={q.id} 
-                      className={`p-2 rounded-lg border text-xs ${
-                        q.status === 'pending' 
-                          ? 'bg-yellow-500/10 border-yellow-500/20' 
-                          : 'bg-red-500/10 border-red-500/20'
-                      }`}
+                      className="p-2 rounded-lg border text-xs bg-[--color-surface] border-[--color-border]"
                     >
                       <p className="text-xs">{q.text}</p>
                       <div className="flex items-center justify-between mt-1.5">
                         <span className="text-[10px] text-[--color-text-secondary]">Asked by you</span>
                         <Badge 
                           variant="outline" 
-                          className={`text-[9px] px-1.5 py-0 h-4 border-0 ${
-                            q.status === 'pending'
-                              ? 'text-yellow-500 bg-yellow-500/10 hover:bg-yellow-500/15'
-                              : 'text-red-500 bg-red-500/10 hover:bg-red-500/15'
-                          }`}
+                          className={`text-[9px] px-1.5 py-0 h-4 border-0 ${badgeColor}`}
                         >
-                          {q.status === 'pending' ? 'Pending Approval' : 'Rejected'}
+                          {statusBadge}
                         </Badge>
                       </div>
                     </div>
-                  ))}
+                  );
+                })}
               </div>
             </div>
             <Separator className="my-2" />
           </>
         )}
 
-        <div>
-          <h4 className="text-xs font-medium mb-2">Approved ({approvedQs.length})</h4>
-          <ScrollArea className="h-[450px]">
-            <div className="space-y-2 pr-1">
-              {approvedQs.length === 0 ? (
-                <p className="text-xs text-[--color-text-secondary] text-center py-4">No approved questions yet</p>
-              ) : (
-                approvedQs.map((q) => (
-                  <div key={q.id} className="p-2 bg-[--color-surface] rounded-lg border border-[--color-border]">
-                    <p className="text-xs">{q.text}</p>
-                    <div className="flex items-center justify-between mt-1">
-                      <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
-                      <span className="text-[10px] text-[--color-text-secondary]">
-                        {new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                      </span>
+        {/* ── Approved List for Hosts / Moderators ── */}
+        {isModeratorRole && (
+          <div>
+            <h4 className="text-xs font-medium mb-2">Approved ({approvedQs.length})</h4>
+            <ScrollArea className="h-[350px]">
+              <div className="space-y-2 pr-1">
+                {approvedQs.length === 0 ? (
+                  <p className="text-xs text-[--color-text-secondary] text-center py-4">No approved questions yet</p>
+                ) : (
+                  approvedQs.map((q) => (
+                    <div key={q.id} className="p-2.5 bg-[--color-surface] rounded-lg border border-[--color-border] space-y-1">
+                      <p className="text-xs">{q.text}</p>
+                      <div className="flex items-center justify-between mt-1.5">
+                        <span className="text-[10px] text-[--color-text-secondary]">{q.askedBy}</span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] text-[--color-text-secondary]">
+                            {new Date(q.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </span>
+                          <Button 
+                            size="sm" 
+                            variant="ghost" 
+                            className="h-5 px-1.5 hover:bg-red-500/20" 
+                            onClick={() => handleReject(q.id)}
+                            title="Reject / Remove"
+                          >
+                            <XCircle className="h-3 w-3 text-red-500" />
+                          </Button>
+                        </div>
+                      </div>
                     </div>
-                  </div>
-                ))
-              )}
-            </div>
-          </ScrollArea>
-        </div>
+                  ))
+                )}
+              </div>
+            </ScrollArea>
+          </div>
+        )}
       </CardContent>
     </Card>
   );

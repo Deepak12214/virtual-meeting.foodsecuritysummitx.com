@@ -351,9 +351,12 @@ router.post('/:id/token', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
 
-    // 1. Determine hmsRole: Only the creator of the meeting gets 'broadcaster' role
+    // 1. Determine hmsRole: Creator, admin, organizer, host, and moderator get 'broadcaster' role
     let hmsRole;
-    if (meeting.creator.toString() === req.user._id.toString()) {
+    if (
+      meeting.creator.toString() === req.user._id.toString() ||
+      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role)
+    ) {
       hmsRole = 'broadcaster';
     } else {
       hmsRole = 'viewer-on-stage';
@@ -415,11 +418,10 @@ router.post('/:id/end', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
 
-    // Only creator, admin, or organizer can end meetings in DB
+    // Only creator, admin, organizer, host, or moderator can end meetings in DB
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      req.user.role === 'admin' || 
-      req.user.role === 'organizer';
+      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'You are not authorized to end this meeting' });
@@ -515,8 +517,7 @@ router.get('/:id/lobby/requests', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      req.user.role === 'admin' || 
-      req.user.role === 'organizer';
+      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to view waitlist requests' });
@@ -545,8 +546,7 @@ router.post('/:id/lobby/admit', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      req.user.role === 'admin' || 
-      req.user.role === 'organizer';
+      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });
@@ -588,8 +588,7 @@ router.post('/:id/lobby/deny', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      req.user.role === 'admin' || 
-      req.user.role === 'organizer';
+      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });

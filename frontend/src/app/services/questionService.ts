@@ -22,6 +22,8 @@ export interface Question {
   askedBy: string;
   askedById: string;
   status: 'pending' | 'approved' | 'rejected';
+  adminApproved?: boolean;
+  hostApproved?: boolean;
   createdAt: string;
   expiresAt?: string;
 }

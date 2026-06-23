@@ -17,21 +17,22 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   try {
     const { name, email, phone, password, role, company } = req.body;
+    const finalRole = role || 'attendee';
 
-    if (!name || !email || !phone || !password || !role) {
-      return res.status(400).json({ success: false, message: 'Please provide name, email, phone, password and role' });
+    if (!name || !email || !phone || !password) {
+      return res.status(400).json({ success: false, message: 'Please provide name, email, phone and password' });
     }
 
-    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee'];
-    if (!validRoles.includes(role)) {
+    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator'];
+    if (!validRoles.includes(finalRole)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });
     }
 
     const userExists = await User.findOne({ email });
     
     // Check if roles require approval
-    const autoApproveRoles = ['attendee', 'admin', 'organizer'];
-    const isApproved = autoApproveRoles.includes(role);
+    const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator'];
+    const isApproved = autoApproveRoles.includes(finalRole);
 
 
     if (userExists) {
@@ -42,7 +43,7 @@ router.post('/register', async (req, res) => {
         userExists.name = name;
         userExists.phone = phone;
         userExists.password = password;
-        userExists.role = role;
+        userExists.role = finalRole;
         userExists.company = company || '';
         userExists.isApproved = isApproved;
         await userExists.save();
@@ -57,7 +58,7 @@ router.post('/register', async (req, res) => {
       email,
       phone,
       password,
-      role,
+      role: finalRole,
       company: company || '',
       isVerified: false,
       isApproved,

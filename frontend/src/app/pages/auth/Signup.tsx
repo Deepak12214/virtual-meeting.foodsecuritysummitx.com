@@ -19,7 +19,7 @@ export function Signup() {
     countryCode: '+91',
     phone: '',
     password: '',
-    role: '' as UserRole,
+    role: 'attendee' as UserRole,
     company: '',
   });
 
@@ -268,29 +268,7 @@ export function Signup() {
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="role" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Role</Label>
-                <Select
-                  value={formData.role}
-                  onValueChange={(value) => setFormData({ ...formData, role: value as UserRole })}
-                >
-                  <SelectTrigger id="role" className="bg-muted/30 border-border text-foreground rounded-xl focus:ring-emerald-500/20 focus:border-emerald-500 h-10">
-                    <SelectValue placeholder="Select your role" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-card border-border text-foreground rounded-xl">
-                    {roleOptions.map((option) => (
-                      <SelectItem key={option.value} value={option.value} className="focus:bg-muted focus:text-foreground cursor-pointer">
-                        <div className="py-1">
-                          <div className="font-bold text-sm">{option.label}</div>
-                          <div className="text-[10px] text-muted-foreground">
-                            {option.description}
-                          </div>
-                        </div>
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+
 
               <div className="space-y-2">
                 <Label htmlFor="company" className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Company (Optional)</Label>

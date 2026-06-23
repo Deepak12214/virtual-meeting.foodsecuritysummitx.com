@@ -73,34 +73,20 @@ router.get('/', protectUser, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Meeting ID query parameter is required' });
     }
 
-    const isModerator = ['admin', 'organizer'].includes(req.user.role);
+    const isAdminOrHost = ['admin', 'organizer', 'host'].includes(req.user.role);
+    const isModerator = req.user.role === 'moderator';
 
     let query = { meetingId };
-    if (!isModerator) {
-      // Normal attendees see approved questions, OR their own pending/rejected questions that haven't expired yet
-      query.$or = [
-        { status: 'approved' },
-        {
-          askedById: req.user._id,
-          status: { $in: ['pending', 'rejected'] },
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: { $gt: new Date() } }
-          ]
-        }
-      ];
+    if (isAdminOrHost) {
+      // Admin/Host/Organizer sees all questions
+    } else if (isModerator) {
+      // Moderator only sees questions approved by both Admin and Host
+      query.adminApproved = true;
+      query.hostApproved = true;
+      query.status = { $ne: 'rejected' };
     } else {
-      // Moderators see approved questions, and pending questions that have not expired yet
-      query.$or = [
-        { status: 'approved' },
-        {
-          status: 'pending',
-          $or: [
-            { expiresAt: { $exists: false } },
-            { expiresAt: { $gt: new Date() } }
-          ]
-        }
-      ];
+      // Normal attendees and other roles only see their own questions
+      query.askedById = req.user._id;
     }
 
     const questions = await Question.find(query).sort({ createdAt: -1 });
@@ -120,25 +106,41 @@ router.get('/', protectUser, async (req, res) => {
 // @access  Private
 router.put('/:id/approve', protectUser, async (req, res) => {
   try {
-    const isModerator = ['admin', 'organizer'].includes(req.user.role);
-    if (!isModerator) {
-      return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
-    }
-
     const question = await Question.findById(req.params.id);
     if (!question) {
       return res.status(404).json({ success: false, message: 'Question not found' });
     }
 
-    question.status = 'approved';
-    question.expiresAt = undefined; // remove expiration so TTL index doesn't delete it
-    await question.save();
+    if (req.user.role === 'admin') {
+      question.adminApproved = true;
+      if (question.hostApproved) {
+        question.status = 'approved';
+        question.expiresAt = undefined;
+      }
+      await question.save();
+      return res.status(200).json({
+        success: true,
+        message: 'Question approved by Admin',
+        question
+      });
+    }
 
-    res.status(200).json({
-      success: true,
-      message: 'Question approved successfully',
-      question
-    });
+    if (['host', 'organizer'].includes(req.user.role)) {
+      if (!question.adminApproved) {
+        return res.status(400).json({ success: false, message: 'Question must be approved by Admin first' });
+      }
+      question.hostApproved = true;
+      question.status = 'approved';
+      question.expiresAt = undefined;
+      await question.save();
+      return res.status(200).json({
+        success: true,
+        message: 'Question approved by Host',
+        question
+      });
+    }
+
+    return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
   } catch (error) {
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
@@ -149,8 +151,8 @@ router.put('/:id/approve', protectUser, async (req, res) => {
 // @access  Private
 router.delete('/:id', protectUser, async (req, res) => {
   try {
-    const isModerator = ['admin', 'organizer'].includes(req.user.role);
-    if (!isModerator) {
+    const allowedRejectRoles = ['admin', 'organizer', 'host', 'moderator'];
+    if (!allowedRejectRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
     }
 

@@ -27,6 +27,14 @@ const questionSchema = new mongoose.Schema(
       enum: ['pending', 'approved', 'rejected'],
       default: 'pending',
     },
+    adminApproved: {
+      type: Boolean,
+      default: false,
+    },
+    hostApproved: {
+      type: Boolean,
+      default: false,
+    },
     expiresAt: {
       type: Date,
     },

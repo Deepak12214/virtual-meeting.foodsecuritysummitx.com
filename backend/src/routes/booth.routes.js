@@ -190,9 +190,9 @@ router.post('/', protectUser, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name and category' });
     }
 
-    const allowedRoles = ['admin', 'exhibitor', 'sponsor'];
+    const allowedRoles = ['admin', 'exhibitor'];
     if (!allowedRoles.includes(req.user.role)) {
-      return res.status(403).json({ success: false, message: 'Only admins, exhibitors, or sponsors can create booths' });
+      return res.status(403).json({ success: false, message: 'Only admins or exhibitors can create booths' });
     }
 
     // Check if user already represents/created an active booth (except admin)

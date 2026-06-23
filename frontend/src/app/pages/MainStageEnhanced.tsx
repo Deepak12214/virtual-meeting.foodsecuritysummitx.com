@@ -443,6 +443,25 @@ function StageRequestBanner({
   );
 }
 
+function ParticipantMediaStatus({ peerId }: { peerId: string }) {
+  const isAudioOn = useHMSStore(selectIsPeerAudioEnabled(peerId));
+  const isVideoOn = useHMSStore(selectIsPeerVideoEnabled(peerId));
+  return (
+    <div className="flex items-center gap-1">
+      {isAudioOn ? (
+        <Mic className="h-3.5 w-3.5 text-green-400" />
+      ) : (
+        <MicOff className="h-3.5 w-3.5 text-red-400" />
+      )}
+      {isVideoOn ? (
+        <Video className="h-3.5 w-3.5 text-green-400" />
+      ) : (
+        <VideoOff className="h-3.5 w-3.5 text-red-400" />
+      )}
+    </div>
+  );
+}
+
 // ─── MainStageEnhanced Page ───────────────────────────────────────────────────
 
 export function MainStageEnhanced() {
@@ -469,10 +488,10 @@ export function MainStageEnhanced() {
   // Role checks
   const isAdmin = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost = isOrganizer;
-  const isModerator = isOrganizer;
+  const isHost = user?.role === 'host' || isOrganizer;
+  const isModerator = user?.role === 'moderator' || isOrganizer;
   const isSpeaker = user?.role === 'speaker' || isHost;
-  const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin']);
+  const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin', 'host', 'moderator']);
 
   // A "pure speaker" is someone with the speaker role who is NOT also a host/admin/organizer
   const isPureSpeaker = user?.role === 'speaker' && !isHost;
@@ -521,6 +540,7 @@ export function MainStageEnhanced() {
   // ── 2. Join HMS room (with retry support + 15s timeout) ──────────────────────
   useEffect(() => {
     if (!stageMeeting || !user) return;
+    if (user.role === 'attendee') return;
     if (stageMeeting.status !== 'active') {
       hmsActions.leave().catch(() => {});
       return;
@@ -1115,7 +1135,17 @@ export function MainStageEnhanced() {
             <CardContent className="p-0">
               <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center">
 
-                {stageMeeting && stageMeeting.status !== 'active' ? (
+                {user?.role === 'attendee' ? (
+                  <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6 bg-gradient-to-br from-gray-955 via-slate-900 to-gray-955">
+                    <div className="w-20 h-20 rounded-full bg-red-500/10 flex items-center justify-center mb-4 border border-red-500/20 shadow-lg">
+                      <AlertCircle className="w-8 h-8 text-red-500 animate-pulse" />
+                    </div>
+                    <h3 className="text-xl font-bold tracking-tight text-red-400">Access Restricted</h3>
+                    <p className="text-sm text-gray-400 text-center mt-2 max-w-sm">
+                      As an attendee, you cannot join the Main Stage live meeting call. However, you can submit questions for the session in the Q&A panel on the right.
+                    </p>
+                  </div>
+                ) : stageMeeting && stageMeeting.status !== 'active' ? (
                   <StageOfflineScreen
                     scheduledTime={stageMeeting.scheduledTime}
                     status={stageMeeting.status}
@@ -1335,6 +1365,88 @@ export function MainStageEnhanced() {
             isModerator={isModerator}
             canAskQ={canAskQ}
           />
+
+          {/* Active Participants Panel */}
+          {isConnected && (
+            <Card className="border-[--color-border] bg-[--color-surface-card] text-[--color-text]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-400" />
+                    <span>Participants ({peers.length + (localPeer ? 1 : 0)})</span>
+                  </div>
+                </CardTitle>
+                <CardDescription className="text-[10px]">
+                  Users currently joined in this session
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-48 px-4 pb-4">
+                  <div className="space-y-2.5">
+                    {/* Render local peer first */}
+                    {localPeer && (
+                      <div className="flex items-center justify-between py-1 border-b border-white/5 last:border-0 animate-fade-in">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-indigo-600/30 flex items-center justify-center font-bold text-xs text-indigo-400">
+                            {localPeer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate text-white">
+                              {localPeer.name} (You)
+                            </p>
+                            <p className="text-[9px] text-gray-400 capitalize">
+                              {(user?.role || 'attendee').replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isAudioEnabled ? (
+                            <Mic className="h-3.5 w-3.5 text-green-400" />
+                          ) : (
+                            <MicOff className="h-3.5 w-3.5 text-red-400" />
+                          )}
+                          {isVideoEnabled ? (
+                            <Video className="h-3.5 w-3.5 text-green-400" />
+                          ) : (
+                            <VideoOff className="h-3.5 w-3.5 text-red-400" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Render other peers */}
+                    {peers.filter(p => p.id !== localPeer?.id).map((peer) => {
+                      let peerRole = 'attendee';
+                      try {
+                        const meta = JSON.parse(peer.metadata || '{}');
+                        peerRole = meta.platformRole || (peer.roleName === 'broadcaster' ? 'organizer' : 'attendee');
+                      } catch {
+                        peerRole = peer.roleName === 'broadcaster' ? 'organizer' : 'attendee';
+                      }
+
+                      return (
+                        <div key={peer.id} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0 animate-fade-in">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-gray-400">
+                              {peer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold truncate text-white">
+                                {peer.name}
+                              </p>
+                              <p className="text-[9px] text-gray-400 capitalize">
+                                {peerRole.replace('_', ' ')}
+                              </p>
+                            </div>
+                          </div>
+                          <ParticipantMediaStatus peerId={peer.id} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
+          )}
         </div>
       </div>
     </div>

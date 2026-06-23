@@ -7,7 +7,9 @@ export type UserRole =
   | 'exhibitor'
   | 'startup_participant'
   | 'sponsor'
-  | 'attendee';
+  | 'attendee'
+  | 'host'
+  | 'moderator';
 
 export interface User {
   id: string;

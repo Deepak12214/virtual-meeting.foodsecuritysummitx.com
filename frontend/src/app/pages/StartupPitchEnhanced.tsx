@@ -430,6 +430,25 @@ function PitchRequestBanner({
   );
 }
 
+function ParticipantMediaStatus({ peerId }: { peerId: string }) {
+  const isAudioOn = useHMSStore(selectIsPeerAudioEnabled(peerId));
+  const isVideoOn = useHMSStore(selectIsPeerVideoEnabled(peerId));
+  return (
+    <div className="flex items-center gap-1">
+      {isAudioOn ? (
+        <Mic className="h-3.5 w-3.5 text-green-400" />
+      ) : (
+        <MicOff className="h-3.5 w-3.5 text-red-400" />
+      )}
+      {isVideoOn ? (
+        <Video className="h-3.5 w-3.5 text-green-400" />
+      ) : (
+        <VideoOff className="h-3.5 w-3.5 text-red-400" />
+      )}
+    </div>
+  );
+}
+
 // ─── StartupPitchEnhanced Page ────────────────────────────────────────────────
 
 export function StartupPitchEnhanced() {
@@ -452,10 +471,10 @@ export function StartupPitchEnhanced() {
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
   // Role checks
-  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin']);
+  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin', 'host', 'moderator']);
   const isAdmin     = user?.role === 'admin';
   const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost      = isOrganizer;
+  const isHost      = user?.role === 'host' || user?.role === 'moderator' || isOrganizer;
   const isStartup   = user?.role === 'startup_participant';
   const isInvestor  = false;
 
@@ -1278,6 +1297,88 @@ export function StartupPitchEnhanced() {
               onStatusChange={(id, ns) => changeStartupStatus(id, ns)}
               onReorder={(items) => setStartupQueue(items)}
             />
+          )}
+
+          {/* Active Participants Panel */}
+          {isConnected && (
+            <Card className="border-[--color-border] bg-[--color-surface-card] text-[--color-text]">
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-indigo-400" />
+                    <span>Participants ({peers.length + (localPeer ? 1 : 0)})</span>
+                  </div>
+                </CardTitle>
+                <CardDescription className="text-[10px]">
+                  Users currently joined in this session
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-0">
+                <ScrollArea className="h-48 px-4 pb-4">
+                  <div className="space-y-2.5">
+                    {/* Render local peer first */}
+                    {localPeer && (
+                      <div className="flex items-center justify-between py-1 border-b border-white/5 last:border-0 animate-fade-in">
+                        <div className="flex items-center gap-2 min-w-0">
+                          <div className="w-7 h-7 rounded-full bg-indigo-600/30 flex items-center justify-center font-bold text-xs text-indigo-400">
+                            {localPeer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                          </div>
+                          <div className="min-w-0">
+                            <p className="text-xs font-semibold truncate text-white">
+                              {localPeer.name} (You)
+                            </p>
+                            <p className="text-[9px] text-gray-400 capitalize">
+                              {(user?.role || 'attendee').replace('_', ' ')}
+                            </p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-1">
+                          {isAudioEnabled ? (
+                            <Mic className="h-3.5 w-3.5 text-green-400" />
+                          ) : (
+                            <MicOff className="h-3.5 w-3.5 text-red-400" />
+                          )}
+                          {isVideoEnabled ? (
+                            <Video className="h-3.5 w-3.5 text-green-400" />
+                          ) : (
+                            <VideoOff className="h-3.5 w-3.5 text-red-400" />
+                          )}
+                        </div>
+                      </div>
+                    )}
+                    {/* Render other peers */}
+                    {peers.filter(p => p.id !== localPeer?.id).map((peer) => {
+                      let peerRole = 'attendee';
+                      try {
+                        const meta = JSON.parse(peer.metadata || '{}');
+                        peerRole = meta.platformRole || (peer.roleName === 'broadcaster' ? 'organizer' : 'attendee');
+                      } catch {
+                        peerRole = peer.roleName === 'broadcaster' ? 'organizer' : 'attendee';
+                      }
+
+                      return (
+                        <div key={peer.id} className="flex items-center justify-between py-1 border-b border-white/5 last:border-0 animate-fade-in">
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className="w-7 h-7 rounded-full bg-slate-800 flex items-center justify-center font-bold text-xs text-gray-400">
+                              {peer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
+                            </div>
+                            <div className="min-w-0">
+                              <p className="text-xs font-semibold truncate text-white">
+                                {peer.name}
+                              </p>
+                              <p className="text-[9px] text-gray-400 capitalize">
+                                {peerRole.replace('_', ' ')}
+                              </p>
+                            </div>
+                          </div>
+                          <ParticipantMediaStatus peerId={peer.id} />
+                        </div>
+                      );
+                    })}
+                  </div>
+                </ScrollArea>
+              </CardContent>
+            </Card>
           )}
 
         </div>
