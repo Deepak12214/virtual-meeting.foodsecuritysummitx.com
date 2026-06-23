@@ -63,24 +63,6 @@ export function Login() {
       setGoogleLoading(false);
     }
   };
-
-  const handleMockGoogleLogin = async () => {
-    setError('');
-    setSuccess('');
-    setGoogleLoading(true);
-    try {
-      const testEmail = prompt("Enter a test Google email (or leave empty to generate random):") || `google-${Math.random().toString(36).slice(2, 7)}@example.com`;
-      const testName = `Google User ${Math.random().toString(36).slice(2, 5).toUpperCase()}`;
-      await googleLogin(testEmail, testName);
-      toast.success(`Signed in as: ${testEmail}`);
-      navigate('/');
-    } catch (err: any) {
-      setError(err.message || 'Mock Google Sign-In failed.');
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
-
   useEffect(() => {
     const script = document.createElement('script');
     script.src = 'https://accounts.google.com/gsi/client';
@@ -90,7 +72,7 @@ export function Login() {
 
     script.onload = () => {
       if ((window as any).google) {
-        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '1088494793617-mockid.apps.googleusercontent.com';
+        const clientId = import.meta.env.VITE_GOOGLE_CLIENT_ID || '';
         (window as any).google.accounts.id.initialize({
           client_id: clientId,
           callback: handleGoogleCredentialResponse,
@@ -310,32 +292,8 @@ export function Login() {
                     {loading || googleLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
 
-                  <div className="relative my-5">
-                    <div className="absolute inset-0 flex items-center">
-                      <div className="w-full border-t border-border"></div>
-                    </div>
-                    <div className="relative flex justify-center text-[10px] uppercase tracking-wider font-bold">
-                      <span className="bg-card px-2 text-muted-foreground">Or connect with</span>
-                    </div>
-                  </div>
-
-                  <div className="space-y-3">
+                  <div className="mt-4 flex justify-center">
                     <div id="google-signin-button" className="w-full min-h-[40px] flex justify-center"></div>
-
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={handleMockGoogleLogin}
-                      disabled={googleLoading || loading}
-                      className="w-full border-border hover:bg-muted text-foreground font-semibold rounded-xl h-10 cursor-pointer flex items-center justify-center gap-2 text-xs"
-                    >
-                      <img
-                        src="https://www.gstatic.com/images/branding/product/1x/gsa_64dp.png"
-                        alt="Google Logo"
-                        className="w-4 h-4"
-                      />
-                      Mock Google Sign-In (For Testing)
-                    </Button>
                   </div>
                 </form>
               )}
