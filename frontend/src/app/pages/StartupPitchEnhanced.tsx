@@ -1117,7 +1117,7 @@ export function StartupPitchEnhanced() {
       {isPureStartup && requestStatus !== 'live' && (
         <PitchRequestBanner
           requestStatus={requestStatus}
-          isConnected={isConnected}
+          isConnected={!!isConnected}
           isConnecting={hmsConnecting}
           connectionError={roomError}
           isRefreshingUser={isRefreshingUser}

@@ -514,10 +514,41 @@ export function MainStageEnhanced() {
   // Speaker's own request status
   const [requestStatus, setRequestStatus] = useState<'none' | 'pending' | 'live' | 'rejected'>('none');
 
-  // Ref to avoid duplicate queue entries on rapid re-renders
+  const [screenShareRequestStatus, setScreenShareRequestStatus] = useState<'none' | 'pending' | 'allowed' | 'declined'>('none');
+
   const requestSentRef = useRef(false);
 
-  // ── Navigation blocker & confirmation ──────────────────────────────────────────
+  const requestScreenShare = async () => {
+    if (!localPeer) return;
+    try {
+      setScreenShareRequestStatus('pending');
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({
+          action: 'request-screenshare',
+          peerId: localPeer.id,
+          name: localPeer.name
+        }),
+        'stage-control'
+      );
+      toast.success('Screen share request sent to host/moderator.');
+    } catch (err) {
+      console.error('Failed to send screenshare request:', err);
+      setScreenShareRequestStatus('none');
+      toast.error('Failed to send request.');
+    }
+  };
+
+  const approveScreenShare = async (peerId: string) => {
+    try {
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'screenshare-status', peerId, status: 'allowed' }),
+        'stage-control'
+      );
+    } catch (err) {
+      console.error('Failed to send screenshare approval:', err);
+    }
+  };
+
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       requestStatus === 'live' && currentLocation.pathname !== nextLocation.pathname
@@ -548,12 +579,7 @@ export function MainStageEnhanced() {
     };
   }, [requestStatus]);
 
-  // Control authority list for the sidebar widget
-  const authorities = [
-    ...(isAdmin || isOrganizer ? [{ role: user?.role ?? 'admin', name: user?.name ?? 'Admin', mode: 'full' as const }] : []),
-  ];
 
-  // ── 1. Load Main Stage room (polling every 5 seconds for status updates) ──────
   useEffect(() => {
     setRoomError(null);
     const getRoom = () => {
@@ -569,8 +595,6 @@ export function MainStageEnhanced() {
     const interval = setInterval(getRoom, 5000);
     return () => clearInterval(interval);
   }, []);
-
-  // ── 2. Join HMS room (with retry support + 15s timeout) ──────────────────────
   useEffect(() => {
     if (!stageMeeting || !user) return;
     if (stageMeeting.status !== 'active') {
@@ -584,7 +608,6 @@ export function MainStageEnhanced() {
     setRoomError(null);
     setHmsConnecting(true);
 
-    // 20-second connection timeout — uses ref to avoid stale closure
     connectionTimeoutRef.current = setTimeout(() => {
       if (!left && !isConnectedRef.current) {
         setRoomError('Connection timed out — the 100ms role may be misconfigured. Click Retry.');
@@ -641,16 +664,13 @@ export function MainStageEnhanced() {
     setConnectionAttempt((n) => n + 1);
   }, []);
 
-  /** Refresh user data from server (picks up isApproved change made by admin) */
   const handleRefreshSession = useCallback(async () => {
     setIsRefreshingUser(true);
     await refreshUser();
     setIsRefreshingUser(false);
-    // After refreshing user, also retry HMS connection
     retryConnection();
   }, [refreshUser, retryConnection]);
 
-  // ── 3. Sync peer metadata for late-joining admins ─────────────────────────────
   useEffect(() => {
     if (!isConnected || !peers || peers.length === 0) return;
 
@@ -708,6 +728,14 @@ export function MainStageEnhanced() {
       // ignore
     }
   }, [isConnected, localPeer?.id]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  useEffect(() => {
+    if (!isConnected) {
+      setRequestStatus('none');
+      setScreenShareRequestStatus('none');
+      requestSentRef.current = false;
+    }
+  }, [isConnected]);
 
   // ── 4b. Sync platformRole to metadata & Auto-mute admin if speakers are live ──
   useEffect(() => {
@@ -809,6 +837,7 @@ export function MainStageEnhanced() {
               toast.success('🎉 You are now LIVE on Main Stage!');
             } else if (newStatus === 'not-ready' || newStatus === 'rejected') {
               setRequestStatus(newStatus === 'rejected' ? 'rejected' : 'none');
+              setScreenShareRequestStatus('none');
               requestSentRef.current = false;
               hmsActions.setLocalAudioEnabled(false);
               hmsActions.setLocalVideoEnabled(false);
@@ -825,6 +854,36 @@ export function MainStageEnhanced() {
               } else {
                 toast.warning('You have been removed from the stage.');
               }
+            }
+          }
+        }
+
+        // ── Screenshare request ──
+        if (data.action === 'request-screenshare') {
+          if (isHost || isModerator || isAdmin) {
+            toast.info(`📺 ${data.name} is requesting to share screen`, {
+              duration: 10000,
+              action: {
+                label: 'Allow',
+                onClick: () => {
+                  approveScreenShare(data.peerId);
+                },
+              },
+            });
+          }
+        }
+
+        // ── Screenshare status update ──
+        if (data.action === 'screenshare-status') {
+          const { peerId: targetId, status: newStatus } = data;
+          if (localPeer && localPeer.id === targetId) {
+            if (newStatus === 'allowed') {
+              setScreenShareRequestStatus('allowed');
+              toast.success('🎉 Screen share request approved! Click "Share Screen" to start sharing.');
+            } else if (newStatus === 'declined') {
+              setScreenShareRequestStatus('declined');
+              toast.error('❌ Screen share request was declined.');
+              setTimeout(() => setScreenShareRequestStatus('none'), 5000);
             }
           }
         }
@@ -888,6 +947,7 @@ export function MainStageEnhanced() {
     if (!localPeer) return;
     try {
       setRequestStatus('none');
+      setScreenShareRequestStatus('none');
       requestSentRef.current = false;
 
       await hmsActions.setLocalAudioEnabled(false);
@@ -1147,7 +1207,7 @@ export function MainStageEnhanced() {
       {isPureSpeaker && requestStatus !== 'live' && (
         <StageRequestBanner
           requestStatus={requestStatus}
-          isConnected={isConnected}
+          isConnected={!!isConnected}
           isConnecting={hmsConnecting}
           connectionError={roomError}
           isRefreshingUser={isRefreshingUser}
@@ -1339,15 +1399,57 @@ export function MainStageEnhanced() {
                     {isVideoEnabled ? <Video className="h-4 w-4" /> : <VideoOff className="h-4 w-4" />}
                     {isVideoEnabled ? 'Stop Cam' : 'Start Cam'}
                   </Button>
-                  <Button
-                    variant={amIScreenSharing ? 'secondary' : 'outline'}
-                    size="sm"
-                    onClick={toggleScreen}
-                    className="gap-2"
-                  >
-                    <Share2 className="h-4 w-4" />
-                    {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
-                  </Button>
+                  {isHost || isModerator || isAdmin ? (
+                    <Button
+                      variant={amIScreenSharing ? 'secondary' : 'outline'}
+                      size="sm"
+                      onClick={toggleScreen}
+                      className="gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
+                    </Button>
+                  ) : screenShareRequestStatus === 'none' ? (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={requestScreenShare}
+                      className="gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      Request Screen Share
+                    </Button>
+                  ) : screenShareRequestStatus === 'pending' ? (
+                    <Button
+                      variant="secondary"
+                      size="sm"
+                      disabled
+                      className="gap-2"
+                    >
+                      <Loader2 className="h-4 w-4 animate-spin" />
+                      Request Pending...
+                    </Button>
+                  ) : screenShareRequestStatus === 'allowed' ? (
+                    <Button
+                      variant={amIScreenSharing ? 'secondary' : 'outline'}
+                      size="sm"
+                      onClick={toggleScreen}
+                      className="gap-2"
+                    >
+                      <Share2 className="h-4 w-4" />
+                      {amIScreenSharing ? 'Stop Share' : 'Share Screen'}
+                    </Button>
+                  ) : (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      disabled
+                      className="gap-2"
+                    >
+                      <XCircle className="h-4 w-4" />
+                      Share Declined
+                    </Button>
+                  )}
                   {isOrganizer && (
                     <Button
                       variant="destructive"

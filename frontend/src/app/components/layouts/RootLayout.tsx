@@ -50,12 +50,7 @@ export function RootLayout() {
       path: '/pitch',
       label: 'Startup Pitch',
       icon: Rocket,
-      roles: [
-        USER_ROLES.STARTUP_PARTICIPANT,
-        USER_ROLES.ORGANIZER,
-        USER_ROLES.ADMIN,
-        USER_ROLES.ATTENDEE,
-      ],
+      roles: [],
     },
     {
       path: '/organizer',

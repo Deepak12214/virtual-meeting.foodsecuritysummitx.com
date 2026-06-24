@@ -166,12 +166,7 @@ export function Dashboard() {
       color: 'from-lime-500 to-green-600',
       hoverBorder: 'hover:border-lime-500/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-lime-500/5',
-      roles: [
-        USER_ROLES.STARTUP_PARTICIPANT,
-        USER_ROLES.ORGANIZER,
-        USER_ROLES.ADMIN,
-        USER_ROLES.ATTENDEE,
-      ],
+      roles: [],
     },
   ];
 

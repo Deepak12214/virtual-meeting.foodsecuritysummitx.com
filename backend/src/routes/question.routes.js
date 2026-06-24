@@ -22,7 +22,7 @@ router.post('/', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
     if (meeting.status === 'completed') {
-      return res.status(400).json({ success: false, message: 'Cannot ask questions on a completed stage' });
+      return res.status(400).json({ success: false, message: 'Cannot ask questions on a while stage is offline' });
     }
 
     // Cooldown check: 2 minutes limit per user
