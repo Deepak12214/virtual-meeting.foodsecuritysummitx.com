@@ -611,4 +611,36 @@ router.post('/:id/lobby/deny', protectUser, async (req, res) => {
   }
 });
 
+
+router.delete('/:id', protectUser, async (req, res) => {
+  try {
+    const meeting = await Meeting.findById(req.params.id);
+    if (!meeting) {
+      return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    // Prevent deletion of permanent stage rooms
+    if (meeting.stageType === 'main_stage' || meeting.stageType === 'pitch') {
+      return res.status(403).json({ success: false, message: 'Stage rooms cannot be deleted. Use the dashboard to stop them.' });
+    }
+
+    const isAuthorized =
+      req.user.role === USER_ROLES.ADMIN ||
+      meeting.creator.toString() === req.user._id.toString();
+
+    if (!isAuthorized) {
+      return res.status(403).json({ success: false, message: 'Only the creator or an admin can delete this meeting' });
+    }
+
+    // Clean up all associated questions
+    await Question.deleteMany({ meetingId: meeting._id });
+
+    await Meeting.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ success: true, message: `Meeting "${meeting.title}" has been permanently deleted` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

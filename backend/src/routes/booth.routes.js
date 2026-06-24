@@ -717,4 +717,27 @@ router.get('/:id/leads', protectUser, async (req, res) => {
   }
 });
 
+
+router.delete('/:id', protectUser, async (req, res) => {
+  try {
+    const booth = await Booth.findById(req.params.id);
+    if (!booth) {
+      return res.status(404).json({ success: false, message: 'Booth not found' });
+    }
+
+    if (!isRepresentative(booth, req.user)) {
+      return res.status(403).json({ success: false, message: 'Only the booth representative or an admin can delete this booth' });
+    }
+
+    // Delete all associated BoothMeeting documents
+    await BoothMeeting.deleteMany({ booth: booth._id });
+
+    await Booth.findByIdAndDelete(req.params.id);
+
+    res.status(200).json({ success: true, message: `Booth "${booth.name}" has been permanently deleted` });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 module.exports = router;

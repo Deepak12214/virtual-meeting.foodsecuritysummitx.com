@@ -5,8 +5,27 @@ import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
 import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
-import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus, X } from 'lucide-react';
+import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus, X, Trash2 } from 'lucide-react';
 import { fetchBooths, createBooth, uploadGenericFile, getImageUrl, type Booth } from '../services/boothService';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function deleteBooth(boothId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/booths/${boothId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete booth');
+}
 import { useAuth } from '../context/AuthContext';
 import { USER_ROLES } from '../constants/roles';
 import { toast } from 'sonner';
@@ -94,7 +113,7 @@ export function ExhibitionHall() {
   const userHasBooth = user && booths.some((b) =>
     b.representatives && b.representatives.some((r) => {
       const repId = typeof r === 'object' ? (r._id || r.id) : r;
-      const currentUserId = user._id || user.id;
+      const currentUserId = user.id;
       return String(repId) === String(currentUserId);
     })
   );
@@ -221,7 +240,7 @@ export function ExhibitionHall() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {sponsorBooths.map((booth) => (
-              <BoothCard key={booth.id} booth={booth} getTierIcon={getTierIcon} getTierBadge={getTierBadge} />
+              <BoothCard key={booth.id} booth={booth} getTierIcon={getTierIcon} getTierBadge={getTierBadge} isAdmin={user?.role === 'admin'} userId={user?.id ?? user?.id ?? ''} onDelete={() => { deleteBooth(booth.id).then(() => { toast.success('Booth deleted'); loadBooths(); }).catch((e: any) => toast.error(e.message)); }} />
             ))}
           </div>
         </div>
@@ -236,7 +255,7 @@ export function ExhibitionHall() {
           </h2>
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
             {exhibitorBooths.map((booth) => (
-              <BoothCard key={booth.id} booth={booth} getTierIcon={getTierIcon} getTierBadge={getTierBadge} />
+              <BoothCard key={booth.id} booth={booth} getTierIcon={getTierIcon} getTierBadge={getTierBadge} isAdmin={user?.role === 'admin'} userId={user?.id ?? user?.id ?? ''} onDelete={() => { deleteBooth(booth.id).then(() => { toast.success('Booth deleted'); loadBooths(); }).catch((e: any) => toast.error(e.message)); }} />
             ))}
           </div>
         </div>
@@ -359,11 +378,29 @@ function BoothCard({
   booth,
   getTierIcon,
   getTierBadge,
+  isAdmin,
+  userId,
+  onDelete,
 }: {
   booth: Booth;
   getTierIcon: (tier?: string) => ReactNode;
   getTierBadge: (tier?: string) => ReactNode;
+  isAdmin?: boolean;
+  userId?: string;
+  onDelete?: () => void;
 }) {
+  // Show delete button to admins OR to the user who is a representative of this booth
+  const isRep = userId && booth.representatives?.some((r) => {
+    const repId = typeof r === 'object' ? (r._id || r.id) : r;
+    return String(repId) === String(userId);
+  });
+  const canDelete = isAdmin || isRep;
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (!window.confirm(`Delete booth "${booth.name}"? This is permanent and cannot be undone.`)) return;
+    onDelete?.();
+  };
   return (
     <Link to={`/exhibition/${booth.id}`} className="no-underline group block h-full">
       <Card className="border-[--color-border] bg-[--color-surface] hover:border-emerald-500/30 hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-350 h-full flex flex-col justify-between shadow-sm">
@@ -413,10 +450,21 @@ function BoothCard({
               </div>
             </div>
 
-            <Badge variant="secondary" className="gap-1 h-5 px-1.5 bg-slate-500/10 border-transparent hover:bg-slate-500/15 text-[10px] font-medium text-[--color-text-secondary]">
-              <Eye className="h-3 w-3 text-indigo-400" />
-              <span>{booth.visitCount} Views</span>
-            </Badge>
+            <div className="flex items-center gap-2">
+              <Badge variant="secondary" className="gap-1 h-5 px-1.5 bg-slate-500/10 border-transparent hover:bg-slate-500/15 text-[10px] font-medium text-[--color-text-secondary]">
+                <Eye className="h-3 w-3 text-indigo-400" />
+                <span>{booth.visitCount} Views</span>
+              </Badge>
+              {canDelete && (
+                <button
+                  onClick={handleDelete}
+                  title="Delete booth"
+                  className="h-6 w-6 flex items-center justify-center rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                >
+                  <Trash2 className="h-3 w-3" />
+                </button>
+              )}
+            </div>
           </div>
         </CardContent>
       </Card>

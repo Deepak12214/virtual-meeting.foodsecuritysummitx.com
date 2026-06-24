@@ -14,7 +14,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '../components/ui/dialog';
-import { Calendar, Clock, Users, Video, AlertCircle, Plus, Share2, Play, Sparkles, Shield, Hourglass } from 'lucide-react';
+import { Calendar, Clock, Users, Video, AlertCircle, Plus, Share2, Play, Sparkles, Shield, Hourglass, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchMeetings,
@@ -22,6 +22,25 @@ import {
   type Meeting,
   type CreateMeetingPayload,
 } from '../services/meetingService';
+
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
+
+function getAuthHeaders(): HeadersInit {
+  const token = localStorage.getItem('token');
+  return {
+    'Content-Type': 'application/json',
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+}
+
+async function deleteMeeting(meetingId: string): Promise<void> {
+  const res = await fetch(`${API_URL}/meetings/${meetingId}`, {
+    method: 'DELETE',
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to delete meeting');
+}
 
 // Helper to calculate initial rounded schedule date (now + 10 mins)
 const getNextRoundedTime = () => {
@@ -409,6 +428,14 @@ export function MeetingRooms() {
                     key={meeting._id ?? meeting.id}
                     meeting={meeting}
                     onShare={handleShare}
+                    isAdmin={user?.role === 'admin'}
+                    userId={user?.id ?? user?.id ?? ''}
+                    onDelete={() => {
+                      deleteMeeting(meeting._id ?? meeting.id ?? '').then(() => {
+                        toast.success('Meeting deleted');
+                        loadMeetings();
+                      }).catch((e: any) => toast.error(e.message));
+                    }}
                   />
                 ))}
               </div>
@@ -443,6 +470,14 @@ export function MeetingRooms() {
                     meeting={meeting}
                     currentTime={currentTime}
                     onShare={handleShare}
+                    isAdmin={user?.role === 'admin'}
+                    userId={user?.id ?? user?.id ?? ''}
+                    onDelete={() => {
+                      deleteMeeting(meeting._id ?? meeting.id ?? '').then(() => {
+                        toast.success('Meeting deleted');
+                        loadMeetings();
+                      }).catch((e: any) => toast.error(e.message));
+                    }}
                   />
                 ))}
               </div>
@@ -458,10 +493,21 @@ export function MeetingRooms() {
 function ActiveMeetingRow({
   meeting,
   onShare,
+  isAdmin,
+  userId,
+  onDelete,
 }: {
   meeting: Meeting;
   onShare: (meeting: Meeting) => void;
+  isAdmin?: boolean;
+  userId?: string;
+  onDelete?: () => void;
 }) {
+  const canDelete = isAdmin || (userId && meeting.creator?._id === userId) || (userId && (meeting.creator as any) === userId);
+  const handleDelete = () => {
+    if (!window.confirm(`Delete meeting "${meeting.title}"? This is permanent.`)) return;
+    onDelete?.();
+  };
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl p-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 hover:border-emerald-500/35 transition-all duration-300 hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden group">
       {/* Decorative vertical colored stripe on the left */}
@@ -528,6 +574,16 @@ function ActiveMeetingRow({
         >
           <Share2 className="h-4 w-4" />
         </Button>
+        {canDelete && (
+          <Button
+            variant="outline"
+            onClick={handleDelete}
+            title="Delete meeting"
+            className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl p-4.5 cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
@@ -538,11 +594,22 @@ function ScheduledMeetingRow({
   meeting,
   currentTime,
   onShare,
+  isAdmin,
+  userId,
+  onDelete,
 }: {
   meeting: Meeting;
   currentTime: number;
   onShare: (meeting: Meeting) => void;
+  isAdmin?: boolean;
+  userId?: string;
+  onDelete?: () => void;
 }) {
+  const canDelete = isAdmin || (userId && meeting.creator?._id === userId) || (userId && (meeting.creator as any) === userId);
+  const handleDelete = () => {
+    if (!window.confirm(`Delete scheduled meeting "${meeting.title}"? This is permanent.`)) return;
+    onDelete?.();
+  };
   const date = new Date(meeting.scheduledTime);
   const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const formattedDate = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
@@ -608,6 +675,17 @@ function ScheduledMeetingRow({
             Enter Lobby
           </Button>
         </Link>
+
+        {canDelete && (
+          <Button
+            variant="outline"
+            onClick={handleDelete}
+            title="Delete meeting"
+            className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl py-4.5 px-4 cursor-pointer"
+          >
+            <Trash2 className="h-4 w-4" />
+          </Button>
+        )}
       </div>
     </div>
   );
