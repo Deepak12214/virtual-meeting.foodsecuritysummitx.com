@@ -19,6 +19,7 @@ import {
   selectIsLocalVideoEnabled,
   selectIsPeerAudioEnabled,
   selectIsPeerVideoEnabled,
+  selectTracksMap,
   useVideo,
   HMSPeer,
   useHMSNotifications,
@@ -475,6 +476,7 @@ export function MainStageEnhanced() {
   const peers = useHMSStore(selectPeers);
   const localPeer = useHMSStore(selectLocalPeer);
   const amIScreenSharing = useHMSStore(selectIsLocalScreenShared);
+  const tracks = useHMSStore(selectTracksMap);
 
   // Stage room
   const [stageMeeting, setStageMeeting] = useState<Meeting | null>(null);
@@ -1062,9 +1064,17 @@ export function MainStageEnhanced() {
         try {
           const meta = JSON.parse(p.metadata || '{}');
           const pRole = meta.platformRole;
-          if (pRole === USER_ROLES.ADMIN || pRole === USER_ROLES.ORGANIZER) return false;
+          // If it is admin, organizer, host, or moderator, they appear on stage ONLY when their camera or microphone is enabled (unmuted)
+          if (
+            pRole === USER_ROLES.ADMIN ||
+            pRole === USER_ROLES.HOST ||
+            pRole === USER_ROLES.MODERATOR
+          ) {
+            const audioTrackEnabled = p.audioTrack ? tracks[p.audioTrack]?.enabled : false;
+            const videoTrackEnabled = p.videoTrack ? tracks[p.videoTrack]?.enabled : false;
+            return audioTrackEnabled || videoTrackEnabled;
+          }
         } catch {}
-        if (p.isLocal && (isAdmin || isOrganizer)) return false;
         return true;
       }
       return false;
@@ -1124,7 +1134,10 @@ export function MainStageEnhanced() {
   const showBroadcasterControls =
     isConnected &&
     (
-      ((localHmsRole === 'broadcaster' || isAdmin || isOrganizer) && !hasLiveSpeakers) ||
+      localHmsRole === 'broadcaster' ||
+      isAdmin ||
+      isHost ||
+      isModerator ||
       (localHmsRole === 'viewer-on-stage' && requestStatus === 'live')
     );
 
