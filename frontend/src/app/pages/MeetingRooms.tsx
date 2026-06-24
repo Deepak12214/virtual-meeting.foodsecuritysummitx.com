@@ -15,6 +15,17 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '../components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
 import { Calendar, Clock, Users, Video, Plus, Share2, Play, Sparkles, Shield, Hourglass, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -505,10 +516,6 @@ function ActiveMeetingRow({
   onDelete?: () => void;
 }) {
   const canDelete = isAdmin || (userId && meeting.creator?._id === userId) || (userId && (meeting.creator as any) === userId);
-  const handleDelete = () => {
-    if (!window.confirm(`Delete meeting "${meeting.title}"? This is permanent.`)) return;
-    onDelete?.();
-  };
   return (
     <div className="bg-card text-card-foreground border border-border rounded-xl p-5 hover:bg-slate-50/50 dark:hover:bg-slate-900/50 hover:border-emerald-500/35 transition-all duration-300 hover:shadow-md flex flex-col md:flex-row md:items-center justify-between gap-5 relative overflow-hidden group">
       {/* Decorative vertical colored stripe on the left */}
@@ -576,14 +583,34 @@ function ActiveMeetingRow({
           <Share2 className="h-4 w-4" />
         </Button>
         {canDelete && (
-          <Button
-            variant="outline"
-            onClick={handleDelete}
-            title="Delete meeting"
-            className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl p-4.5 cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                title="Delete meeting"
+                className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl p-4.5 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete meeting "{meeting.title}"? This is permanent and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete?.()}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </div>
@@ -607,10 +634,6 @@ function ScheduledMeetingRow({
   onDelete?: () => void;
 }) {
   const canDelete = isAdmin || (userId && meeting.creator?._id === userId) || (userId && (meeting.creator as any) === userId);
-  const handleDelete = () => {
-    if (!window.confirm(`Delete scheduled meeting "${meeting.title}"? This is permanent.`)) return;
-    onDelete?.();
-  };
   const date = new Date(meeting.scheduledTime);
   const formattedTime = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const formattedDate = date.toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
@@ -678,14 +701,34 @@ function ScheduledMeetingRow({
         </Link>
 
         {canDelete && (
-          <Button
-            variant="outline"
-            onClick={handleDelete}
-            title="Delete meeting"
-            className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl py-4.5 px-4 cursor-pointer"
-          >
-            <Trash2 className="h-4 w-4" />
-          </Button>
+          <AlertDialog>
+            <AlertDialogTrigger asChild>
+              <Button
+                variant="outline"
+                title="Delete meeting"
+                className="border-red-500/20 hover:bg-red-500/10 text-red-500 hover:text-red-600 rounded-xl py-4.5 px-4 cursor-pointer"
+              >
+                <Trash2 className="h-4 w-4" />
+              </Button>
+            </AlertDialogTrigger>
+            <AlertDialogContent>
+              <AlertDialogHeader>
+                <AlertDialogTitle>Delete Meeting</AlertDialogTitle>
+                <AlertDialogDescription>
+                  Are you sure you want to delete scheduled meeting "{meeting.title}"? This is permanent and cannot be undone.
+                </AlertDialogDescription>
+              </AlertDialogHeader>
+              <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction
+                  onClick={() => onDelete?.()}
+                  className="bg-red-600 hover:bg-red-700 text-white"
+                >
+                  Delete
+                </AlertDialogAction>
+              </AlertDialogFooter>
+            </AlertDialogContent>
+          </AlertDialog>
         )}
       </div>
     </div>

@@ -7,6 +7,17 @@ import { Input } from '../components/ui/input';
 import { Textarea } from '../components/ui/textarea';
 import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus, X, Trash2 } from 'lucide-react';
 import { fetchBooths, createBooth, uploadGenericFile, getImageUrl, type Booth } from '../services/boothService';
+import {
+  AlertDialog,
+  AlertDialogTrigger,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogFooter,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogAction,
+  AlertDialogCancel,
+} from '../components/ui/alert-dialog';
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -210,8 +221,8 @@ export function ExhibitionHall() {
         </div>
         <div className="flex gap-1.5 shrink-0">
           {[
-            { id: 'all' as const, label: 'All Showcase' },
-            { id: 'sponsor' as const, label: 'Sponsors' },
+            // { id: 'all' as const, label: 'All Showcase' },
+            // { id: 'sponsor' as const, label: 'Sponsors' },
             { id: 'exhibitor' as const, label: 'Exhibitors' },
           ].map((cat) => (
             <Button
@@ -231,7 +242,6 @@ export function ExhibitionHall() {
         </div>
       </div>
 
-      {/* Sponsor Booths (Featured Section) */}
       {sponsorBooths.length > 0 && (
         <div className="space-y-4 pt-2">
           <h2 className="text-lg font-bold text-[--color-text] flex items-center gap-2">
@@ -310,7 +320,7 @@ export function ExhibitionHall() {
                     className="w-full h-10 px-3 rounded-lg border border-slate-300 bg-white text-slate-900 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500"
                   >
                     <option value="exhibitor" className="bg-white text-slate-900">Exhibitor</option>
-                    <option value="sponsor" className="bg-white text-slate-900">Sponsor</option>
+                    {/* <option value="sponsor" className="bg-white text-slate-900">Sponsor</option> */}
                   </select>
                 </div>
 
@@ -395,12 +405,7 @@ function BoothCard({
     return String(repId) === String(userId);
   });
   const canDelete = isAdmin || isRep;
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (!window.confirm(`Delete booth "${booth.name}"? This is permanent and cannot be undone.`)) return;
-    onDelete?.();
-  };
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   return (
     <Link to={`/exhibition/${booth.id}`} className="no-underline group block h-full">
       <Card className="border-[--color-border] bg-[--color-surface] hover:border-emerald-500/30 hover:shadow-emerald-500/5 hover:-translate-y-1 transition-all duration-350 h-full flex flex-col justify-between shadow-sm">
@@ -456,13 +461,57 @@ function BoothCard({
                 <span>{booth.visitCount} Views</span>
               </Badge>
               {canDelete && (
-                <button
-                  onClick={handleDelete}
-                  title="Delete booth"
-                  className="h-6 w-6 flex items-center justify-center rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
-                >
-                  <Trash2 className="h-3 w-3" />
-                </button>
+                <>
+                  <button
+                    onClick={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setIsDeleteDialogOpen(true);
+                    }}
+                    title="Delete booth"
+                    className="h-6 w-6 flex items-center justify-center rounded-md bg-red-500/10 hover:bg-red-500/20 border border-red-500/20 text-red-500 hover:text-red-600 transition-colors cursor-pointer"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+
+                  <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+                    <AlertDialogContent
+                      onClick={(e) => {
+                        e.preventDefault();
+                        e.stopPropagation();
+                      }}
+                    >
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Booth</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete booth "{booth.name}"? This is permanent and cannot be undone.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            setIsDeleteDialogOpen(false);
+                          }}
+                        >
+                          Cancel
+                        </AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={(e) => {
+                            e.preventDefault();
+                            e.stopPropagation();
+                            onDelete?.();
+                            setIsDeleteDialogOpen(false);
+                          }}
+                          className="bg-red-600 hover:bg-red-700 text-white"
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                </>
               )}
             </div>
           </div>
