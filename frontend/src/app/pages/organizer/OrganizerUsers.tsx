@@ -28,6 +28,7 @@ import {
   TableRow,
   TableCell,
 } from '../../components/ui/table';
+import { USER_ROLES, ALL_ROLES, ROLE_COLORS, getRoleLabel, UserRole } from '../../constants/roles';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -36,7 +37,7 @@ interface AdminUser {
   name: string;
   email: string;
   phone?: string;
-  role: string;
+  role: UserRole;
   company?: string;
   isApproved: boolean;
   isActive: boolean;
@@ -50,21 +51,7 @@ interface Stats {
   total: number;
 }
 
-// ─── Role config ──────────────────────────────────────────────────────────────
-
-const ROLE_COLORS: Record<string, string> = {
-  admin: 'bg-red-500/15 text-red-600 border-red-500/30',
-  organizer: 'bg-purple-500/15 text-purple-600 border-purple-500/30',
-  speaker: 'bg-indigo-500/15 text-indigo-600 border-indigo-500/30',
-  exhibitor: 'bg-teal-500/15 text-teal-600 border-teal-500/30',
-  startup_participant: 'bg-yellow-500/15 text-yellow-700 border-yellow-500/30',
-  sponsor: 'bg-rose-500/15 text-rose-600 border-rose-500/30',
-  attendee: 'bg-gray-500/15 text-gray-600 border-gray-500/30',
-};
-
-const ALL_ROLES = [
-  'admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee',
-];
+// ROLE_COLORS aur ALL_ROLES ab constants/roles.ts se import ho rahe hain
 
 const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
@@ -80,7 +67,7 @@ function getAuthHeaders(): HeadersInit {
 
 export function OrganizerUsers() {
   const { user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'admin';
+  const isAdmin = currentUser?.role === USER_ROLES.ADMIN;
 
   const [allUsers, setAllUsers] = useState<AdminUser[]>([]);
   const [stats, setStats] = useState<Stats>({ pending: 0, approved: 0, total: 0 });
@@ -179,8 +166,8 @@ export function OrganizerUsers() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.message);
 
-      setAllUsers((prev) => prev.map((u) => u._id === userId ? { ...u, role: newRole } : u));
-      toast.success(`Role updated to "${newRole.replace('_', ' ')}"`);
+      setAllUsers((prev) => prev.map((u) => u._id === userId ? { ...u, role: newRole as UserRole } : u));
+      toast.success(`Role updated to "${getRoleLabel(newRole)}"`);
     } catch (err: any) {
       toast.error(err.message || 'Failed to update role');
     } finally {

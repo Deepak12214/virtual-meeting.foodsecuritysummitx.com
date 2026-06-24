@@ -2,10 +2,11 @@ const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
 const { protectUser } = require('../middleware/auth');
+const { ALL_ROLES, USER_ROLES } = require('../constants/roles');
 
 // ─── Middleware: Only admins and organizers ───────────────────────────────────
 const requireAdminOrOrganizer = (req, res, next) => {
-  if (!['admin', 'organizer'].includes(req.user.role)) {
+  if (![USER_ROLES.ADMIN, USER_ROLES.ORGANIZER].includes(req.user.role)) {
     return res.status(403).json({
       success: false,
       message: 'Access denied. Admin or Organizer role required.',
@@ -136,14 +137,13 @@ router.patch('/users/:id/reject', protectUser, requireAdminOrOrganizer, async (r
 // @access  Admin only
 router.patch('/users/:id/role', protectUser, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== USER_ROLES.ADMIN) {
       return res.status(403).json({ success: false, message: 'Only admins can change user roles' });
     }
 
     const { role } = req.body;
-    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor', 'sub_exhibitor'];
 
-    if (!role || !validRoles.includes(role)) {
+    if (!role || !ALL_ROLES.includes(role)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });
     }
 
@@ -175,7 +175,7 @@ router.patch('/users/:id/role', protectUser, async (req, res) => {
 // @access  Admin only
 router.patch('/users/:id/toggle-active', protectUser, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== USER_ROLES.ADMIN) {
       return res.status(403).json({ success: false, message: 'Only admins can deactivate users' });
     }
 
@@ -207,7 +207,7 @@ router.patch('/users/:id/toggle-active', protectUser, async (req, res) => {
 // @access  Admin only
 router.delete('/users/:id', protectUser, async (req, res) => {
   try {
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== USER_ROLES.ADMIN) {
       return res.status(403).json({ success: false, message: 'Only admins can delete users' });
     }
 

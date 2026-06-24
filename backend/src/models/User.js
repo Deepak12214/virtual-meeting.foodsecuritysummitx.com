@@ -1,5 +1,6 @@
 const mongoose = require('mongoose');
 const bcrypt = require('bcryptjs');
+const { ALL_ROLES, USER_ROLES } = require('../constants/roles');
 
 const userSchema = new mongoose.Schema(
   {
@@ -28,20 +29,8 @@ const userSchema = new mongoose.Schema(
     role: {
       type: String,
       required: [true, 'Role is required'],
-      enum: [
-        'admin',
-        'organizer',
-        'speaker',
-        'exhibitor',
-        'startup_participant',
-        'sponsor',
-        'attendee',
-        'host',
-        'moderator',
-        'investor',
-        'sub_exhibitor'
-      ],
-      default: 'attendee',
+      enum: ALL_ROLES,
+      default: USER_ROLES.ATTENDEE,
     },
     company: {
       type: String,

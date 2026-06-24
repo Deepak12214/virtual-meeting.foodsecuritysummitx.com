@@ -1,17 +1,10 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import { USER_ROLES, UserRole } from '../constants/roles';
 
-export type UserRole =
-  | 'admin'
-  | 'organizer'
-  | 'speaker'
-  | 'exhibitor'
-  | 'startup_participant'
-  | 'sponsor'
-  | 'attendee'
-  | 'host'
-  | 'moderator'
-  | 'investor'
-  | 'sub_exhibitor';
+// Re-export for backward compatibility (jahan se pehle import hota tha)
+export type { UserRole };
+export { USER_ROLES };
+
 
 export interface User {
   id: string;

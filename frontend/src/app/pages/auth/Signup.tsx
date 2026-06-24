@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
-import { useAuth, UserRole } from '../../context/AuthContext';
+import { useAuth } from '../../context/AuthContext';
+import type { UserRole } from '../../constants/roles';
+import { USER_ROLES, SIGNUP_ROLE_OPTIONS } from '../../constants/roles';
 import { Button } from '../../components/ui/button';
 import { Input } from '../../components/ui/input';
 import { Label } from '../../components/ui/label';
@@ -20,7 +22,7 @@ export function Signup() {
     countryCode: '+91',
     phone: '',
     password: '',
-    role: 'attendee' as UserRole,
+    role: USER_ROLES.ATTENDEE as UserRole,
     company: '',
   });
 
@@ -96,18 +98,7 @@ export function Signup() {
     };
   }, [formData.role, formData.company]);
 
-  const roleOptions = [
-    { value: 'attendee', label: 'Attendee', description: 'Full event access and networking' },
-    { value: 'organizer', label: 'Organizer', description: 'Manage events, sessions, and booths' },
-    { value: 'speaker', label: 'Speaker', description: 'Present at main stage' },
-    { value: 'exhibitor', label: 'Exhibitor', description: 'Showcase products and services' },
-    { value: 'startup_participant', label: 'Startup Participant', description: 'Pitch and display your startup' },
-    { value: 'sponsor', label: 'Sponsor', description: 'Premium booth and visibility' },
-    { value: 'investor', label: 'Investor', description: 'Watch pitches and evaluate startups' },
-    { value: 'admin', label: 'Admin', description: 'Full platform administrative control' },
-    { value: 'sub_exhibitor', label: 'Sub-Exhibitor', description: 'Manage booth meetings and leads' },
-  ];
-
+  // roleOptions ab constants/roles.ts ke SIGNUP_ROLE_OPTIONS se import ho rahe hain
 
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -372,7 +363,7 @@ export function Signup() {
             </div>
           )}
 
-          {formData.role && formData.role !== 'attendee' && !showOtpScreen && (
+          {formData.role && formData.role !== USER_ROLES.ATTENDEE && !showOtpScreen && (
             <div className="mt-4 p-3.5 bg-sky-500/10 rounded-xl border border-sky-500/25">
               <p className="text-[11px] text-sky-600 dark:text-sky-400 font-semibold leading-relaxed">
                 Your account will be pending approval by an organizer before you can access premium features.

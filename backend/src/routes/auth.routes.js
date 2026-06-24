@@ -4,6 +4,7 @@ const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const { sendEmail } = require('../utils/mailer');
 const { protectUser } = require('../middleware/auth');
+const { ALL_ROLES, AUTO_APPROVE_ROLES, USER_ROLES } = require('../constants/roles');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -17,22 +18,20 @@ const generateToken = (id) => {
 router.post('/register', async (req, res) => {
   try {
     const { name, email, phone, password, role, company } = req.body;
-    const finalRole = role || 'attendee';
+    const finalRole = role || USER_ROLES.ATTENDEE;
 
     if (!name || !email || !phone || !password) {
       return res.status(400).json({ success: false, message: 'Please provide name, email, phone and password' });
     }
 
-    const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor', 'sub_exhibitor'];
-    if (!validRoles.includes(finalRole)) {
+    if (!ALL_ROLES.includes(finalRole)) {
       return res.status(400).json({ success: false, message: 'Invalid role provided' });
     }
 
     const userExists = await User.findOne({ email });
     
     // Check if roles require approval
-    const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator', 'investor'];
-    const isApproved = autoApproveRoles.includes(finalRole);
+    const isApproved = AUTO_APPROVE_ROLES.includes(finalRole);
 
 
     if (userExists) {
@@ -305,14 +304,12 @@ router.post('/google-login', async (req, res) => {
       });
     } else {
       // Create new user with authProvider = 'google'
-      const finalRole = role || 'attendee';
-      const validRoles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee', 'host', 'moderator', 'investor', 'sub_exhibitor'];
-      if (!validRoles.includes(finalRole)) {
+      const finalRole = role || USER_ROLES.ATTENDEE;
+      if (!ALL_ROLES.includes(finalRole)) {
         return res.status(400).json({ success: false, message: 'Invalid role provided' });
       }
 
-      const autoApproveRoles = ['attendee', 'admin', 'organizer', 'host', 'moderator', 'investor'];
-      const isApproved = autoApproveRoles.includes(finalRole);
+      const isApproved = AUTO_APPROVE_ROLES.includes(finalRole);
 
       // Generate a random dummy password because schema requires it
       const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);

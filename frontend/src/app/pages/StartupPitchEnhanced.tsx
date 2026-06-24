@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { useBlocker } from 'react-router';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
@@ -472,15 +473,15 @@ export function StartupPitchEnhanced() {
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
   // Role checks
-  const canAccess   = hasAccess(['startup_participant', 'organizer', 'admin', 'host', 'moderator', 'speaker', 'attendee', 'sponsor', 'exhibitor', 'investor']);
-  const isAdmin     = user?.role === 'admin';
-  const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost      = user?.role === 'host' || user?.role === 'moderator' || isOrganizer;
-  const isStartup   = user?.role === 'startup_participant';
-  const isInvestor  = user?.role === 'investor';
+  const canAccess   = hasAccess([USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.HOST, USER_ROLES.MODERATOR, USER_ROLES.SPEAKER, USER_ROLES.ATTENDEE, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR]);
+  const isAdmin     = user?.role === USER_ROLES.ADMIN;
+  const isOrganizer = user?.role === USER_ROLES.ORGANIZER || isAdmin;
+  const isHost      = user?.role === USER_ROLES.HOST || user?.role === USER_ROLES.MODERATOR || isOrganizer;
+  const isStartup   = user?.role === USER_ROLES.STARTUP_PARTICIPANT;
+  const isInvestor  = user?.role === USER_ROLES.INVESTOR;
 
   // A "pure startup participant" is someone who can request to go live (startup, sponsor, exhibitor, investor) and is NOT admin/organizer/host
-  const isPureStartup = !!user && ['startup_participant', 'sponsor', 'exhibitor', 'investor'].includes(user.role) && !isHost;
+  const isPureStartup = !!user && [USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR].includes(user.role as any) && !isHost;
 
   // Store selectors for local media state
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -988,7 +989,7 @@ export function StartupPitchEnhanced() {
         try {
           const meta = JSON.parse(p.metadata || '{}');
           const pRole = meta.platformRole;
-          if (pRole === 'admin' || pRole === 'organizer') return false;
+          if (pRole === USER_ROLES.ADMIN || pRole === USER_ROLES.ORGANIZER) return false;
         } catch {}
         if (p.isLocal && (isAdmin || isOrganizer)) return false;
         return true;

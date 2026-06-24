@@ -8,6 +8,7 @@ import { Textarea } from '../components/ui/textarea';
 import { Store, Search, Users, FileText, Video, Eye, Crown, Award, Medal, Loader2, Plus, X } from 'lucide-react';
 import { fetchBooths, createBooth, uploadGenericFile, getImageUrl, type Booth } from '../services/boothService';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { toast } from 'sonner';
 
 export function ExhibitionHall() {
@@ -100,7 +101,7 @@ export function ExhibitionHall() {
 
   const canCreate = user && 
     ['admin', 'exhibitor', 'sponsor'].includes(user.role) && 
-    (user.role === 'admin' || !userHasBooth);
+    (user.role === USER_ROLES.ADMIN || !userHasBooth);
 
   const handleCreateBooth = async (e: React.FormEvent) => {
     e.preventDefault();

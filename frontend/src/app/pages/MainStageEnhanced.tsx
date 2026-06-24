@@ -1,5 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { useBlocker } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -487,11 +488,11 @@ export function MainStageEnhanced() {
 
 
   // Role checks
-  const isAdmin = user?.role === 'admin';
-  const isOrganizer = user?.role === 'organizer' || isAdmin;
-  const isHost = user?.role === 'host' || isOrganizer;
-  const isModerator = user?.role === 'moderator' || isOrganizer;
-  const isSpeaker = user?.role === 'speaker' || isHost;
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
+  const isOrganizer = user?.role === USER_ROLES.ORGANIZER || isAdmin;
+  const isHost = user?.role === USER_ROLES.HOST || isOrganizer;
+  const isModerator = user?.role === USER_ROLES.MODERATOR || isOrganizer;
+  const isSpeaker = user?.role === USER_ROLES.SPEAKER || isHost;
   const canAskQ = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin', 'host', 'moderator', 'investor']);
 
   // A "pure speaker" is someone with the speaker role who is NOT also a host/admin/organizer
@@ -1001,7 +1002,7 @@ export function MainStageEnhanced() {
         try {
           const meta = JSON.parse(p.metadata || '{}');
           const pRole = meta.platformRole;
-          if (pRole === 'admin' || pRole === 'organizer') return false;
+          if (pRole === USER_ROLES.ADMIN || pRole === USER_ROLES.ORGANIZER) return false;
         } catch {}
         if (p.isLocal && (isAdmin || isOrganizer)) return false;
         return true;

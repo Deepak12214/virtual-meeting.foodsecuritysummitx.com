@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -37,9 +38,9 @@ export function MainStage() {
   const liveSession = MOCK_SESSIONS.find((s) => s.isLive);
   const upcomingSessions = MOCK_SESSIONS.filter((s) => s.status === 'upcoming');
 
-  const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
+  const isOrganizer = user?.role === USER_ROLES.ORGANIZER || user?.role === USER_ROLES.ADMIN;
   const isModerator = isOrganizer;
-  const isSpeaker = user?.role === 'speaker' || isOrganizer;
+  const isSpeaker = user?.role === USER_ROLES.SPEAKER || isOrganizer;
   const canAskQuestions = hasAccess(['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin']);
 
   const handleSubmitQuestion = () => {

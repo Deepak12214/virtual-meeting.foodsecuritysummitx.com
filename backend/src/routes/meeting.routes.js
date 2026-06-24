@@ -5,6 +5,7 @@ const Question = require('../models/Question');
 const StageEngagement = require('../models/StageEngagement');
 const { protectUser } = require('../middleware/auth');
 const { createRoom, generateJoinToken, mapPlatformRoleToHMSRole } = require('../utils/hms');
+const { USER_ROLES, ADMIN_LEVEL_ROLES } = require('../constants/roles');
 
 // Helper: Save stage engagement statistics before a meeting is ended / completed
 async function saveStageEngagementStats(meetingId) {
@@ -21,7 +22,7 @@ async function saveStageEngagementStats(meetingId) {
     if (meeting.stageType === 'pitch') {
       if (meeting.participants) {
         meeting.participants.forEach(p => {
-          if (p.role === 'startup_participant') {
+          if (p.role === USER_ROLES.STARTUP_PARTICIPANT) {
             stageCount++;
           } else {
             viewersCount++;
@@ -306,7 +307,7 @@ router.put('/:id', protectUser, async (req, res) => {
     }
 
     // Check if user is organizer or admin
-    if (req.user.role !== 'admin' && req.user.role !== 'organizer') {
+    if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this meeting' });
     }
 
@@ -355,7 +356,7 @@ router.post('/:id/token', protectUser, async (req, res) => {
     let hmsRole;
     if (
       meeting.creator.toString() === req.user._id.toString() ||
-      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role)
+      ADMIN_LEVEL_ROLES.includes(req.user.role)
     ) {
       hmsRole = 'broadcaster';
     } else {
@@ -421,7 +422,7 @@ router.post('/:id/end', protectUser, async (req, res) => {
     // Only creator, admin, organizer, host, or moderator can end meetings in DB
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
+      ADMIN_LEVEL_ROLES.includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'You are not authorized to end this meeting' });
@@ -517,7 +518,7 @@ router.get('/:id/lobby/requests', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
+      ADMIN_LEVEL_ROLES.includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to view waitlist requests' });
@@ -546,7 +547,7 @@ router.post('/:id/lobby/admit', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
+      ADMIN_LEVEL_ROLES.includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });
@@ -588,7 +589,7 @@ router.post('/:id/lobby/deny', protectUser, async (req, res) => {
 
     const isAuthorized = 
       meeting.creator.toString() === req.user._id.toString() || 
-      ['admin', 'organizer', 'host', 'moderator'].includes(req.user.role);
+      ADMIN_LEVEL_ROLES.includes(req.user.role);
 
     if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to manage lobby requests' });

@@ -3,6 +3,7 @@ const router = express.Router();
 const Question = require('../models/Question');
 const Meeting = require('../models/Meeting');
 const { protectUser } = require('../middleware/auth');
+const { USER_ROLES, ADMIN_LEVEL_ROLES } = require('../constants/roles');
 
 // @desc    Submit a question
 // @route   POST /api/questions
@@ -73,8 +74,8 @@ router.get('/', protectUser, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Meeting ID query parameter is required' });
     }
 
-    const isAdminOrHost = ['admin', 'organizer', 'host'].includes(req.user.role);
-    const isModerator = req.user.role === 'moderator';
+    const isAdminOrHost = [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER, USER_ROLES.HOST].includes(req.user.role);
+    const isModerator = req.user.role === USER_ROLES.MODERATOR;
 
     let query = { meetingId };
     if (isAdminOrHost) {
@@ -111,7 +112,7 @@ router.put('/:id/approve', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Question not found' });
     }
 
-    if (req.user.role === 'admin') {
+    if (req.user.role === USER_ROLES.ADMIN) {
       question.adminApproved = true;
       if (question.hostApproved) {
         question.status = 'approved';
@@ -125,7 +126,7 @@ router.put('/:id/approve', protectUser, async (req, res) => {
       });
     }
 
-    if (['host', 'organizer'].includes(req.user.role)) {
+    if ([USER_ROLES.HOST, USER_ROLES.ORGANIZER].includes(req.user.role)) {
       if (!question.adminApproved) {
         return res.status(400).json({ success: false, message: 'Question must be approved by Admin first' });
       }
@@ -151,8 +152,7 @@ router.put('/:id/approve', protectUser, async (req, res) => {
 // @access  Private
 router.delete('/:id', protectUser, async (req, res) => {
   try {
-    const allowedRejectRoles = ['admin', 'organizer', 'host', 'moderator'];
-    if (!allowedRejectRoles.includes(req.user.role)) {
+    if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Not authorized to moderate questions' });
     }
 

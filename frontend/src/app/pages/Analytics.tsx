@@ -38,6 +38,7 @@ import {
   ArrowRight
 } from 'lucide-react';
 import { fetchAnalytics, AnalyticsData } from '../services/analyticsService';
+import { getRoleLabel } from '../constants/roles';
 
 // Harmonic green and warm accent colors matching the app color combinations
 const CHART_COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#8b5cf6', '#ec4899', '#6366f1', '#14b8a6'];
@@ -327,7 +328,7 @@ export function Analytics() {
                           <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                           <td className="py-3 px-4">
                             <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold border ${getRoleBadgeColor(user.role)}`}>
-                              {user.role === 'startup_participant' ? 'Startup Participant' : user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                              {getRoleLabel(user.role)}
                             </span>
                           </td>
                           <td className="py-3 px-4 text-muted-foreground">{user.company || '—'}</td>

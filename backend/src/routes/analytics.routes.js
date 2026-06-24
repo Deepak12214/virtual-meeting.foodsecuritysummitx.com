@@ -6,10 +6,11 @@ const Question = require('../models/Question');
 const Booth = require('../models/Booth');
 const StageEngagement = require('../models/StageEngagement');
 const { protectUser } = require('../middleware/auth');
+const { USER_ROLES, ALL_ROLES, BOOTH_MANAGER_ROLES } = require('../constants/roles');
 
 // Middleware: Restrict access to roles: admin, organizer, exhibitor, sponsor
 const restrictAnalyticsAccess = (req, res, next) => {
-  const allowedRoles = ['admin', 'organizer', 'exhibitor', 'sponsor'];
+  const allowedRoles = [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR];
   if (!req.user || !allowedRoles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
@@ -250,7 +251,7 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
     const totalRegistrations = await User.countDocuments({ createdAt: { $gte: start, $lte: end } });
     const activeUsers = await User.countDocuments({ isActive: true });
 
-    const roles = ['admin', 'organizer', 'speaker', 'exhibitor', 'startup_participant', 'sponsor', 'attendee'];
+    const roles = ALL_ROLES;
     const userRolesAggregate = await User.aggregate([
       { $match: { createdAt: { $gte: start, $lte: end } } },
       { $group: { _id: '$role', count: { $sum: 1 } } }
@@ -265,11 +266,7 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
     });
 
     const roleData = Object.keys(roleCounts).map(role => {
-      let label = role;
-      if (role === 'startup_participant') label = 'Startup Participant';
-      else {
-        label = role.charAt(0).toUpperCase() + role.slice(1);
-      }
+      let label = role.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
       return { role: label, count: roleCounts[role] };
     });
 
@@ -404,7 +401,7 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
     if (activePitchStage) {
       if (activePitchStage.participants) {
         activePitchStage.participants.forEach(p => {
-          if (p.role === 'startup_participant') {
+          if (p.role === USER_ROLES.STARTUP_PARTICIPANT) {
             pitchStageJoiners++;
           } else {
             pitchStageViewers++;
@@ -428,7 +425,7 @@ router.get('/', protectUser, restrictAnalyticsAccess, async (req, res) => {
       .limit(5);
     usersTimeline.forEach(u => {
       timeline.push({
-        action: `New registered ${u.role === 'attendee' ? 'attendee' : u.role.replace('_', ' ')}`,
+        action: `New registered ${u.role.replace(/_/g, ' ')}`,
         user: u.email,
         timestamp: u.createdAt,
         time: formatTimeAgo(u.createdAt)

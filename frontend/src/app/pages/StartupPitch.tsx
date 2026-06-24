@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -25,9 +26,9 @@ export function StartupPitch() {
   const [pitchTimer, setPitchTimer] = useState(300); // 5 minutes in seconds
 
   const canAccessPitch = hasAccess(['startup_participant', 'organizer', 'admin']);
-  const isOrganizer = user?.role === 'organizer' || user?.role === 'admin';
+  const isOrganizer = user?.role === USER_ROLES.ORGANIZER || user?.role === USER_ROLES.ADMIN;
   const isModerator = isOrganizer;
-  const isStartup = user?.role === 'startup_participant';
+  const isStartup = user?.role === USER_ROLES.STARTUP_PARTICIPANT;
   const isInvestor = false;
 
   if (!canAccessPitch) {

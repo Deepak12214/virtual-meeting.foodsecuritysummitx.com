@@ -8,6 +8,7 @@ const BoothMeeting = require('../models/BoothMeeting');
 const User = require('../models/User');
 const { protectUser } = require('../middleware/auth');
 const { createRoom, generateJoinToken } = require('../utils/hms');
+const { USER_ROLES, BOOTH_MANAGER_ROLES } = require('../constants/roles');
 
 // ─── Multer File Upload Configuration ─────────────────────────────────────────
 const storage = multer.diskStorage({
@@ -52,7 +53,7 @@ router.post('/upload-file', protectUser, upload.single('file'), async (req, res)
 // ─── Helper function to verify representative status ─────────────────────────
 const isRepresentative = (booth, user) => {
   if (!user) return false;
-  if (user.role === 'admin') return true;
+  if (user.role === USER_ROLES.ADMIN) return true;
 
   const isLinked = booth.representatives && booth.representatives.some(
     (r) => r.toString() === user._id.toString()
@@ -63,7 +64,7 @@ const isRepresentative = (booth, user) => {
     return true;
   }
 
-  if ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
+  if ((user.role === USER_ROLES.EXHIBITOR || user.role === USER_ROLES.SPONSOR || user.role === USER_ROLES.SUB_EXHIBITOR) &&
     user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase()) {
     return true;
   }
@@ -190,13 +191,13 @@ router.post('/', protectUser, async (req, res) => {
       return res.status(400).json({ success: false, message: 'Please provide name and category' });
     }
 
-    const allowedRoles = ['admin', 'exhibitor'];
+    const allowedRoles = [USER_ROLES.ADMIN, USER_ROLES.EXHIBITOR];
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Only admins or exhibitors can create booths' });
     }
 
     // Check if user already represents/created an active booth (except admin)
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== USER_ROLES.ADMIN) {
       const userHasBooth = await Booth.findOne({ representatives: req.user._id });
       if (userHasBooth) {
         return res.status(400).json({
@@ -242,12 +243,12 @@ router.post('/:id/claim', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Booth not found' });
     }
 
-    const allowedRoles = ['exhibitor', 'sponsor', 'admin', 'sub_exhibitor'];
+    const allowedRoles = [USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR, USER_ROLES.ADMIN, USER_ROLES.SUB_EXHIBITOR];
     if (!allowedRoles.includes(req.user.role)) {
       return res.status(403).json({ success: false, message: 'Only exhibitors, sponsors, sub-exhibitors, or admins can claim representative rights' });
     }
 
-    if (['sub_exhibitor', 'exhibitor'].includes(req.user.role) && req.user.role !== 'admin') {
+    if ([USER_ROLES.SUB_EXHIBITOR, USER_ROLES.EXHIBITOR].includes(req.user.role) && req.user.role !== USER_ROLES.ADMIN) {
       if (!req.user.company || req.user.company.trim().toLowerCase() !== booth.name.trim().toLowerCase()) {
         return res.status(400).json({ success: false, message: 'You can only claim representative rights for a booth matching your company name' });
       }
@@ -259,7 +260,7 @@ router.post('/:id/claim', protectUser, async (req, res) => {
     }
 
     // Check if user already represents another booth (except admin)
-    if (req.user.role !== 'admin') {
+    if (req.user.role !== USER_ROLES.ADMIN) {
       const userHasBooth = await Booth.findOne({ representatives: req.user._id });
       if (userHasBooth && userHasBooth._id.toString() !== booth._id.toString()) {
         return res.status(400).json({

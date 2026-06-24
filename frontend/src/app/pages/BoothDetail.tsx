@@ -1,6 +1,7 @@
 import { useParams, Link, useNavigate } from 'react-router';
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Badge } from '../components/ui/badge';
@@ -105,17 +106,17 @@ export function BoothDetail() {
 
   // Representative auth check
   const isRep = booth && user && (
-    user.role === 'admin' ||
+    user.role === USER_ROLES.ADMIN ||
     (booth.representatives && booth.representatives.some((r: any) => (r._id || r) === user.id)) ||
-    ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
+    ((user.role === USER_ROLES.EXHIBITOR || user.role === USER_ROLES.SPONSOR || user.role === USER_ROLES.SUB_EXHIBITOR) &&
      user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase())
   );
 
   // Check if current user is eligible to claim representative rights
   const isLinkedRep = booth && user && booth.representatives && booth.representatives.some((r: any) => (r._id || r) === user.id);
   const canClaim = booth && user && !isLinkedRep && (
-    user.role === 'admin' ||
-    ((user.role === 'exhibitor' || user.role === 'sponsor' || user.role === 'sub_exhibitor') &&
+    user.role === USER_ROLES.ADMIN ||
+    ((user.role === USER_ROLES.EXHIBITOR || user.role === USER_ROLES.SPONSOR || user.role === USER_ROLES.SUB_EXHIBITOR) &&
      user.company && user.company.trim().toLowerCase() === booth.name.trim().toLowerCase())
   );
 

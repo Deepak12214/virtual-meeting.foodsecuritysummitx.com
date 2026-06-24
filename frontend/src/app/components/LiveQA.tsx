@@ -8,6 +8,7 @@ import { Separator } from './ui/separator';
 import { MessageSquare, Send, AlertCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { fetchQuestions, submitQuestion, approveQuestion, rejectQuestion, Question } from '../services/questionService';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { toast } from 'sonner';
 
 interface LiveQAProps {
@@ -122,9 +123,9 @@ export function LiveQA({ meetingId, isModerator, canAskQ }: LiveQAProps) {
     }
   };
 
-  const isAdmin = user?.role === 'admin';
-  const isHost = user?.role === 'host' || user?.role === 'organizer' || isAdmin;
-  const isModeratorRole = user?.role === 'moderator' || user?.role === 'organizer' || isAdmin;
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
+  const isHost = user?.role === USER_ROLES.HOST || user?.role === USER_ROLES.ORGANIZER || isAdmin;
+  const isModeratorRole = user?.role === USER_ROLES.MODERATOR || user?.role === USER_ROLES.ORGANIZER || isAdmin;
 
   const pendingQs = questions.filter((q) => q.status === 'pending');
   const approvedQs = questions.filter((q) => q.status === 'approved');
