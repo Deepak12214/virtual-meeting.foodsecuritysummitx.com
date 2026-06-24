@@ -64,6 +64,10 @@ async function saveStageEngagementStats(meetingId) {
 // @access  Private
 router.post('/', protectUser, async (req, res) => {
   try {
+    if (req.user.role === USER_ROLES.ATTENDEE) {
+      return res.status(403).json({ success: false, message: 'Attendees are not allowed to create meetings' });
+    }
+
     const { title, description, scheduledTime, duration } = req.body;
 
     if (!title) {

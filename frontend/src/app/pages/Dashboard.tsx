@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES, UserRole } from '../constants/roles';
 import { Link } from 'react-router';
 import { Button } from '../components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
@@ -109,7 +110,16 @@ export function Dashboard() {
     };
   };
 
-  const quickActions = [
+  const quickActions: Array<{
+    title: string;
+    description: string;
+    icon: any;
+    path: string;
+    color: string;
+    hoverBorder: string;
+    hoverGlow: string;
+    roles: UserRole[];
+  }> = [
     {
       title: 'Main Stage',
       description: 'Watch keynotes and live panel discussions.',
@@ -138,7 +148,15 @@ export function Dashboard() {
       color: 'from-green-600 to-emerald-700',
       hoverBorder: 'hover:border-green-600/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-green-500/5',
-      roles: ['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin'],
+      roles: [
+        USER_ROLES.ATTENDEE,
+        USER_ROLES.STARTUP_PARTICIPANT,
+        USER_ROLES.EXHIBITOR,
+        USER_ROLES.SPONSOR,
+        USER_ROLES.SPEAKER,
+        USER_ROLES.ORGANIZER,
+        USER_ROLES.ADMIN,
+      ],
     },
     {
       title: 'Startup Pitch',
@@ -148,7 +166,12 @@ export function Dashboard() {
       color: 'from-lime-500 to-green-600',
       hoverBorder: 'hover:border-lime-500/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-lime-500/5',
-      roles: ['startup_participant', 'organizer', 'admin'],
+      roles: [
+        USER_ROLES.STARTUP_PARTICIPANT,
+        USER_ROLES.ORGANIZER,
+        USER_ROLES.ADMIN,
+        USER_ROLES.ATTENDEE,
+      ],
     },
   ];
 

@@ -1,6 +1,7 @@
 import { useState, useEffect, ReactNode } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
+import { USER_ROLES } from '../constants/roles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -14,7 +15,7 @@ import {
   DialogTrigger,
   DialogFooter,
 } from '../components/ui/dialog';
-import { Calendar, Clock, Users, Video, AlertCircle, Plus, Share2, Play, Sparkles, Shield, Hourglass, Trash2 } from 'lucide-react';
+import { Calendar, Clock, Users, Video, Plus, Share2, Play, Sparkles, Shield, Hourglass, Trash2 } from 'lucide-react';
 import { toast } from 'sonner';
 import {
   fetchMeetings,
@@ -93,7 +94,7 @@ export function MeetingRooms() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const canAccessMeetings = !!user;
-  const canCreateMeetings = !!user;
+  const canCreateMeetings = !!user && user.role !== USER_ROLES.ATTENDEE;
 
   // ── 1. Live Ticker Hook ──────────────────────────────────────────────────────
   useEffect(() => {
@@ -428,7 +429,7 @@ export function MeetingRooms() {
                     key={meeting._id ?? meeting.id}
                     meeting={meeting}
                     onShare={handleShare}
-                    isAdmin={user?.role === 'admin'}
+                    isAdmin={user?.role === USER_ROLES.ADMIN}
                     userId={user?.id ?? user?.id ?? ''}
                     onDelete={() => {
                       deleteMeeting(meeting._id ?? meeting.id ?? '').then(() => {
@@ -470,7 +471,7 @@ export function MeetingRooms() {
                     meeting={meeting}
                     currentTime={currentTime}
                     onShare={handleShare}
-                    isAdmin={user?.role === 'admin'}
+                    isAdmin={user?.role === USER_ROLES.ADMIN}
                     userId={user?.id ?? user?.id ?? ''}
                     onDelete={() => {
                       deleteMeeting(meeting._id ?? meeting.id ?? '').then(() => {

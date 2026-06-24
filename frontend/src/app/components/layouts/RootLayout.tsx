@@ -1,5 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
+import { USER_ROLES, UserRole } from '../../constants/roles';
 import { Button } from '../ui/button';
 import {
   Video,
@@ -22,7 +23,12 @@ export function RootLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
-  const navItems = [
+  const navItems: Array<{
+    path: string;
+    label: string;
+    icon: any;
+    roles: UserRole[];
+  }> = [
     { path: '/', label: 'Dashboard', icon: BarChart3, roles: [] },
     { path: '/stage', label: 'Main Stage', icon: Video, roles: [] },
     { path: '/exhibition', label: 'Exhibition', icon: Store, roles: [] },
@@ -30,25 +36,38 @@ export function RootLayout() {
       path: '/meetings',
       label: 'Meetings',
       icon: Calendar,
-      roles: ['attendee', 'startup_participant', 'exhibitor', 'sponsor', 'speaker', 'organizer', 'admin'],
+      roles: [
+        USER_ROLES.ATTENDEE,
+        USER_ROLES.STARTUP_PARTICIPANT,
+        USER_ROLES.EXHIBITOR,
+        USER_ROLES.SPONSOR,
+        USER_ROLES.SPEAKER,
+        USER_ROLES.ORGANIZER,
+        USER_ROLES.ADMIN,
+      ],
     },
     {
       path: '/pitch',
       label: 'Startup Pitch',
       icon: Rocket,
-      roles: ['startup_participant', 'organizer', 'admin'],
+      roles: [
+        USER_ROLES.STARTUP_PARTICIPANT,
+        USER_ROLES.ORGANIZER,
+        USER_ROLES.ADMIN,
+        USER_ROLES.ATTENDEE,
+      ],
     },
     {
       path: '/organizer',
       label: 'Organizer',
       icon: Settings,
-      roles: ['organizer', 'admin'],
+      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
     },
     {
       path: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
-      roles: ['organizer', 'admin', 'exhibitor', 'sponsor'],
+      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR],
     },
     // {
     //   path: '/logs',
@@ -74,10 +93,25 @@ export function RootLayout() {
       currentPath === '/logs' ||
       (currentNavItem && currentNavItem.roles.length > 0);
 
-    if (!isAuthenticated && isRestrictedPath) {
-      navigate('/auth/login');
+    if (!isAuthenticated) {
+      if (isRestrictedPath) {
+        navigate('/auth/login');
+      }
+    } else if (user) {
+      if (currentNavItem && currentNavItem.roles.length > 0 && !currentNavItem.roles.includes(user.role)) {
+        navigate('/');
+      }
+      if (currentPath.startsWith('/organizer') && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
+        navigate('/');
+      }
+      if (currentPath === '/analytics' && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR] as UserRole[] ).includes(user.role)) {
+        navigate('/');
+      }
+      if (currentPath === '/logs' && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
+        navigate('/');
+      }
     }
-  }, [isAuthenticated, currentPath, currentNavItem, loading, navigate]);
+  }, [isAuthenticated, user, currentPath, currentNavItem, loading, navigate]);
 
   const handleLogout = () => {
     logout();
