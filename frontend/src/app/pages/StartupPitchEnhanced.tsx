@@ -1013,6 +1013,7 @@ export function StartupPitchEnhanced() {
   const broadcastingNow = presentingPeers.length > 0;
 
   // Determine who is currently presenting or fallback to admin
+  // Determine who is currently presenting or fallback to connected Admin/Moderator
   const activePresenterDetails = (() => {
     if (presentingPeers.length > 0) {
       const livePeer = presentingPeers[0];
@@ -1034,13 +1035,50 @@ export function StartupPitchEnhanced() {
       }
     }
 
-    // Fallback: Default admin/creator details
-    return {
-      name: pitchMeeting?.creator?.name || 'Administrator',
-      role: pitchMeeting?.creator?.role || 'organizer',
-      company: 'Event Host / Administrator',
-      isLive: false,
-    };
+    // Fallback: Check connected peers in room for Admin or Moderator
+    const allPeers = localPeer ? [localPeer, ...peers.filter(p => p.id !== localPeer.id)] : peers;
+
+    const adminPeer = allPeers.find(p => {
+      try {
+        const meta = JSON.parse(p.metadata || '{}');
+        return meta.platformRole === USER_ROLES.ADMIN;
+      } catch {
+        return p.isLocal && user?.role === USER_ROLES.ADMIN;
+      }
+    });
+
+    if (adminPeer) {
+      let meta: any = {};
+      try { meta = JSON.parse(adminPeer.metadata || '{}'); } catch {}
+      return {
+        name: adminPeer.name,
+        role: meta.platformRole || USER_ROLES.ADMIN,
+        company: meta.company || (adminPeer.isLocal ? user?.company : '') || 'Event Host / Administrator',
+        isLive: false,
+      };
+    }
+
+    const moderatorPeer = allPeers.find(p => {
+      try {
+        const meta = JSON.parse(p.metadata || '{}');
+        return meta.platformRole === USER_ROLES.MODERATOR;
+      } catch {
+        return p.isLocal && user?.role === USER_ROLES.MODERATOR;
+      }
+    });
+
+    if (moderatorPeer) {
+      let meta: any = {};
+      try { meta = JSON.parse(moderatorPeer.metadata || '{}'); } catch {}
+      return {
+        name: moderatorPeer.name,
+        role: meta.platformRole || USER_ROLES.MODERATOR,
+        company: meta.company || (moderatorPeer.isLocal ? user?.company : '') || 'Event Moderator',
+        isLive: false,
+      };
+    }
+
+    return null;
   })();
 
   // Presenter Controls visibility
@@ -1220,54 +1258,63 @@ export function StartupPitchEnhanced() {
                 )}
               </div>
 
+              {/* Organizer details */}
+              <div className="px-6 py-3.5 border-t border-[--color-border] bg-[--color-surface] text-center text-base md:text-lg text-[--color-text]">
+  Organiser{" "}
+  <span className="font-bold">(Shubham Parmar)</span> founder of{" "}
+  <span className="font-bold">(VertalisX Ventures LLP)</span>
+</div>
+
               {/* Presenter details below video */}
-              <div className="p-6 border-t border-[--color-border] bg-[--color-surface]">
-                <div className="space-y-4 animate-fade-in">
-                  <div className="flex items-start gap-4 flex-wrap">
-                    {/* Initials Avatar */}
-                    <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${
-                      activePresenterDetails.isLive
-                        ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/25 animate-pulse'
-                        : 'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-600/35'
-                    }`}>
-                      {activePresenterDetails.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+              {activePresenterDetails && (
+                <div className="p-6 border-t border-[--color-border] bg-[--color-surface]">
+                  <div className="space-y-4 animate-fade-in">
+                    <div className="flex items-start gap-4 flex-wrap">
+                      {/* Initials Avatar */}
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${
+                        activePresenterDetails.isLive
+                          ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/25 animate-pulse'
+                          : 'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-600/35'
+                      }`}>
+                        {activePresenterDetails.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
+                      </div>
+
+                      <div className="space-y-1 min-w-[200px] flex-1">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <h2 className="text-2xl font-bold tracking-tight text-[--color-text]">
+                            {activePresenterDetails.name}
+                          </h2>
+                          {activePresenterDetails.isLive ? (
+                            <Badge className="bg-red-500 text-white font-semibold text-[10px] px-2 py-0.5 animate-pulse">
+                              LIVE PRESENTER
+                            </Badge>
+                          ) : (
+                            <Badge variant="outline" className="text-[10px] text-[--color-text-secondary] border-[--color-border]">
+                              STAGE OWNER
+                            </Badge>
+                          )}
+                        </div>
+                        <p className="text-sm font-semibold text-indigo-500">
+                          {activePresenterDetails.company}
+                        </p>
+                      </div>
                     </div>
 
-                    <div className="space-y-1 min-w-[200px] flex-1">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <h2 className="text-2xl font-bold tracking-tight text-[--color-text]">
-                          {activePresenterDetails.name}
-                        </h2>
-                        {activePresenterDetails.isLive ? (
-                          <Badge className="bg-red-500 text-white font-semibold text-[10px] px-2 py-0.5 animate-pulse">
-                            LIVE PRESENTER
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[10px] text-[--color-text-secondary] border-[--color-border]">
-                            STAGE OWNER
-                          </Badge>
-                        )}
-                      </div>
-                      <p className="text-sm font-semibold text-indigo-500">
-                        {activePresenterDetails.company}
-                      </p>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 mt-2 border-t border-[--color-border]/50">
+                      {[
+                        { label: 'Role', value: activePresenterDetails.role.replace('_', ' ').toUpperCase() },
+                        { label: 'Company / Organization', value: activePresenterDetails.company },
+                        { label: 'Status', value: activePresenterDetails.isLive ? 'ACTIVE ON STAGE' : 'STANDBY / HOST' }
+                      ].map(({ label, value }) => (
+                        <div key={label} className="space-y-0.5">
+                          <p className="text-[10px] font-bold text-[--color-text-secondary] uppercase tracking-wider">{label}</p>
+                          <p className="text-sm font-semibold text-[--color-text]">{value}</p>
+                        </div>
+                      ))}
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-2 md:grid-cols-3 gap-4 pt-4 mt-2 border-t border-[--color-border]/50">
-                    {[
-                      { label: 'Role', value: activePresenterDetails.role.replace('_', ' ').toUpperCase() },
-                      { label: 'Company / Organization', value: activePresenterDetails.company },
-                      { label: 'Status', value: activePresenterDetails.isLive ? 'ACTIVE ON STAGE' : 'STANDBY / HOST' }
-                    ].map(({ label, value }) => (
-                      <div key={label} className="space-y-0.5">
-                        <p className="text-[10px] font-bold text-[--color-text-secondary] uppercase tracking-wider">{label}</p>
-                        <p className="text-sm font-semibold text-[--color-text]">{value}</p>
-                      </div>
-                    ))}
                   </div>
                 </div>
-              </div>
+              )}
             </CardContent>
           </Card>
 
@@ -1374,7 +1421,7 @@ export function StartupPitchEnhanced() {
                             {localPeer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                           </div>
                           <div className="min-w-0">
-                            <p className="text-xs font-semibold truncate text-white">
+                            <p className="text-xs font-semibold truncate text-[--color-text]">
                               {localPeer.name} (You)
                             </p>
                             <p className="text-[9px] text-gray-400 capitalize">
@@ -1413,7 +1460,7 @@ export function StartupPitchEnhanced() {
                               {peer.name.split(' ').map((n) => n[0]).join('').slice(0, 2).toUpperCase()}
                             </div>
                             <div className="min-w-0">
-                              <p className="text-xs font-semibold truncate text-white">
+                              <p className="text-xs font-semibold truncate text-[--color-text]">
                                 {peer.name}
                               </p>
                               <p className="text-[9px] text-gray-400 capitalize">
