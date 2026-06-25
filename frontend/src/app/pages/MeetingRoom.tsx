@@ -155,7 +155,43 @@ export function MeetingRoom() {
 
     let left = false;
 
+    /*
+    // Original join permission / lobby check:
     if (isCreator) {
+      setJoinStatus('joining');
+      fetchJoinToken(roomId)
+        .then(({ token }) => {
+          if (left) return;
+          return hmsActions.join({
+            userName: user.name,
+            authToken: token,
+            settings: { isAudioMuted: true, isVideoMuted: true },
+          });
+        })
+        .then(() => {
+          if (left) return;
+          registerJoin(roomId!);
+          setJoinStatus('admitted');
+          hmsActions.changeMetadata(JSON.stringify({ status: 'admitted' })).catch(() => {});
+        })
+        .catch((err) => {
+          console.error('HMS join error:', err);
+          setJoinStatus('joining');
+        });
+    } else {
+      // Regular users/guests immediately enter the waiting state and do not join WebRTC yet
+      setJoinStatus('waiting');
+      
+      // Register request in database immediately using their user ID as peerId placeholder
+      submitLobbyRequest(roomId, user.id || user.id)
+        .catch((err) => {
+          console.error('Failed to submit lobby request to database:', err);
+        });
+    }
+    */
+
+    // Updated join flow: creator AND private meeting participants join directly without waiting.
+    if (isCreator || meeting.isPrivate) {
       setJoinStatus('joining');
       fetchJoinToken(roomId)
         .then(({ token }) => {
@@ -263,6 +299,9 @@ export function MeetingRoom() {
 
   // Host periodically fetches current waitlist requests from MongoDB to sync waitlist
   useEffect(() => {
+    // Commented out waitlist syncing for private meetings (since permission role is removed)
+    // if (!isOrganizer || !isConnected || !meetingId) return;
+    if (meeting?.isPrivate) return;
     if (!isOrganizer || !isConnected || !meetingId) return;
 
     const syncLobbyRequests = async () => {
@@ -314,6 +353,9 @@ export function MeetingRoom() {
 
         if (data.action === 'request-join') {
           if (isOrganizer) {
+            // Commented out waitlist addition / notification for private meetings
+            // setWaitingList((prev) => { ... });
+            if (meeting?.isPrivate) break;
             setWaitingList((prev) => {
               if (prev.some((p) => p.id === data.peerId)) return prev;
               return [...prev, { id: data.peerId, name: data.name, userId: data.userId }];
@@ -611,7 +653,9 @@ export function MeetingRoom() {
       </div>
 
       {/* ─── B. Lobby Waiting Room Popup overlay for Organizer ───────────────────── */}
-      {isOrganizer && waitingList.length > 0 && (
+      {/* Commented out waitlist popup for private meetings */}
+      {/* {isOrganizer && waitingList.length > 0 && ( */}
+      {isOrganizer && !meeting.isPrivate && waitingList.length > 0 && (
         <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-lg z-30 px-4">
           <div className="bg-amber-600/95 backdrop-blur-md text-white border border-amber-500/30 rounded-2xl p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-200">
             <div className="flex items-center justify-between">
