@@ -8,13 +8,12 @@ const StageEngagement = require('../models/StageEngagement');
 const { protectUser } = require('../middleware/auth');
 const { USER_ROLES, ALL_ROLES, BOOTH_MANAGER_ROLES } = require('../constants/roles');
 
-// Middleware: Restrict access to roles: admin, organizer, exhibitor, sponsor
 const restrictAnalyticsAccess = (req, res, next) => {
-  const allowedRoles = [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR];
+  const allowedRoles = [USER_ROLES.ADMIN];
   if (!req.user || !allowedRoles.includes(req.user.role)) {
     return res.status(403).json({
       success: false,
-      message: 'Access denied. Only admins, organizers, exhibitors, and sponsors can access analytics.'
+      message: 'Access denied. Only admins can access analytics.'
     });
   }
   next();

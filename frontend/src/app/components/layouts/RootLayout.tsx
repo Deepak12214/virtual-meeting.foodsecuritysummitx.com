@@ -36,15 +36,7 @@ export function RootLayout() {
       path: '/meetings',
       label: 'Meetings',
       icon: Calendar,
-      roles: [
-        USER_ROLES.ATTENDEE,
-        USER_ROLES.STARTUP_PARTICIPANT,
-        USER_ROLES.EXHIBITOR,
-        USER_ROLES.SPONSOR,
-        USER_ROLES.SPEAKER,
-        USER_ROLES.ORGANIZER,
-        USER_ROLES.ADMIN,
-      ],
+      roles: [],
     },
     {
       path: '/pitch',
@@ -62,7 +54,7 @@ export function RootLayout() {
       path: '/analytics',
       label: 'Analytics',
       icon: BarChart3,
-      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR],
+      roles: [USER_ROLES.ADMIN],
     },
     // {
     //   path: '/logs',
@@ -99,7 +91,7 @@ export function RootLayout() {
       if (currentPath.startsWith('/organizer') && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
         navigate('/');
       }
-      if (currentPath === '/analytics' && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.EXHIBITOR, USER_ROLES.SPONSOR] as UserRole[] ).includes(user.role)) {
+      if (currentPath === '/analytics' && user.role !== USER_ROLES.ADMIN) {
         navigate('/');
       }
       if (currentPath === '/logs' && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {

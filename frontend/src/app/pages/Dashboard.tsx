@@ -148,15 +148,7 @@ export function Dashboard() {
       color: 'from-green-600 to-emerald-700',
       hoverBorder: 'hover:border-green-600/30',
       hoverGlow: 'hover:shadow-lg hover:shadow-green-500/5',
-      roles: [
-        USER_ROLES.ATTENDEE,
-        USER_ROLES.STARTUP_PARTICIPANT,
-        USER_ROLES.EXHIBITOR,
-        USER_ROLES.SPONSOR,
-        USER_ROLES.SPEAKER,
-        USER_ROLES.ORGANIZER,
-        USER_ROLES.ADMIN,
-      ],
+      roles: [],
     },
     {
       title: 'Startup Pitch',
