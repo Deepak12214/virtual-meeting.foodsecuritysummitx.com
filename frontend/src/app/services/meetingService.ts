@@ -35,6 +35,8 @@ export interface Meeting {
   hmsRoomId?: string;
   creator?: MeetingParticipant;
   participants: MeetingParticipant[];
+  isPrivate?: boolean;
+  invitedEmails?: string[];
 }
 
 export interface TokenResponse {
@@ -48,6 +50,8 @@ export interface CreateMeetingPayload {
   description?: string;
   scheduledTime: Date | string;
   duration: number;
+  isPrivate?: boolean;
+  invitedEmails?: string[];
 }
 
 // ─── Meeting List ─────────────────────────────────────────────────────────────
@@ -55,8 +59,12 @@ export interface CreateMeetingPayload {
 /**
  * Fetch all meetings from the backend.
  */
-export async function fetchMeetings(): Promise<Meeting[]> {
-  const res = await fetch(`${API_URL}/meetings`, {
+export async function fetchMeetings(options?: { isPrivate?: boolean }): Promise<Meeting[]> {
+  const url = new URL(`${API_URL}/meetings`);
+  if (options?.isPrivate !== undefined) {
+    url.searchParams.append('isPrivate', options.isPrivate.toString());
+  }
+  const res = await fetch(url.toString(), {
     headers: getAuthHeaders(),
   });
   const data = await res.json();
@@ -146,7 +154,7 @@ export async function endMeeting(meetingId: string): Promise<void> {
  */
 export async function updateMeeting(
   meetingId: string,
-  payload: { title?: string; description?: string; status?: 'active' | 'scheduled' | 'completed'; scheduledTime?: string | Date }
+  payload: { title?: string; description?: string; status?: 'active' | 'scheduled' | 'completed'; scheduledTime?: string | Date; invitedEmails?: string[] }
 ): Promise<Meeting> {
   const res = await fetch(`${API_URL}/meetings/${meetingId}`, {
     method: 'PUT',
@@ -247,5 +255,18 @@ export async function denyLobbyParticipant(meetingId: string, userId: string): P
   });
   const data = await res.json();
   if (!res.ok) throw new Error(data.message || 'Failed to deny participant');
+}
+
+/**
+ * Search registered users by email or name (Admins only)
+ */
+export async function searchRegisteredUsers(query: string): Promise<{ name: string; email: string }[]> {
+  if (!query.trim()) return [];
+  const res = await fetch(`${API_URL}/meetings/users/search?q=${encodeURIComponent(query)}`, {
+    headers: getAuthHeaders(),
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.message || 'Failed to search users');
+  return data.users || [];
 }
 

@@ -1,6 +1,6 @@
 import { Outlet, Link, useNavigate, useLocation } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
-import { USER_ROLES, UserRole } from '../../constants/roles';
+import { USER_ROLES, UserRole, ADMIN_LEVEL_ROLES } from '../../constants/roles';
 import { Button } from '../ui/button';
 import {
   Video,
@@ -13,15 +13,18 @@ import {
   LogOut,
   Menu,
   X,
+  Lock,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { BRAND } from '../../config/branding';
+import { fetchMeetings } from '../../services/meetingService';
 
 export function RootLayout() {
   const { user, logout, isAuthenticated, loading } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [hasPrivateMeetings, setHasPrivateMeetings] = useState(false);
 
   const navItems: Array<{
     path: string;
@@ -36,6 +39,12 @@ export function RootLayout() {
       path: '/meetings',
       label: 'Meetings',
       icon: Calendar,
+      roles: [],
+    },
+    {
+      path: '/private-meetings',
+      label: 'Private Meetings',
+      icon: Lock,
       roles: [],
     },
     {
@@ -56,18 +65,40 @@ export function RootLayout() {
       icon: BarChart3,
       roles: [USER_ROLES.ADMIN],
     },
-    // {
-    //   path: '/logs',
-    //   label: 'Op Logs',
-    //   icon: Settings,
-    //   roles: ['organizer', 'admin'],
-    // },
   ];
 
   const currentPath = location.pathname;
   const currentNavItem = navItems.find(
     (item) => item.path === currentPath || (item.path !== '/' && currentPath.startsWith(item.path))
   );
+
+  useEffect(() => {
+    if (!isAuthenticated || !user) {
+      setHasPrivateMeetings(false);
+      return;
+    }
+
+    if (ADMIN_LEVEL_ROLES.includes(user.role)) {
+      setHasPrivateMeetings(true);
+      return;
+    }
+
+    const checkPrivate = async () => {
+      try {
+        const data = await fetchMeetings({ isPrivate: true });
+        const hasActiveOrScheduled = data.some(
+          (m) => m.status === 'active' || m.status === 'scheduled'
+        );
+        setHasPrivateMeetings(hasActiveOrScheduled);
+      } catch (err) {
+        console.warn('Failed to check private meetings:', err);
+      }
+    };
+
+    checkPrivate();
+    const interval = setInterval(checkPrivate, 30000);
+    return () => clearInterval(interval);
+  }, [isAuthenticated, user]);
 
   useEffect(() => {
     if (loading) return;
@@ -78,6 +109,7 @@ export function RootLayout() {
       currentPath.startsWith('/organizer') ||
       currentPath === '/analytics' ||
       currentPath === '/logs' ||
+      currentPath.startsWith('/private-meetings') ||
       (currentNavItem && currentNavItem.roles.length > 0);
 
     if (!isAuthenticated) {
@@ -86,6 +118,9 @@ export function RootLayout() {
       }
     } else if (user) {
       if (currentNavItem && currentNavItem.roles.length > 0 && !currentNavItem.roles.includes(user.role)) {
+        navigate('/');
+      }
+      if (currentPath.startsWith('/private-meetings') && !ADMIN_LEVEL_ROLES.includes(user.role) && !hasPrivateMeetings) {
         navigate('/');
       }
       if (currentPath.startsWith('/organizer') && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
@@ -98,16 +133,21 @@ export function RootLayout() {
         navigate('/');
       }
     }
-  }, [isAuthenticated, user, currentPath, currentNavItem, loading, navigate]);
+  }, [isAuthenticated, user, currentPath, currentNavItem, loading, navigate, hasPrivateMeetings]);
 
   const handleLogout = () => {
     logout();
     navigate('/auth/login');
   };
 
-  const visibleNavItems = navItems.filter(
-    (item) => item.roles.length === 0 || (user && item.roles.includes(user.role))
-  );
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.path === '/private-meetings') {
+      if (!user) return false;
+      if (ADMIN_LEVEL_ROLES.includes(user.role)) return true;
+      return hasPrivateMeetings;
+    }
+    return item.roles.length === 0 || (user && item.roles.includes(user.role));
+  });
 
   if (loading) {
     return (

@@ -68,7 +68,11 @@ router.post('/', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Attendees are not allowed to create meetings' });
     }
 
-    const { title, description, scheduledTime, duration } = req.body;
+    const { title, description, scheduledTime, duration, isPrivate, invitedEmails } = req.body;
+
+    if (isPrivate && req.user.role !== USER_ROLES.ADMIN) {
+      return res.status(403).json({ success: false, message: 'Only administrators can create private meetings' });
+    }
 
     if (!title) {
       return res.status(400).json({ success: false, message: 'Meeting title is required' });
@@ -95,7 +99,9 @@ router.post('/', protectUser, async (req, res) => {
       scheduledTime: scheduledTime || new Date(),
       duration: duration || 30,
       creator: req.user._id,
-      participants: [req.user._id]
+      participants: [req.user._id],
+      isPrivate: !!isPrivate,
+      invitedEmails: isPrivate ? (invitedEmails || []) : []
     });
 
     res.status(201).json({
@@ -113,7 +119,19 @@ router.post('/', protectUser, async (req, res) => {
 // @access  Private
 router.get('/', protectUser, async (req, res) => {
   try {
-    const meetings = await Meeting.find()
+    const isPrivate = req.query.isPrivate === 'true';
+    
+    const query = {};
+    if (isPrivate) {
+      query.isPrivate = true;
+      if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
+        query.invitedEmails = req.user.email.toLowerCase();
+      }
+    } else {
+      query.isPrivate = { $ne: true };
+    }
+
+    const meetings = await Meeting.find(query)
       .populate('creator', 'name email role')
       .populate('participants', 'name email role')
       .sort({ scheduledTime: 1 });
@@ -263,6 +281,36 @@ router.get('/pitch/room', protectUser, async (req, res) => {
   }
 });
 
+// @desc    Search all registered users by email or name for private meetings
+// @route   GET /api/meetings/users/search
+// @access  Private (Admins only)
+router.get('/users/search', protectUser, async (req, res) => {
+  try {
+    if (req.user.role !== USER_ROLES.ADMIN) {
+      return res.status(403).json({ success: false, message: 'Only administrators can search users' });
+    }
+
+    const { q } = req.query;
+    if (!q) {
+      return res.status(200).json({ success: true, users: [] });
+    }
+
+    const User = require('../models/User');
+    const users = await User.find({
+      $or: [
+        { name: { $regex: q, $options: 'i' } },
+        { email: { $regex: q, $options: 'i' } }
+      ]
+    })
+    .select('name email')
+    .limit(20);
+
+    res.status(200).json({ success: true, users });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
 // @desc    Get a single meeting by ID
 // @route   GET /api/meetings/:id
 // @access  Private
@@ -274,6 +322,17 @@ router.get('/:id', protectUser, async (req, res) => {
 
     if (!meeting) {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    if (meeting.isPrivate) {
+      const isAuthorized = 
+        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
+        meeting.creator.toString() === req.user._id.toString() || 
+        (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
+
+      if (!isAuthorized) {
+        return res.status(403).json({ success: false, message: 'Access denied. You are not invited to this private meeting.' });
+      }
     }
 
     const now = new Date();
@@ -315,7 +374,7 @@ router.put('/:id', protectUser, async (req, res) => {
       return res.status(403).json({ success: false, message: 'Not authorized to update this meeting' });
     }
 
-    const { title, description, status, scheduledTime } = req.body;
+    const { title, description, status, scheduledTime, invitedEmails } = req.body;
 
     if (title !== undefined) meeting.title = title;
     if (description !== undefined) meeting.description = description;
@@ -332,6 +391,10 @@ router.put('/:id', protectUser, async (req, res) => {
     }
     
     if (scheduledTime !== undefined) meeting.scheduledTime = scheduledTime;
+    if (invitedEmails !== undefined) {
+      // Keep it sanitized and lowercase
+      meeting.invitedEmails = invitedEmails.map(e => e.trim().toLowerCase());
+    }
 
     await meeting.save();
 
@@ -354,6 +417,17 @@ router.post('/:id/token', protectUser, async (req, res) => {
 
     if (!meeting) {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    if (meeting.isPrivate) {
+      const isAuthorized = 
+        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
+        meeting.creator.toString() === req.user._id.toString() || 
+        (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
+
+      if (!isAuthorized) {
+        return res.status(403).json({ success: false, message: 'Access denied. You are not invited to this private meeting.' });
+      }
     }
 
     // 1. Determine hmsRole: Creator, admin, organizer, host, and moderator get 'broadcaster' role
@@ -390,6 +464,17 @@ router.post('/:id/join', protectUser, async (req, res) => {
 
     if (!meeting) {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
+    }
+
+    if (meeting.isPrivate) {
+      const isAuthorized = 
+        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
+        meeting.creator.toString() === req.user._id.toString() || 
+        (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
+
+      if (!isAuthorized) {
+        return res.status(403).json({ success: false, message: 'Access denied. You are not invited to this private meeting.' });
+      }
     }
 
     // Add user to participants if not already present

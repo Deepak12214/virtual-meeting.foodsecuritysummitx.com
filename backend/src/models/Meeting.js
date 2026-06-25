@@ -42,6 +42,17 @@ const meetingSchema = new mongoose.Schema(
       ref: 'User',
       required: true,
     },
+    isPrivate: {
+      type: Boolean,
+      default: false,
+    },
+    invitedEmails: [
+      {
+        type: String,
+        lowercase: true,
+        trim: true,
+      }
+    ],
     participants: [
       {
         type: mongoose.Schema.Types.ObjectId,
