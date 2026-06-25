@@ -90,15 +90,15 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
     return () => clearInterval(timer);
   }, [scheduledTime, status]);
 
-  const formattedStartTime = scheduledTime 
+  const formattedStartTime = scheduledTime
     ? new Date(scheduledTime).toLocaleString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      })
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
     : '';
 
   return (
@@ -106,7 +106,7 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
       <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20 shadow-lg animate-pulse">
         <Radio className="w-8 h-8 text-indigo-500" />
       </div>
-      
+
       {isFutureScheduled ? (
         <div className="text-center space-y-4 max-w-sm">
           <div className="space-y-1">
@@ -115,11 +115,11 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
             </span>
             <h3 className="text-2xl font-bold tracking-tight mt-2">Stage goes live in</h3>
           </div>
-          
+
           <div className="text-4xl font-mono font-extrabold tracking-wider text-indigo-400 drop-shadow-md bg-black/30 px-6 py-3 rounded-2xl border border-white/5 inline-block">
             {countdownText}
           </div>
-          
+
           <p className="text-sm text-gray-400">
             Starting at: <span className="font-semibold text-gray-200">{formattedStartTime}</span>
           </p>
@@ -600,7 +600,7 @@ export function MainStageEnhanced() {
   useEffect(() => {
     if (!stageMeeting || !user) return;
     if (stageMeeting.status !== 'active') {
-      hmsActions.leave().catch(() => {});
+      hmsActions.leave().catch(() => { });
       return;
     }
     const roomId = stageMeeting._id ?? stageMeeting.id;
@@ -629,7 +629,7 @@ export function MainStageEnhanced() {
       .then(() => {
         if (left) {
           console.log('Unmounted during join, leaving main stage room...');
-          hmsActions.leave().catch(() => {});
+          hmsActions.leave().catch(() => { });
         } else {
           setHmsConnecting(false);
         }
@@ -645,7 +645,7 @@ export function MainStageEnhanced() {
     return () => {
       left = true;
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-      hmsActions.leave().catch(() => {});
+      hmsActions.leave().catch(() => { });
     };
   }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt, hmsActions]);
 
@@ -836,7 +836,7 @@ export function MainStageEnhanced() {
                   title: user?.company || user?.name || 'Speaker',
                   platformRole: user?.role
                 })
-              ).catch(() => {});
+              ).catch(() => { });
               toast.success('🎉 You are now LIVE on Main Stage!');
             } else if (newStatus === 'not-ready' || newStatus === 'rejected') {
               setRequestStatus(newStatus === 'rejected' ? 'rejected' : 'none');
@@ -850,7 +850,7 @@ export function MainStageEnhanced() {
                   status: 'not-ready',
                   platformRole: user?.role
                 })
-              ).catch(() => {});
+              ).catch(() => { });
               if (newStatus === 'rejected') {
                 toast.error('Your stage request was declined.');
                 setTimeout(() => setRequestStatus('none'), 5000);
@@ -975,7 +975,7 @@ export function MainStageEnhanced() {
         // Only change role if they are not already viewer-on-stage
         await hmsActions.changeRoleOfPeer(peerId, 'viewer-on-stage', true);
       }
-      
+
       // Send broadcast message to bring them live
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'status-update', peerId, status: 'live' }),
@@ -1075,7 +1075,7 @@ export function MainStageEnhanced() {
             const videoTrackEnabled = p.videoTrack ? tracks[p.videoTrack]?.enabled : false;
             return audioTrackEnabled || videoTrackEnabled;
           }
-        } catch {}
+        } catch { }
         return true;
       }
       return false;
@@ -1128,7 +1128,7 @@ export function MainStageEnhanced() {
 
     if (adminPeer) {
       let meta: any = {};
-      try { meta = JSON.parse(adminPeer.metadata || '{}'); } catch {}
+      try { meta = JSON.parse(adminPeer.metadata || '{}'); } catch { }
       return {
         name: adminPeer.name,
         role: meta.platformRole || USER_ROLES.ADMIN,
@@ -1148,7 +1148,7 @@ export function MainStageEnhanced() {
 
     if (moderatorPeer) {
       let meta: any = {};
-      try { meta = JSON.parse(moderatorPeer.metadata || '{}'); } catch {}
+      try { meta = JSON.parse(moderatorPeer.metadata || '{}'); } catch { }
       return {
         name: moderatorPeer.name,
         role: meta.platformRole || USER_ROLES.MODERATOR,
@@ -1165,7 +1165,7 @@ export function MainStageEnhanced() {
 
   const hasLiveSpeakers = presentingPeers.some(p => {
     let meta: any = {};
-    try { meta = JSON.parse(p.metadata || '{}'); } catch {}
+    try { meta = JSON.parse(p.metadata || '{}'); } catch { }
     const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
     return platformRole !== 'admin' && platformRole !== 'organizer';
   });
@@ -1302,13 +1302,12 @@ export function MainStageEnhanced() {
 
                 ) : presentingPeers.length > 0 ? (
                   <div
-                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${
-                      presentingPeers.length === 1
+                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${presentingPeers.length === 1
                         ? 'grid-cols-1'
                         : presentingPeers.length === 2
-                        ? 'grid-cols-2'
-                        : 'grid-cols-2 md:grid-cols-3'
-                    }`}
+                          ? 'grid-cols-2'
+                          : 'grid-cols-2 md:grid-cols-3'
+                      }`}
                   >
                     {presentingPeers.map((p) => (
                       <PresentingPeerTile
@@ -1355,11 +1354,11 @@ export function MainStageEnhanced() {
                 )}
               </div>
 
-            <div className="px-6 py-3.5 border-t border-[--color-border] bg-[--color-surface] text-center text-base md:text-lg text-[--color-text]">
-  Organiser{" "}
-  <span className="font-bold">(Shubham Parmar)</span> founder of{" "}
-  <span className="font-bold">(VertalisX Ventures LLP)</span>
-</div>
+              <div className="px-6 py-3.5 border-t border-[--color-border] bg-[--color-surface] text-center text-base md:text-lg text-[--color-text]">
+                Organiser{" "}
+                <span className="font-bold">(Shubham Parmar)</span> founder of{" "}
+                <span className="font-bold">(VertalisX Ventures LLP)</span>
+              </div>
 
               {/* Presenter details below video */}
               {activePresenterDetails && (
@@ -1367,11 +1366,10 @@ export function MainStageEnhanced() {
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex items-start gap-4 flex-wrap">
                       {/* Initials Avatar */}
-                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${
-                        activePresenterDetails.isLive
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${activePresenterDetails.isLive
                           ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/25 animate-pulse'
                           : 'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-600/35'
-                      }`}>
+                        }`}>
                         {activePresenterDetails.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
 
@@ -1528,9 +1526,9 @@ export function MainStageEnhanced() {
         {/* ── Right Sidebar ──────────────────────────────────────────────── */}
         <div className="lg:col-span-1 space-y-4">
           {(isHost || isOrganizer) && (
-            <AdvancedTimer 
-              type="session" 
-              canControl={isOrganizer} 
+            <AdvancedTimer
+              type="session"
+              canControl={isOrganizer}
               status={stageMeeting?.status}
               scheduledTime={stageMeeting?.scheduledTime}
             />

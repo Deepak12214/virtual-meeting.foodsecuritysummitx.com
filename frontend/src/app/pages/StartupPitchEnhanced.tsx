@@ -89,15 +89,15 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
     return () => clearInterval(timer);
   }, [scheduledTime, status]);
 
-  const formattedStartTime = scheduledTime 
+  const formattedStartTime = scheduledTime
     ? new Date(scheduledTime).toLocaleString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-        hour12: true
-      })
+      day: 'numeric',
+      month: 'short',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: true
+    })
     : '';
 
   return (
@@ -105,7 +105,7 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
       <div className="w-20 h-20 rounded-full bg-indigo-500/10 flex items-center justify-center mb-4 border border-indigo-500/20 shadow-lg animate-pulse">
         <Radio className="w-8 h-8 text-indigo-500" />
       </div>
-      
+
       {isFutureScheduled ? (
         <div className="text-center space-y-4 max-w-sm font-sans">
           <div className="space-y-1">
@@ -114,11 +114,11 @@ export function StageOfflineScreen({ scheduledTime, status, defaultDescription, 
             </span>
             <h3 className="text-2xl font-bold tracking-tight mt-2 text-white">Stage goes live in</h3>
           </div>
-          
+
           <div className="text-4xl font-mono font-extrabold tracking-wider text-indigo-400 drop-shadow-md bg-black/30 px-6 py-3 rounded-2xl border border-white/5 inline-block">
             {countdownText}
           </div>
-          
+
           <p className="text-sm text-gray-400">
             Starting at: <span className="font-semibold text-gray-200">{formattedStartTime}</span>
           </p>
@@ -458,12 +458,12 @@ export function StartupPitchEnhanced() {
   const { user, hasAccess, refreshUser } = useAuth();
 
   // 100ms hooks
-  const hmsActions       = useHMSActions();
-  const isConnected      = useHMSStore(selectIsConnectedToRoom);
-  const peers            = useHMSStore(selectPeers);
-  const localPeer        = useHMSStore(selectLocalPeer);
+  const hmsActions = useHMSActions();
+  const isConnected = useHMSStore(selectIsConnectedToRoom);
+  const peers = useHMSStore(selectPeers);
+  const localPeer = useHMSStore(selectLocalPeer);
   const amIScreenSharing = useHMSStore(selectIsLocalScreenShared);
-  const tracks           = useHMSStore(selectTracksMap);
+  const tracks = useHMSStore(selectTracksMap);
 
   // Pitch room
   const [pitchMeeting, setPitchMeeting] = useState<Meeting | null>(null);
@@ -475,12 +475,12 @@ export function StartupPitchEnhanced() {
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
   // Role checks
-  const canAccess   = hasAccess([USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.HOST, USER_ROLES.MODERATOR, USER_ROLES.SPEAKER, USER_ROLES.ATTENDEE, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR]);
-  const isAdmin     = user?.role === USER_ROLES.ADMIN;
+  const canAccess = hasAccess([USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.HOST, USER_ROLES.MODERATOR, USER_ROLES.SPEAKER, USER_ROLES.ATTENDEE, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR]);
+  const isAdmin = user?.role === USER_ROLES.ADMIN;
   const isOrganizer = user?.role === USER_ROLES.ORGANIZER || isAdmin;
-  const isHost      = user?.role === USER_ROLES.HOST || user?.role === USER_ROLES.MODERATOR || isOrganizer;
-  const isStartup   = user?.role === USER_ROLES.STARTUP_PARTICIPANT;
-  const isInvestor  = user?.role === USER_ROLES.INVESTOR;
+  const isHost = user?.role === USER_ROLES.HOST || user?.role === USER_ROLES.MODERATOR || isOrganizer;
+  const isStartup = user?.role === USER_ROLES.STARTUP_PARTICIPANT;
+  const isInvestor = user?.role === USER_ROLES.INVESTOR;
 
   // A "pure startup participant" is someone who can request to go live (startup, sponsor, exhibitor, investor) and is NOT admin/organizer/host
   const isPureStartup = !!user && [USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR].includes(user.role as any) && !isHost;
@@ -563,7 +563,7 @@ export function StartupPitchEnhanced() {
   useEffect(() => {
     if (!pitchMeeting || !user) return;
     if (pitchMeeting.status !== 'active') {
-      hmsActions.leave().catch(() => {});
+      hmsActions.leave().catch(() => { });
       return;
     }
     const roomId = pitchMeeting._id ?? pitchMeeting.id;
@@ -592,7 +592,7 @@ export function StartupPitchEnhanced() {
       .then(() => {
         if (left) {
           console.log('Unmounted during join, leaving pitch stage room...');
-          hmsActions.leave().catch(() => {});
+          hmsActions.leave().catch(() => { });
         } else {
           setHmsConnecting(false);
         }
@@ -608,7 +608,7 @@ export function StartupPitchEnhanced() {
     return () => {
       left = true;
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
-      hmsActions.leave().catch(() => {});
+      hmsActions.leave().catch(() => { });
     };
   }, [pitchMeeting?._id, pitchMeeting?.id, pitchMeeting?.status, user, connectionAttempt, hmsActions]);
 
@@ -785,7 +785,7 @@ export function StartupPitchEnhanced() {
                   company: user?.company || '',
                   platformRole: user?.role
                 })
-              ).catch(() => {});
+              ).catch(() => { });
               toast.success('🎉 You are now LIVE on Stage!');
             } else if (newStatus === 'not-ready' || newStatus === 'rejected') {
               setRequestStatus(newStatus === 'rejected' ? 'rejected' : 'none');
@@ -798,7 +798,7 @@ export function StartupPitchEnhanced() {
                   status: 'not-ready',
                   platformRole: user?.role
                 })
-              ).catch(() => {});
+              ).catch(() => { });
               if (newStatus === 'rejected') {
                 toast.error('Your stage request was declined.');
                 setTimeout(() => setRequestStatus('none'), 5000);
@@ -886,7 +886,7 @@ export function StartupPitchEnhanced() {
       if (!peer || peer.roleName !== 'viewer-on-stage') {
         await hmsActions.changeRoleOfPeer(peerId, 'viewer-on-stage', true);
       }
-      
+
       await hmsActions.sendBroadcastMessage(
         JSON.stringify({ action: 'status-update', peerId, status: 'live' }),
         'pitch-control'
@@ -964,8 +964,8 @@ export function StartupPitchEnhanced() {
   }
 
   // Media handlers
-  const toggleAudio  = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
-  const toggleVideo  = () => hmsActions.setLocalVideoEnabled(!isVideoEnabled);
+  const toggleAudio = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
+  const toggleVideo = () => hmsActions.setLocalVideoEnabled(!isVideoEnabled);
   const toggleScreen = async () => {
     try { await hmsActions.setScreenShareEnabled(!amIScreenSharing); }
     catch { toast.error('Failed to share screen'); }
@@ -1001,7 +1001,7 @@ export function StartupPitchEnhanced() {
             const videoTrackEnabled = p.videoTrack ? tracks[p.videoTrack]?.enabled : false;
             return audioTrackEnabled || videoTrackEnabled;
           }
-        } catch {}
+        } catch { }
         return true;
       }
       return false;
@@ -1049,7 +1049,7 @@ export function StartupPitchEnhanced() {
 
     if (adminPeer) {
       let meta: any = {};
-      try { meta = JSON.parse(adminPeer.metadata || '{}'); } catch {}
+      try { meta = JSON.parse(adminPeer.metadata || '{}'); } catch { }
       return {
         name: adminPeer.name,
         role: meta.platformRole || USER_ROLES.ADMIN,
@@ -1069,7 +1069,7 @@ export function StartupPitchEnhanced() {
 
     if (moderatorPeer) {
       let meta: any = {};
-      try { meta = JSON.parse(moderatorPeer.metadata || '{}'); } catch {}
+      try { meta = JSON.parse(moderatorPeer.metadata || '{}'); } catch { }
       return {
         name: moderatorPeer.name,
         role: meta.platformRole || USER_ROLES.MODERATOR,
@@ -1085,7 +1085,7 @@ export function StartupPitchEnhanced() {
   const localHmsRole = localPeer?.roleName ?? '';
   const hasLiveStartups = presentingPeers.some(p => {
     let meta: any = {};
-    try { meta = JSON.parse(p.metadata || '{}'); } catch {}
+    try { meta = JSON.parse(p.metadata || '{}'); } catch { }
     const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
     return platformRole !== 'admin' && platformRole !== 'organizer';
   });
@@ -1183,13 +1183,13 @@ export function StartupPitchEnhanced() {
 
       {/* ── Main Grid Layout ─────────────────────────────────────────────── */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-5">
-        
+
         {/* ── Left/Main Column ───────────────────────────────────────────── */}
         <div className="lg:col-span-3 space-y-4">
           <Card className="overflow-hidden border-[--color-border] shadow-sm">
             <CardContent className="p-0">
               <div className="relative aspect-video bg-gradient-to-br from-gray-900 to-gray-950 flex items-center justify-center">
-                
+
                 {pitchMeeting && pitchMeeting.status !== 'active' ? (
                   <StageOfflineScreen
                     scheduledTime={pitchMeeting.scheduledTime}
@@ -1206,13 +1206,12 @@ export function StartupPitchEnhanced() {
                   <ScreenSharePitchView peer={screenSharePeer} />
                 ) : presentingPeers.length > 0 ? (
                   <div
-                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${
-                      presentingPeers.length === 1
+                    className={`grid gap-2 p-2 bg-gray-950 w-full h-full ${presentingPeers.length === 1
                         ? 'grid-cols-1'
                         : presentingPeers.length === 2
-                        ? 'grid-cols-2'
-                        : 'grid-cols-2 md:grid-cols-3'
-                    }`}
+                          ? 'grid-cols-2'
+                          : 'grid-cols-2 md:grid-cols-3'
+                      }`}
                   >
                     {presentingPeers.map((p) => (
                       <PresentingPitchPeerTile
@@ -1260,10 +1259,10 @@ export function StartupPitchEnhanced() {
 
               {/* Organizer details */}
               <div className="px-6 py-3.5 border-t border-[--color-border] bg-[--color-surface] text-center text-base md:text-lg text-[--color-text]">
-  Organiser{" "}
-  <span className="font-bold">(Shubham Parmar)</span> founder of{" "}
-  <span className="font-bold">(VertalisX Ventures LLP)</span>
-</div>
+                Organiser{" "}
+                <span className="font-bold">(Shubham Parmar)</span> founder of{" "}
+                <span className="font-bold">(VertalisX Ventures LLP)</span>
+              </div>
 
               {/* Presenter details below video */}
               {activePresenterDetails && (
@@ -1271,11 +1270,10 @@ export function StartupPitchEnhanced() {
                   <div className="space-y-4 animate-fade-in">
                     <div className="flex items-start gap-4 flex-wrap">
                       {/* Initials Avatar */}
-                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${
-                        activePresenterDetails.isLive
+                      <div className={`w-16 h-16 rounded-xl flex items-center justify-center text-white text-2xl font-bold font-sans shadow-md border ${activePresenterDetails.isLive
                           ? 'bg-gradient-to-br from-indigo-500 to-purple-600 border-indigo-400/25 animate-pulse'
                           : 'bg-gradient-to-br from-slate-700 to-slate-900 border-slate-600/35'
-                      }`}>
+                        }`}>
                         {activePresenterDetails.name.split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2)}
                       </div>
 
@@ -1370,7 +1368,7 @@ export function StartupPitchEnhanced() {
 
         {/* ── Right Sidebar Column ───────────────────────────────────────── */}
         <div className="lg:col-span-1 space-y-4">
-          
+
           {/* Timers Panel */}
           <div className="space-y-3">
             {/* Session Timer (Overall Ceremony Timer) */}
