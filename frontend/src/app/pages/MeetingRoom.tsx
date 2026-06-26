@@ -500,7 +500,11 @@ export function MeetingRoom() {
 
   const handleLeave = async () => {
     await hmsActions.leave().catch(() => {});
-    navigate('/meetings');
+    if (meeting?.isPrivate) {
+      navigate('/private-meetings');
+    } else {
+      navigate('/meetings');
+    }
   };
 
   const handleEndForAll = async () => {

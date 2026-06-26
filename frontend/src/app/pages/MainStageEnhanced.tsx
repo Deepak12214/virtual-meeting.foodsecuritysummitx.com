@@ -50,7 +50,7 @@ import { LiveQA } from '../components/LiveQA';
 import { AdvancedTimer } from '../components/AdvancedTimer';
 import { QueueManagement } from '../components/QueueManagement';
 import { toast } from 'sonner';
-import { fetchMainStageRoom, fetchJoinToken, type Meeting } from '../services/meetingService';
+import { fetchMainStageRoom, fetchJoinToken, submitLobbyRequest, getLobbyStatus, getLobbyRequests, admitLobbyParticipant, denyLobbyParticipant, type Meeting } from '../services/meetingService';
 
 interface StageOfflineScreenProps {
   scheduledTime?: string | Date;
@@ -487,10 +487,14 @@ export function MainStageEnhanced() {
   const connectionTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const isConnectedRef = useRef(false); // ref to avoid stale closure in timeout
 
-
-
   // Role checks
   const isAdmin = user?.role === USER_ROLES.ADMIN;
+
+  // Lobby / waitlist states for joining the room
+  const [joinStatus, setJoinStatus] = useState<'joining' | 'waiting' | 'admitted' | 'denied'>(
+    user?.role === USER_ROLES.ADMIN ? 'joining' : 'waiting'
+  );
+  const [waitingList, setWaitingList] = useState<{ id: string; name: string; userId?: string }[]>([]);
   const isOrganizer = user?.role === USER_ROLES.ORGANIZER || isAdmin;
   const isHost = user?.role === USER_ROLES.HOST || isOrganizer;
   const isModerator = user?.role === USER_ROLES.MODERATOR || isOrganizer;
@@ -606,6 +610,10 @@ export function MainStageEnhanced() {
     const roomId = stageMeeting._id ?? stageMeeting.id;
     if (!roomId) return;
 
+    // Check if the user is authorized to join WebRTC yet (Admin joins directly, others must be admitted)
+    const isAdmitted = isAdmin || joinStatus === 'admitted';
+    if (!isAdmitted) return;
+
     let left = false;
     setRoomError(null);
     setHmsConnecting(true);
@@ -647,7 +655,129 @@ export function MainStageEnhanced() {
       if (connectionTimeoutRef.current) clearTimeout(connectionTimeoutRef.current);
       hmsActions.leave().catch(() => { });
     };
-  }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt, hmsActions]);
+  }, [stageMeeting?._id, stageMeeting?.id, stageMeeting?.status, user, connectionAttempt, hmsActions, isAdmin, joinStatus]);
+
+  // Submit join request to lobby for non-admins
+  useEffect(() => {
+    if (!stageMeeting || isAdmin || joinStatus !== 'waiting') return;
+    const roomId = stageMeeting._id ?? stageMeeting.id;
+    if (!roomId) return;
+
+    submitLobbyRequest(roomId, user?.id || '')
+      .catch((err) => {
+        console.error('Failed to submit lobby request for main stage:', err);
+      });
+  }, [stageMeeting, isAdmin, joinStatus, user?.id]);
+
+  // Poll DB lobby status for non-admins
+  useEffect(() => {
+    if (joinStatus !== 'waiting' || !stageMeeting || isAdmin) return;
+    const roomId = stageMeeting._id ?? stageMeeting.id;
+    if (!roomId) return;
+
+    let joiningRoom = false;
+
+    const checkStatus = async () => {
+      try {
+        const res = await getLobbyStatus(roomId);
+        if (res.status === 'approved' && !joiningRoom) {
+          joiningRoom = true;
+          setJoinStatus('admitted');
+          toast.success('🎉 You have been admitted to the Main Stage!');
+        } else if (res.status === 'rejected') {
+          setJoinStatus('denied');
+          toast.error('❌ Your request to join was declined.');
+        }
+      } catch (err) {
+        console.error('Error polling lobby status for main stage:', err);
+        joiningRoom = false;
+      }
+    };
+
+    const interval = setInterval(checkStatus, 3000);
+    return () => clearInterval(interval);
+  }, [joinStatus, stageMeeting, isAdmin]);
+
+  // Admin periodically fetches current waitlist requests from MongoDB to sync waitlist
+  useEffect(() => {
+    if (!isAdmin || !isConnected || !stageMeeting) return;
+    const roomId = stageMeeting._id ?? stageMeeting.id;
+    if (!roomId) return;
+
+    const syncLobbyRequests = async () => {
+      try {
+        const requests = await getLobbyRequests(roomId);
+        const formatted = requests.map((req: any) => ({
+          id: req.peerId,
+          name: req.user.name,
+          userId: req.user._id || req.user.id
+        }));
+
+        setWaitingList((prev) => {
+          const updated = [...prev];
+          formatted.forEach((req: any) => {
+            if (!updated.some((p) => p.id === req.id)) {
+              updated.push(req);
+            } else {
+              const index = updated.findIndex((p) => p.id === req.id);
+              if (index > -1 && !updated[index].userId) {
+                updated[index].userId = req.userId;
+              }
+            }
+          });
+          return updated.filter((p) => formatted.some((req: any) => req.id === p.id));
+        });
+      } catch (err) {
+        console.error('Error syncing lobby requests from DB:', err);
+      }
+    };
+
+    syncLobbyRequests();
+    const interval = setInterval(syncLobbyRequests, 5000);
+    return () => clearInterval(interval);
+  }, [isAdmin, isConnected, stageMeeting]);
+
+  const admitPeer = async (peerId: string) => {
+    try {
+      const waitingPeer = waitingList.find((p) => p.id === peerId);
+
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'admit', peerId }),
+        'lobby-control'
+      );
+
+      const roomId = stageMeeting?._id ?? stageMeeting?.id;
+      if (waitingPeer?.userId && roomId) {
+        await admitLobbyParticipant(roomId, waitingPeer.userId);
+      }
+
+      setWaitingList((prev) => prev.filter((p) => p.id !== peerId));
+      toast.success('Participant admitted!');
+    } catch {
+      toast.error('Failed to admit participant');
+    }
+  };
+
+  const denyPeer = async (peerId: string) => {
+    try {
+      const waitingPeer = waitingList.find((p) => p.id === peerId);
+
+      await hmsActions.sendBroadcastMessage(
+        JSON.stringify({ action: 'deny', peerId }),
+        'lobby-control'
+      ).catch(() => {});
+
+      const roomId = stageMeeting?._id ?? stageMeeting?.id;
+      if (waitingPeer?.userId && roomId) {
+        await denyLobbyParticipant(roomId, waitingPeer.userId);
+      }
+
+      setWaitingList((prev) => prev.filter((p) => p.id !== peerId));
+      toast.warning('Participant request denied');
+    } catch {
+      toast.error('Failed to deny request');
+    }
+  };
 
   // Keep isConnectedRef in sync with live isConnected state (fixes stale closure in setTimeout)
   useEffect(() => {
@@ -786,7 +916,36 @@ export function MainStageEnhanced() {
     switch (notification.type) {
       case HMSNotificationTypes.NEW_MESSAGE: {
         const msg = notification.data;
-        if (!msg || msg.type !== 'stage-control') break;
+        if (!msg) break;
+
+        if (msg.type === 'lobby-control') {
+          let data: any;
+          try { data = JSON.parse(msg.message); } catch { break; }
+
+          if (data.action === 'request-join') {
+            if (isAdmin) {
+              setWaitingList((prev) => {
+                if (prev.some((p) => p.id === data.peerId)) return prev;
+                return [...prev, { id: data.peerId, name: data.name, userId: data.userId }];
+              });
+              toast.info(`🔔 ${data.name} is requesting to join the main stage room`);
+            }
+          } else if (data.action === 'admit') {
+            if (localPeer && localPeer.id === data.peerId) {
+              setJoinStatus('admitted');
+              toast.success('🎉 You have been admitted to the Main Stage room!');
+            }
+          } else if (data.action === 'deny') {
+            if (localPeer && localPeer.id === data.peerId) {
+              setJoinStatus('denied');
+              hmsActions.leave().catch(() => {});
+              toast.error('❌ Your request to join was declined.');
+            }
+          }
+          break;
+        }
+
+        if (msg.type !== 'stage-control') break;
 
         let data: any;
         try { data = JSON.parse(msg.message); } catch { break; }
@@ -1180,9 +1339,89 @@ export function MainStageEnhanced() {
       (localHmsRole === 'viewer-on-stage' && requestStatus === 'live')
     );
 
+  // Lobby waiting and denied screens
+  if (stageMeeting?.status === 'active' && !isAdmin && joinStatus === 'waiting') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[85vh] px-4">
+        <Card className="w-full max-w-md border-border bg-card shadow-2xl relative overflow-hidden rounded-2xl">
+          <div className="h-1.5 bg-gradient-to-r from-indigo-500 to-violet-600" />
+          
+          <CardHeader className="text-center pb-4 pt-6 text-foreground">
+            <div className="w-14 h-14 rounded-full bg-indigo-500/10 flex items-center justify-center mx-auto mb-4 border border-indigo-500/20">
+              <Loader2 className="w-6 h-6 text-indigo-600 animate-spin" />
+            </div>
+            <CardTitle className="text-2xl font-bold">Asking to join stage room...</CardTitle>
+            <CardDescription className="text-muted-foreground mt-1 text-sm text-center">
+              You will automatically join the Main Stage room as soon as the Admin approves your request.
+            </CardDescription>
+          </CardHeader>
+
+          <CardContent className="space-y-5 text-center pb-8 pt-2">
+            <div className="p-4 bg-slate-50 dark:bg-slate-900/60 rounded-xl border border-border text-left space-y-1 text-foreground">
+              <span className="text-[10px] text-indigo-600 dark:text-indigo-400 font-bold uppercase tracking-wider font-mono">
+                Main Stage
+              </span>
+              <h3 className="text-lg font-extrabold truncate">{stageMeeting.title}</h3>
+              {stageMeeting.description && <p className="text-xs text-muted-foreground line-clamp-2">{stageMeeting.description}</p>}
+            </div>
+
+            <div className="flex items-center justify-center gap-2 text-xs text-amber-700 bg-amber-500/10 border border-amber-500/20 py-2.5 px-4 rounded-xl font-medium">
+              <AlertCircle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+              <span>Please keep this window open while waiting.</span>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  if (stageMeeting?.status === 'active' && !isAdmin && joinStatus === 'denied') {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-[85vh] px-4">
+        <Card className="w-full max-w-md border-red-500/20 bg-card shadow-2xl relative overflow-hidden rounded-2xl text-center p-8 text-foreground">
+          <div className="w-16 h-16 rounded-full bg-red-500/10 flex items-center justify-center mx-auto mb-4 border border-red-500/20">
+            <XCircle className="w-8 h-8 text-red-500" />
+          </div>
+          <h2 className="text-2xl font-bold">Request Declined</h2>
+          <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
+            The Admin has declined your request to enter the Main Stage room.
+          </p>
+        </Card>
+      </div>
+    );
+  }
+
   // ── Render ─────────────────────────────────────────────────────────────────
   return (
-    <div className="space-y-5">
+    <div className="space-y-5 relative">
+      {/* ─── Lobby Waiting Room Popup overlay for Admin ───────────────────── */}
+      {isAdmin && waitingList.length > 0 && (
+        <div className="absolute top-20 left-1/2 -translate-x-1/2 w-full max-w-lg z-30 px-4">
+          <div className="bg-amber-600/95 backdrop-blur-md text-white border border-amber-500/30 rounded-2xl p-4 shadow-2xl space-y-3 animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex items-center justify-between">
+              <span className="text-sm font-bold flex items-center gap-2">
+                <span className="relative flex h-2 w-2">
+                  <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-white opacity-75"></span>
+                  <span className="relative inline-flex rounded-full h-2 w-2 bg-white"></span>
+                </span>
+                Lobby Waitlist Request ({waitingList.length})
+              </span>
+              <span className="text-xs bg-white/20 px-1.5 rounded uppercase text-[9px] font-bold">Lobby Approval</span>
+            </div>
+            <div className="space-y-2 max-h-[140px] overflow-y-auto pr-1">
+              {waitingList.map((p) => (
+                <div key={p.id} className="flex items-center justify-between p-2 bg-black/20 rounded-xl border border-white/5 gap-4">
+                  <span className="text-xs font-bold truncate">{p.name}</span>
+                  <div className="flex gap-2">
+                    <Button size="sm" className="bg-emerald-600 hover:bg-emerald-500 text-white text-[11px] h-7 px-3 rounded-lg border-none" onClick={() => admitPeer(p.id)}>Admit</Button>
+                    <Button size="sm" variant="destructive" className="text-[11px] h-7 px-3 rounded-lg border-none" onClick={() => denyPeer(p.id)}>Deny</Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* ── Page Header ──────────────────────────────────────────────────── */}
       <div className="flex items-center justify-between flex-wrap gap-3">
