@@ -1,15 +1,51 @@
+import { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Label } from '../components/ui/label';
 import { Badge } from '../components/ui/badge';
-import { User, Mail, Building2, Shield, Calendar } from 'lucide-react';
+import { User, Mail, Building2, Shield, Calendar, Phone } from 'lucide-react';
+import { toast } from 'sonner';
 
 export function Profile() {
-  const { user } = useAuth();
+  const { user, updateProfile } = useAuth();
+  const [isEditing, setIsEditing] = useState(false);
+  const [name, setName] = useState('');
+  const [company, setCompany] = useState('');
+  const [phone, setPhone] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   if (!user) return null;
+
+  const startEditing = () => {
+    setName(user.name);
+    setCompany(user.company || '');
+    setPhone(user.phone || '');
+    setIsEditing(true);
+  };
+
+  const handleSave = async () => {
+    if (!name.trim()) {
+      toast.error('Full Name is required');
+      return;
+    }
+    if (!phone.trim()) {
+      toast.error('Phone number is required');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      await updateProfile(name, company, phone);
+      toast.success('Profile updated successfully');
+      setIsEditing(false);
+    } catch (err: any) {
+      toast.error(err.message || 'Failed to update profile');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   return (
     <div className="space-y-6 max-w-3xl mx-auto">
@@ -62,7 +98,16 @@ export function Profile() {
                 <User className="h-4 w-4" />
                 Full Name
               </Label>
-              <Input id="name" value={user.name} readOnly />
+              {isEditing ? (
+                <Input
+                  id="name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                <Input id="name" value={user.name} readOnly />
+              )}
             </div>
 
             <div className="space-y-2">
@@ -71,6 +116,40 @@ export function Profile() {
                 Email
               </Label>
               <Input id="email" type="email" value={user.email} readOnly />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="phone" className="flex items-center gap-2">
+                <Phone className="h-4 w-4" />
+                Phone Number
+              </Label>
+              {isEditing ? (
+                <Input
+                  id="phone"
+                  value={phone}
+                  onChange={(e) => setPhone(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                <Input id="phone" value={user.phone || 'N/A'} readOnly />
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="company" className="flex items-center gap-2">
+                <Building2 className="h-4 w-4" />
+                Company
+              </Label>
+              {isEditing ? (
+                <Input
+                  id="company"
+                  value={company}
+                  onChange={(e) => setCompany(e.target.value)}
+                  disabled={isSubmitting}
+                />
+              ) : (
+                <Input id="company" value={user.company || 'N/A'} readOnly />
+              )}
             </div>
 
             <div className="space-y-2">
@@ -87,11 +166,15 @@ export function Profile() {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Company
+              <Label htmlFor="status" className="flex items-center gap-2">
+                <Shield className="h-4 w-4" />
+                Account Status
               </Label>
-              <Input id="company" value={user.company || 'N/A'} readOnly />
+              <Input
+                id="status"
+                value={user.isApproved ? 'Approved' : 'Pending Approval'}
+                readOnly
+              />
             </div>
 
             <div className="space-y-2">
@@ -105,25 +188,26 @@ export function Profile() {
                 readOnly
               />
             </div>
-
-            <div className="space-y-2">
-              <Label htmlFor="status" className="flex items-center gap-2">
-                <Shield className="h-4 w-4" />
-                Account Status
-              </Label>
-              <Input
-                id="status"
-                value={user.isApproved ? 'Approved' : 'Pending Approval'}
-                readOnly
-              />
-            </div>
           </div>
 
           <div className="pt-4 border-t border-[--color-border]">
-            <Button disabled>Edit Profile</Button>
-            <p className="text-xs text-[--color-text-secondary] mt-2">
-              Profile editing is currently disabled in the demo
-            </p>
+            {isEditing ? (
+              <>
+                <Button onClick={handleSave} disabled={isSubmitting}>
+                  {isSubmitting ? 'Saving...' : 'Save Changes'}
+                </Button>
+                <Button
+                  variant="outline"
+                  onClick={() => setIsEditing(false)}
+                  disabled={isSubmitting}
+                  className="ml-2"
+                >
+                  Cancel
+                </Button>
+              </>
+            ) : (
+              <Button onClick={startEditing}>Edit Profile</Button>
+            )}
           </div>
         </CardContent>
       </Card>
@@ -146,15 +230,11 @@ export function Profile() {
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Join Meetings</span>
-              <Badge className="bg-green-500">
-                Allowed
-              </Badge>
+              <Badge className="bg-green-500">Allowed</Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Submit Questions</span>
-              <Badge className="bg-green-500">
-                Allowed
-              </Badge>
+              <Badge className="bg-green-500">Allowed</Badge>
             </div>
             <div className="flex items-center justify-between p-2 rounded-lg bg-[--color-surface]">
               <span className="text-sm">Access Startup Pitch</span>

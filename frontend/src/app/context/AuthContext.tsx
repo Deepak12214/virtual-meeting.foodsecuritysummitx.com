@@ -35,6 +35,7 @@ interface AuthContextType {
   logout: () => void;
   googleLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
   refreshUser: () => Promise<void>;
+  updateProfile: (name: string, company: string, phone: string) => Promise<void>;
   isAuthenticated: boolean;
   loading: boolean;
   hasAccess: (requiredRole?: UserRole[]) => boolean;
@@ -214,6 +215,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     localStorage.removeItem('token');
   };
 
+  const updateProfile = async (name: string, company: string, phone: string) => {
+    const token = localStorage.getItem('token');
+    if (!token) throw new Error('No authentication token found');
+
+    const res = await fetch(`${API_URL}/auth/profile`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`,
+      },
+      body: JSON.stringify({ name, company, phone }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Failed to update profile');
+    }
+
+    if (data.success && data.user) {
+      setUser(data.user);
+    }
+  };
+
   /** Re-fetch the latest user data from the server (useful after admin approves the account) */
   const refreshUser = async () => {
     const token = localStorage.getItem('token');
@@ -249,6 +274,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         resetPassword,
         logout,
         refreshUser,
+        updateProfile,
         isAuthenticated: !!user,
         loading,
         hasAccess,

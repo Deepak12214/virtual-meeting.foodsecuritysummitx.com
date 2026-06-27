@@ -265,6 +265,51 @@ router.get('/me', protectUser, async (req, res) => {
   });
 });
 
+// @desc    Update user profile details (name, company, phone)
+// @route   PUT /api/auth/profile
+// @access  Private
+router.put('/profile', protectUser, async (req, res) => {
+  try {
+    const { name, company, phone } = req.body;
+
+    if (!name) {
+      return res.status(400).json({ success: false, message: 'Name is required' });
+    }
+    if (!phone) {
+      return res.status(400).json({ success: false, message: 'Phone number is required' });
+    }
+
+    const user = await User.findById(req.user._id);
+    if (!user) {
+      return res.status(404).json({ success: false, message: 'User not found' });
+    }
+
+    user.name = name;
+    user.company = company || '';
+    user.phone = phone;
+
+    await user.save();
+
+    res.status(200).json({
+      success: true,
+      message: 'Profile updated successfully',
+      user: {
+        id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role,
+        company: user.company,
+        isApproved: user.isApproved,
+        createdAt: user.createdAt,
+      },
+    });
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+
 // @desc    Google Sign-In / Sign-Up
 // @route   POST /api/auth/google-login
 // @access  Public
