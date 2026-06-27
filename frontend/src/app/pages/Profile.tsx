@@ -92,9 +92,9 @@ export function Profile() {
           <CardDescription>Your registration information</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
-              <Label htmlFor="name" className="flex items-center gap-2">
+              <Label htmlFor="name" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <User className="h-4 w-4" />
                 Full Name
               </Label>
@@ -104,22 +104,27 @@ export function Profile() {
                   value={name}
                   onChange={(e) => setName(e.target.value)}
                   disabled={isSubmitting}
+                  className="bg-[--color-background]"
                 />
               ) : (
-                <Input id="name" value={user.name} readOnly />
+                <div className="h-9 flex items-center text-base font-semibold text-foreground px-1 select-none">
+                  {user.name}
+                </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="email" className="flex items-center gap-2">
+              <Label htmlFor="email" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Mail className="h-4 w-4" />
                 Email
               </Label>
-              <Input id="email" type="email" value={user.email} readOnly />
+              <div className="h-9 flex items-center text-base font-medium text-foreground px-1 select-none">
+                {user.email}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="phone" className="flex items-center gap-2">
+              <Label htmlFor="phone" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Phone className="h-4 w-4" />
                 Phone Number
               </Label>
@@ -129,14 +134,17 @@ export function Profile() {
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
                   disabled={isSubmitting}
+                  className="bg-[--color-background]"
                 />
               ) : (
-                <Input id="phone" value={user.phone || 'N/A'} readOnly />
+                <div className="h-9 flex items-center text-base font-semibold text-foreground px-1 select-none">
+                  {user.phone || 'N/A'}
+                </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="company" className="flex items-center gap-2">
+              <Label htmlFor="company" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Building2 className="h-4 w-4" />
                 Company
               </Label>
@@ -146,47 +154,43 @@ export function Profile() {
                   value={company}
                   onChange={(e) => setCompany(e.target.value)}
                   disabled={isSubmitting}
+                  className="bg-[--color-background]"
                 />
               ) : (
-                <Input id="company" value={user.company || 'N/A'} readOnly />
+                <div className="h-9 flex items-center text-base font-semibold text-foreground px-1 select-none">
+                  {user.company || 'N/A'}
+                </div>
               )}
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="role" className="flex items-center gap-2">
+              <Label htmlFor="role" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Shield className="h-4 w-4" />
                 Role
               </Label>
-              <Input
-                id="role"
-                value={user.role.replace('_', ' ')}
-                readOnly
-                className="capitalize"
-              />
+              <div className="h-9 flex items-center text-base font-medium text-foreground px-1 select-none capitalize">
+                {user.role.replace('_', ' ')}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="status" className="flex items-center gap-2">
+              <Label htmlFor="status" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Shield className="h-4 w-4" />
                 Account Status
               </Label>
-              <Input
-                id="status"
-                value={user.isApproved ? 'Approved' : 'Pending Approval'}
-                readOnly
-              />
+              <div className="h-9 flex items-center text-base font-medium text-foreground px-1 select-none">
+                {user.isApproved ? 'Approved' : 'Pending Approval'}
+              </div>
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="registered" className="flex items-center gap-2">
+              <Label htmlFor="registered" className="flex items-center gap-2 text-[--color-text-secondary]">
                 <Calendar className="h-4 w-4" />
                 Registered
               </Label>
-              <Input
-                id="registered"
-                value={new Date(user.createdAt).toLocaleDateString()}
-                readOnly
-              />
+              <div className="h-9 flex items-center text-base font-medium text-foreground px-1 select-none">
+                {new Date(user.createdAt).toLocaleDateString()}
+              </div>
             </div>
           </div>
 
