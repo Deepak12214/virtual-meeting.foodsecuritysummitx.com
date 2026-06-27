@@ -35,6 +35,7 @@ export function RootLayout() {
     { path: '/', label: 'Dashboard', icon: BarChart3, roles: [] },
     { path: '/stage', label: 'Main Stage', icon: Video, roles: [] },
     { path: '/exhibition', label: 'Exhibition', icon: Store, roles: [] },
+    /*
     {
       path: '/meetings',
       label: 'Meetings',
@@ -53,6 +54,7 @@ export function RootLayout() {
       icon: Rocket,
       roles: [],
     },
+    */
     {
       path: '/organizer',
       label: 'Organizer',
