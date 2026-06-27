@@ -140,6 +140,7 @@ export function Dashboard() {
       hoverGlow: 'hover:shadow-lg hover:shadow-teal-500/5',
       roles: [],
     },
+    /*
     {
       title: 'Meetings',
       description: 'Manage and join scheduled 1-on-1 calls.',
@@ -160,6 +161,7 @@ export function Dashboard() {
       hoverGlow: 'hover:shadow-lg hover:shadow-lime-500/5',
       roles: [],
     },
+    */
   ];
 
   const visibleActions = quickActions.filter(
@@ -197,7 +199,7 @@ export function Dashboard() {
               Welcome back, {user?.name}!
             </h1>
             <p className="text-muted-foreground mt-2 text-sm md:text-base max-w-2xl">
-              Glad to have you here. There are currently <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{liveStagesCount} live stages</span> active, and you have <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{meetings.length} scheduled sessions</span> registered.
+              Glad to have you here. There are currently <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{liveStagesCount} live stages</span> active.
             </p>
           </div>
         </div>
@@ -257,7 +259,7 @@ export function Dashboard() {
             </Card>
           </Link>
 
-          {/* Startup Pitch Card */}
+          {/* Startup Pitch Card
           <Link to="/pitch" className="group block">
             <Card className="relative h-full overflow-hidden bg-card text-card-foreground border-border hover:border-green-500/30 transition-all duration-300 hover:-translate-y-1 shadow-sm hover:shadow-md dark:hover:shadow-green-950/10">
               <div className="p-5 flex flex-col justify-between h-full gap-4">
@@ -303,6 +305,7 @@ export function Dashboard() {
               </div>
             </Card>
           </Link>
+          */}
         </div>
       </div>
 
@@ -351,6 +354,7 @@ export function Dashboard() {
               <h3 className="text-3xl font-extrabold text-foreground mt-2">{booths.filter(b => b.isLive).length}</h3>
             </CardContent>
           </Card>
+          {/*
           <Card className="bg-card text-card-foreground border-border">
             <CardContent className="p-5">
               <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">
@@ -360,6 +364,7 @@ export function Dashboard() {
               <h3 className="text-3xl font-extrabold text-foreground mt-2">{meetings.length}</h3>
             </CardContent>
           </Card>
+          */}
           <Card className="bg-card text-card-foreground border-border">
             <CardContent className="p-5">
               <p className="text-muted-foreground flex items-center gap-1.5 text-xs font-medium">

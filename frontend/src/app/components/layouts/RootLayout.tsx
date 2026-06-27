@@ -42,12 +42,14 @@ export function RootLayout() {
       icon: Calendar,
       roles: [],
     },
+    */
     {
       path: '/private-meetings',
       label: 'Private Meetings',
       icon: Lock,
       roles: [],
     },
+    /*
     {
       path: '/pitch',
       label: 'Startup Pitch',

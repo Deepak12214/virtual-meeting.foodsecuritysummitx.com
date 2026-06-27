@@ -124,8 +124,11 @@ router.get('/', protectUser, async (req, res) => {
     const query = {};
     if (isPrivate) {
       query.isPrivate = true;
-      if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
-        query.invitedEmails = req.user.email.toLowerCase();
+      if (req.user.role !== USER_ROLES.ADMIN) {
+        query.$or = [
+          { creator: req.user._id },
+          { invitedEmails: req.user.email.toLowerCase() }
+        ];
       }
     } else {
       query.isPrivate = { $ne: true };
@@ -325,9 +328,10 @@ router.get('/:id', protectUser, async (req, res) => {
     }
 
     if (meeting.isPrivate) {
+      const creatorId = meeting.creator._id || meeting.creator;
       const isAuthorized = 
-        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
-        meeting.creator.toString() === req.user._id.toString() || 
+        req.user.role === USER_ROLES.ADMIN || 
+        creatorId.toString() === req.user._id.toString() || 
         (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
 
       if (!isAuthorized) {
@@ -420,9 +424,10 @@ router.post('/:id/token', protectUser, async (req, res) => {
     }
 
     if (meeting.isPrivate) {
+      const creatorId = meeting.creator._id || meeting.creator;
       const isAuthorized = 
-        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
-        meeting.creator.toString() === req.user._id.toString() || 
+        req.user.role === USER_ROLES.ADMIN || 
+        creatorId.toString() === req.user._id.toString() || 
         (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
 
       if (!isAuthorized) {
@@ -432,8 +437,9 @@ router.post('/:id/token', protectUser, async (req, res) => {
 
     // 1. Determine hmsRole: Creator, admin, organizer, host, and moderator get 'broadcaster' role
     let hmsRole;
+    const creatorId = meeting.creator._id || meeting.creator;
     if (
-      meeting.creator.toString() === req.user._id.toString() ||
+      creatorId.toString() === req.user._id.toString() ||
       ADMIN_LEVEL_ROLES.includes(req.user.role)
     ) {
       hmsRole = 'broadcaster';
@@ -467,9 +473,10 @@ router.post('/:id/join', protectUser, async (req, res) => {
     }
 
     if (meeting.isPrivate) {
+      const creatorId = meeting.creator._id || meeting.creator;
       const isAuthorized = 
-        ADMIN_LEVEL_ROLES.includes(req.user.role) || 
-        meeting.creator.toString() === req.user._id.toString() || 
+        req.user.role === USER_ROLES.ADMIN || 
+        creatorId.toString() === req.user._id.toString() || 
         (meeting.invitedEmails && meeting.invitedEmails.includes(req.user.email.toLowerCase()));
 
       if (!isAuthorized) {

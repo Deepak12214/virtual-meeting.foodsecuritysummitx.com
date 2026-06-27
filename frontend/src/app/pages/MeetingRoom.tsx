@@ -134,14 +134,15 @@ export function MeetingRoom() {
       .then((data) => {
         if (data.status === 'completed') {
           toast.error('This meeting has already ended.');
-          navigate('/meetings');
+          navigate(data.isPrivate ? '/private-meetings' : '/meetings');
           return;
         }
         setMeeting(data);
       })
       .catch((err) => {
         toast.error(err?.message || 'Failed to load meeting details.');
-        navigate('/meetings');
+        const isPrivateError = err?.message && (err.message.includes('private') || err.message.includes('Access denied'));
+        navigate(isPrivateError ? '/private-meetings' : '/meetings');
       })
       .finally(() => setLoading(false));
   }, [meetingId, navigate]);
@@ -210,7 +211,8 @@ export function MeetingRoom() {
         })
         .catch((err) => {
           console.error('HMS join error:', err);
-          setJoinStatus('joining');
+          toast.error(err?.message || 'Access denied. You are not invited to this private meeting.');
+          navigate(meeting.isPrivate ? '/private-meetings' : '/meetings');
         });
     } else {
       // Regular users/guests immediately enter the waiting state and do not join WebRTC yet
@@ -500,7 +502,7 @@ export function MeetingRoom() {
 
   const handleLeave = async () => {
     await hmsActions.leave().catch(() => {});
-    navigate('/meetings');
+    navigate(meeting?.isPrivate ? '/private-meetings' : '/meetings');
   };
 
   const handleEndForAll = async () => {
@@ -511,7 +513,7 @@ export function MeetingRoom() {
     } catch (err) {
       console.error('End meeting error:', err);
     }
-    navigate('/meetings');
+    navigate(meeting?.isPrivate ? '/private-meetings' : '/meetings');
   };
 
   const toggleAudio = () => hmsActions.setLocalAudioEnabled(!isAudioEnabled);
@@ -543,9 +545,9 @@ export function MeetingRoom() {
         <AlertCircle className="w-12 h-12 text-red-500 mx-auto mb-3" />
         <h3 className="text-lg font-bold text-foreground">Meeting Not Found</h3>
         <p className="text-muted-foreground text-sm mt-1">This meeting does not exist or may have been deleted.</p>
-        <Link to="/meetings">
+        <Link to="/private-meetings">
           <Button className="mt-5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl border-none">
-            Back to Meetings
+            Back to Private Meetings
           </Button>
         </Link>
       </div>
@@ -607,7 +609,7 @@ export function MeetingRoom() {
           <p className="text-sm text-muted-foreground mt-2 max-w-xs mx-auto">
             The host of this meeting room has declined your request to join.
           </p>
-          <Link to="/meetings" className="block mt-6">
+          <Link to={meeting?.isPrivate ? "/private-meetings" : "/meetings"} className="block mt-6">
             <Button className="w-full bg-emerald-600 hover:bg-emerald-500 text-white h-11 rounded-xl border-none cursor-pointer">
               Back to Meetings
             </Button>

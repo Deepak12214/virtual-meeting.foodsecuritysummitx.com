@@ -499,6 +499,7 @@ export function MainStageEnhanced() {
 
   // A "pure speaker" is anyone who is NOT an Admin (they must request permission to go live)
   const isPureSpeaker = !!user && !isAdmin;
+  const canRequestStage = isPureSpeaker && user?.role !== USER_ROLES.ATTENDEE;
 
   // Store selectors for local media state
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -910,6 +911,10 @@ export function MainStageEnhanced() {
 
   /** Speaker clicks "Join Stage" → sends request, appears in admin queue */
   const requestToGoLive = async () => {
+    if (user?.role === USER_ROLES.ATTENDEE) {
+      toast.error('Attendees are not allowed to join the stage.');
+      return;
+    }
     if (!localPeer || requestSentRef.current) return;
     try {
       requestSentRef.current = true;
@@ -1211,7 +1216,7 @@ export function MainStageEnhanced() {
             {stageMeeting?.description || (
               isHost
                 ? 'Host control interface — manage speakers and the live stage'
-                : isPureSpeaker
+                : canRequestStage
                   ? 'Request stage access and go live in front of the audience'
                   : isModerator
                     ? 'Moderator view — manage Q&A and audience interaction'
@@ -1246,7 +1251,7 @@ export function MainStageEnhanced() {
 
 
       {/* ── SPEAKER: Prominent Stage Request Banner (top, full-width) ──────── */}
-      {isPureSpeaker && requestStatus !== 'live' && (
+      {canRequestStage && requestStatus !== 'live' && (
         <StageRequestBanner
           requestStatus={requestStatus}
           isConnected={!!isConnected}
