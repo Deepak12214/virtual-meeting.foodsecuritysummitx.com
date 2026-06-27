@@ -477,13 +477,18 @@ export function StartupPitchEnhanced() {
   // Role checks
   const canAccess = hasAccess([USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.ORGANIZER, USER_ROLES.ADMIN, USER_ROLES.HOST, USER_ROLES.MODERATOR, USER_ROLES.SPEAKER, USER_ROLES.ATTENDEE, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR]);
   const isAdmin = user?.role === USER_ROLES.ADMIN;
-  const isOrganizer = user?.role === USER_ROLES.ORGANIZER || isAdmin;
-  const isHost = user?.role === USER_ROLES.HOST || user?.role === USER_ROLES.MODERATOR || isOrganizer;
+  const isOrganizer = isAdmin; // Strictly only Admin has Organizer authority on Pitch Stage
+  const isHost = isAdmin;      // Strictly only Admin has Host authority on Pitch Stage
   const isStartup = user?.role === USER_ROLES.STARTUP_PARTICIPANT;
   const isInvestor = user?.role === USER_ROLES.INVESTOR;
 
-  // A "pure startup participant" is someone who can request to go live (startup, sponsor, exhibitor, investor) and is NOT admin/organizer/host
-  const isPureStartup = !!user && [USER_ROLES.STARTUP_PARTICIPANT, USER_ROLES.SPONSOR, USER_ROLES.EXHIBITOR, USER_ROLES.INVESTOR].includes(user.role as any) && !isHost;
+  // A "pure startup participant" contains startup_participant, investor, host, moderator roles who are not Admin
+  const isPureStartup = !!user && [
+    USER_ROLES.STARTUP_PARTICIPANT,
+    USER_ROLES.INVESTOR,
+    USER_ROLES.HOST,
+    USER_ROLES.MODERATOR
+  ].includes(user.role as any) && !isAdmin;
 
   // Store selectors for local media state
   const isAudioEnabled = useHMSStore(selectIsLocalAudioEnabled);
@@ -978,33 +983,25 @@ export function StartupPitchEnhanced() {
     const allPeers = localPeer ? [localPeer, ...peers.filter(p => p.id !== localPeer.id)] : peers;
 
     const isLiveStartup = (p: HMSPeer) => {
-      if (p.roleName === 'viewer-on-stage') {
-        if (p.isLocal) return requestStatus === 'live';
-        try {
-          const meta = JSON.parse(p.metadata || '{}');
-          return meta.status === 'live';
-        } catch {
-          return false;
-        }
+      let meta: any = {};
+      try {
+        meta = JSON.parse(p.metadata || '{}');
+      } catch { }
+
+      const pRole = meta.platformRole || (p.isLocal ? user?.role : '');
+
+      // 1. Admin always appears on stage if their camera or microphone is enabled
+      if (pRole === USER_ROLES.ADMIN) {
+        const audioTrackEnabled = p.audioTrack ? tracks[p.audioTrack]?.enabled : false;
+        const videoTrackEnabled = p.videoTrack ? tracks[p.videoTrack]?.enabled : false;
+        return audioTrackEnabled || videoTrackEnabled;
       }
-      if (p.roleName === 'broadcaster') {
-        try {
-          const meta = JSON.parse(p.metadata || '{}');
-          const pRole = meta.platformRole;
-          // If it is admin, organizer, host, or moderator, they appear on stage ONLY when their camera or microphone is enabled (unmuted)
-          if (
-            pRole === USER_ROLES.ADMIN ||
-            pRole === USER_ROLES.HOST ||
-            pRole === USER_ROLES.MODERATOR
-          ) {
-            const audioTrackEnabled = p.audioTrack ? tracks[p.audioTrack]?.enabled : false;
-            const videoTrackEnabled = p.videoTrack ? tracks[p.videoTrack]?.enabled : false;
-            return audioTrackEnabled || videoTrackEnabled;
-          }
-        } catch { }
-        return true;
+
+      // 2. Everyone else must be promoted/live to appear on stage
+      if (p.isLocal) {
+        return requestStatus === 'live';
       }
-      return false;
+      return meta.status === 'live';
     };
 
     return allPeers.filter((p) => isLiveStartup(p));
@@ -1087,15 +1084,14 @@ export function StartupPitchEnhanced() {
     let meta: any = {};
     try { meta = JSON.parse(p.metadata || '{}'); } catch { }
     const platformRole = meta.platformRole || (p.isLocal ? user?.role : '');
-    return platformRole !== 'admin' && platformRole !== 'organizer';
+    return platformRole !== 'admin';
   });
 
   const showBroadcasterControls =
     isConnected &&
     (
-      localHmsRole === 'broadcaster' ||
       isAdmin ||
-      isHost ||
+      (localHmsRole === 'broadcaster' && requestStatus === 'live') ||
       (localHmsRole === 'viewer-on-stage' && requestStatus === 'live')
     );
 
