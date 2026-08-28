@@ -14,6 +14,7 @@ import {
   Menu,
   X,
   Lock,
+  FileText,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { BRAND } from '../../config/branding';
@@ -35,40 +36,12 @@ export function RootLayout() {
     { path: '/', label: 'Dashboard', icon: BarChart3, roles: [] },
     { path: '/stage', label: 'Main Stage', icon: Video, roles: [] },
     { path: '/exhibition', label: 'Exhibition', icon: Store, roles: [] },
-    /*
-    {
-      path: '/meetings',
-      label: 'Meetings',
-      icon: Calendar,
-      roles: [],
-    },
-    */
-    {
-      path: '/private-meetings',
-      label: 'Private Meetings',
-      icon: Lock,
-      roles: [],
-    },
-    /*
-    {
-      path: '/pitch',
-      label: 'Startup Pitch',
-      icon: Rocket,
-      roles: [],
-    },
-    */
-    {
-      path: '/organizer',
-      label: 'Organizer',
-      icon: Settings,
-      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
-    },
-    {
-      path: '/analytics',
-      label: 'Analytics',
-      icon: BarChart3,
-      roles: [USER_ROLES.ADMIN],
-    },
+    { path: '/meetings', label: 'Meetings', icon: Calendar, roles: [] },
+    { path: '/private-meetings', label: 'Private Meetings', icon: Lock, roles: [] },
+    { path: '/pitch', label: 'Startup Pitch', icon: Rocket, roles: [] },
+    { path: '/organizer', label: 'Organizer', icon: Settings, roles: [] },
+    { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: [] },
+    { path: '/logs', label: 'Operational Logs', icon: FileText, roles: [] },
   ];
 
   const currentPath = location.pathname;
@@ -107,51 +80,27 @@ export function RootLayout() {
   useEffect(() => {
     if (loading) return;
 
-    // Direct user to login if trying to access a restricted path
-    const isRestrictedPath =
+    // Direct user to login if trying to access a protected path while not authenticated
+    const isProtectedPath =
       currentPath === '/profile' ||
       currentPath.startsWith('/organizer') ||
       currentPath === '/analytics' ||
       currentPath === '/logs' ||
       currentPath.startsWith('/private-meetings') ||
-      (currentNavItem && currentNavItem.roles.length > 0);
+      currentPath.startsWith('/meetings') ||
+      currentPath.startsWith('/pitch');
 
-    if (!isAuthenticated) {
-      if (isRestrictedPath) {
-        navigate('/auth/login');
-      }
-    } else if (user) {
-      if (currentNavItem && currentNavItem.roles.length > 0 && !currentNavItem.roles.includes(user.role)) {
-        navigate('/');
-      }
-      if (currentPath.startsWith('/private-meetings') && !ADMIN_LEVEL_ROLES.includes(user.role) && !hasPrivateMeetings) {
-        navigate('/');
-      }
-      if (currentPath.startsWith('/organizer') && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
-        navigate('/');
-      }
-      if (currentPath === '/analytics' && user.role !== USER_ROLES.ADMIN) {
-        navigate('/');
-      }
-      if (currentPath === '/logs' && !( [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN] as UserRole[] ).includes(user.role)) {
-        navigate('/');
-      }
+    if (!isAuthenticated && isProtectedPath) {
+      navigate('/auth/login');
     }
-  }, [isAuthenticated, user, currentPath, currentNavItem, loading, navigate, hasPrivateMeetings]);
+  }, [isAuthenticated, currentPath, loading, navigate]);
 
   const handleLogout = () => {
     logout();
     navigate('/auth/login');
   };
 
-  const visibleNavItems = navItems.filter((item) => {
-    if (item.path === '/private-meetings') {
-      if (!user) return false;
-      if (ADMIN_LEVEL_ROLES.includes(user.role)) return true;
-      return hasPrivateMeetings;
-    }
-    return item.roles.length === 0 || (user && item.roles.includes(user.role));
-  });
+  const visibleNavItems = navItems;
 
   if (loading) {
     return (

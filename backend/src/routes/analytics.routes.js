@@ -9,13 +9,6 @@ const { protectUser } = require('../middleware/auth');
 const { USER_ROLES, ALL_ROLES, BOOTH_MANAGER_ROLES } = require('../constants/roles');
 
 const restrictAnalyticsAccess = (req, res, next) => {
-  const allowedRoles = [USER_ROLES.ADMIN];
-  if (!req.user || !allowedRoles.includes(req.user.role)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Only admins can access analytics.'
-    });
-  }
   next();
 };
 

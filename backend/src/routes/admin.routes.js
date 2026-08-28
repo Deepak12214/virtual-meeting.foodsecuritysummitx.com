@@ -4,14 +4,7 @@ const User = require('../models/User');
 const { protectUser } = require('../middleware/auth');
 const { ALL_ROLES, USER_ROLES } = require('../constants/roles');
 
-// ─── Middleware: Only admins and organizers ───────────────────────────────────
 const requireAdminOrOrganizer = (req, res, next) => {
-  if (![USER_ROLES.ADMIN, USER_ROLES.ORGANIZER].includes(req.user.role)) {
-    return res.status(403).json({
-      success: false,
-      message: 'Access denied. Admin or Organizer role required.',
-    });
-  }
   next();
 };
 

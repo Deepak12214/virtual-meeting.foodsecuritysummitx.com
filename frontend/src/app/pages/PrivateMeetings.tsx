@@ -136,7 +136,7 @@ export function PrivateMeetings() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const canAccessMeetings = !!user;
-  const canCreateMeetings = !!user && user.role === USER_ROLES.ADMIN;
+  const canCreateMeetings = !!user;
 
   // ── 1. Debounced user search hook for meeting creation ──────────────────────
   useEffect(() => {

@@ -64,15 +64,7 @@ async function saveStageEngagementStats(meetingId) {
 // @access  Private
 router.post('/', protectUser, async (req, res) => {
   try {
-    if (req.user.role === USER_ROLES.ATTENDEE) {
-      return res.status(403).json({ success: false, message: 'Attendees are not allowed to create meetings' });
-    }
-
     const { title, description, scheduledTime, duration, isPrivate, invitedEmails } = req.body;
-
-    if (isPrivate && req.user.role !== USER_ROLES.ADMIN) {
-      return res.status(403).json({ success: false, message: 'Only administrators can create private meetings' });
-    }
 
     if (!title) {
       return res.status(400).json({ success: false, message: 'Meeting title is required' });
@@ -289,10 +281,6 @@ router.get('/pitch/room', protectUser, async (req, res) => {
 // @access  Private (Admins only)
 router.get('/users/search', protectUser, async (req, res) => {
   try {
-    if (req.user.role !== USER_ROLES.ADMIN) {
-      return res.status(403).json({ success: false, message: 'Only administrators can search users' });
-    }
-
     const { q } = req.query;
     if (!q) {
       return res.status(200).json({ success: true, users: [] });
@@ -363,7 +351,7 @@ router.get('/:id', protectUser, async (req, res) => {
   }
 });
 
-// @desc    Update meeting details (Organizer/Admin only)
+// @desc    Update meeting details (Creator/Organizer/Admin)
 // @route   PUT /api/meetings/:id
 // @access  Private
 router.put('/:id', protectUser, async (req, res) => {
@@ -373,8 +361,9 @@ router.put('/:id', protectUser, async (req, res) => {
       return res.status(404).json({ success: false, message: 'Meeting not found' });
     }
 
-    // Check if user is organizer or admin
-    if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
+    const creatorId = meeting.creator._id || meeting.creator;
+    const isAuthorized = creatorId.toString() === req.user._id.toString() || ADMIN_LEVEL_ROLES.includes(req.user.role);
+    if (!isAuthorized) {
       return res.status(403).json({ success: false, message: 'Not authorized to update this meeting' });
     }
 

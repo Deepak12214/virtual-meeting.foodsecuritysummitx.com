@@ -105,7 +105,7 @@ export function MeetingRooms() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const canAccessMeetings = !!user;
-  const canCreateMeetings = !!user && user.role !== USER_ROLES.ATTENDEE;
+  const canCreateMeetings = !!user;
 
   // ── 1. Live Ticker Hook ──────────────────────────────────────────────────────
   useEffect(() => {
