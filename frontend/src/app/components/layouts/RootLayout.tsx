@@ -37,17 +37,34 @@ export function RootLayout() {
     { path: '/stage', label: 'Main Stage', icon: Video, roles: [] },
     { path: '/exhibition', label: 'Exhibition', icon: Store, roles: [] },
     { path: '/meetings', label: 'Meetings', icon: Calendar, roles: [] },
-    { path: '/private-meetings', label: 'Private Meetings', icon: Lock, roles: [] },
+    {
+      path: '/private-meetings',
+      label: 'Private Meetings',
+      icon: Lock,
+      roles: [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER, USER_ROLES.HOST, USER_ROLES.MODERATOR],
+    },
     { path: '/pitch', label: 'Startup Pitch', icon: Rocket, roles: [] },
-    { path: '/organizer', label: 'Organizer', icon: Settings, roles: [] },
-    { path: '/analytics', label: 'Analytics', icon: BarChart3, roles: [] },
-    { path: '/logs', label: 'Operational Logs', icon: FileText, roles: [] },
+    {
+      path: '/organizer',
+      label: 'Organizer',
+      icon: Settings,
+      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
+    },
+    {
+      path: '/analytics',
+      label: 'Analytics',
+      icon: BarChart3,
+      roles: [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER],
+    },
+    {
+      path: '/logs',
+      label: 'Operational Logs',
+      icon: FileText,
+      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
+    },
   ];
 
   const currentPath = location.pathname;
-  const currentNavItem = navItems.find(
-    (item) => item.path === currentPath || (item.path !== '/' && currentPath.startsWith(item.path))
-  );
 
   useEffect(() => {
     if (!isAuthenticated || !user) {
@@ -90,17 +107,48 @@ export function RootLayout() {
       currentPath.startsWith('/meetings') ||
       currentPath.startsWith('/pitch');
 
-    if (!isAuthenticated && isProtectedPath) {
-      navigate('/auth/login');
+    if (!isAuthenticated) {
+      if (isProtectedPath) {
+        navigate('/auth/login');
+      }
+      return;
     }
-  }, [isAuthenticated, currentPath, loading, navigate]);
+
+    // Role-based protection: Redirect to home ('/') if user does not have permission for the current path
+    if (user) {
+      const matchedItem = navItems.find(
+        (item) => item.path === currentPath || (item.path !== '/' && currentPath.startsWith(item.path))
+      );
+
+      if (matchedItem && matchedItem.roles.length > 0) {
+        if (matchedItem.path === '/private-meetings') {
+          const hasAccess = matchedItem.roles.includes(user.role) || hasPrivateMeetings;
+          if (!hasAccess) {
+            navigate('/');
+          }
+        } else {
+          const hasAccess = matchedItem.roles.includes(user.role);
+          if (!hasAccess) {
+            navigate('/');
+          }
+        }
+      }
+    }
+  }, [isAuthenticated, user, currentPath, loading, navigate, hasPrivateMeetings]);
 
   const handleLogout = () => {
     logout();
     navigate('/auth/login');
   };
 
-  const visibleNavItems = navItems;
+  const visibleNavItems = navItems.filter((item) => {
+    if (item.roles.length === 0) return true;
+    if (!user) return false;
+    if (item.path === '/private-meetings') {
+      return item.roles.includes(user.role) || hasPrivateMeetings;
+    }
+    return item.roles.includes(user.role);
+  });
 
   if (loading) {
     return (

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../context/AuthContext';
-import { USER_ROLES } from '../constants/roles';
+import { USER_ROLES, ADMIN_LEVEL_ROLES } from '../constants/roles';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '../components/ui/card';
 import { Button } from '../components/ui/button';
 import { Badge } from '../components/ui/badge';
@@ -136,7 +136,7 @@ export function PrivateMeetings() {
   const [currentTime, setCurrentTime] = useState(Date.now());
 
   const canAccessMeetings = !!user;
-  const canCreateMeetings = !!user;
+  const canCreateMeetings = !!user && ADMIN_LEVEL_ROLES.includes(user.role);
 
   // ── 1. Debounced user search hook for meeting creation ──────────────────────
   useEffect(() => {

@@ -9,6 +9,13 @@ const { protectUser } = require('../middleware/auth');
 const { USER_ROLES, ALL_ROLES, BOOTH_MANAGER_ROLES } = require('../constants/roles');
 
 const restrictAnalyticsAccess = (req, res, next) => {
+  const allowedRoles = [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER];
+  if (!req.user || !allowedRoles.includes(req.user.role)) {
+    return res.status(403).json({
+      success: false,
+      message: 'Access denied. Admin or Organizer role required.'
+    });
+  }
   next();
 };
 

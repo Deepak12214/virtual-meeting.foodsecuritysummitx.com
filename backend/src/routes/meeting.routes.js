@@ -281,6 +281,9 @@ router.get('/pitch/room', protectUser, async (req, res) => {
 // @access  Private (Admins only)
 router.get('/users/search', protectUser, async (req, res) => {
   try {
+    if (!ADMIN_LEVEL_ROLES.includes(req.user.role)) {
+      return res.status(403).json({ success: false, message: 'Not authorized to search registered users' });
+    }
     const { q } = req.query;
     if (!q) {
       return res.status(200).json({ success: true, users: [] });
