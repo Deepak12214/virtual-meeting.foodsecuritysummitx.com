@@ -14,7 +14,6 @@ import {
   Menu,
   X,
   Lock,
-  FileText,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { BRAND } from '../../config/branding';
@@ -56,12 +55,6 @@ export function RootLayout() {
       icon: BarChart3,
       roles: [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER],
     },
-    {
-      path: '/logs',
-      label: 'Operational Logs',
-      icon: FileText,
-      roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
-    },
   ];
 
   const currentPath = location.pathname;
@@ -102,7 +95,6 @@ export function RootLayout() {
       currentPath === '/profile' ||
       currentPath.startsWith('/organizer') ||
       currentPath === '/analytics' ||
-      currentPath === '/logs' ||
       currentPath.startsWith('/private-meetings') ||
       currentPath.startsWith('/meetings') ||
       currentPath.startsWith('/pitch');

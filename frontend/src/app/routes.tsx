@@ -1,4 +1,4 @@
-import { createBrowserRouter } from "react-router";
+import { createBrowserRouter, Navigate } from "react-router";
 import { RootLayout } from "./components/layouts/RootLayout";
 import { Login } from "./pages/auth/Login";
 import { Signup } from "./pages/auth/Signup";
@@ -15,7 +15,6 @@ import { OrganizerDashboard } from "./pages/organizer/OrganizerDashboard";
 import { OrganizerUsers } from "./pages/organizer/OrganizerUsers";
 import { Analytics } from "./pages/Analytics";
 import { Profile } from "./pages/Profile";
-import { OperationalLogs } from "./pages/OperationalLogs";
 import { NotFound } from "./pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -42,7 +41,7 @@ export const router = createBrowserRouter([
       { path: "pitch", Component: StartupPitchEnhanced },
       { path: "profile", Component: Profile },
       { path: "analytics", Component: Analytics },
-      { path: "logs", Component: OperationalLogs },
+      { path: "logs", element: <Navigate to="/" replace /> },
       {
         path: "organizer",
         children: [
