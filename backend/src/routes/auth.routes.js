@@ -38,6 +38,9 @@ router.post('/register', async (req, res) => {
       if (userExists.authProvider === 'google') {
         return res.status(400).json({ success: false, message: 'This email is already registered with Google. Please use Google Sign-In.' });
       }
+      if (userExists.authProvider === 'microsoft') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with Microsoft / Outlook. Please use Outlook Sign-In.' });
+      }
       if (userExists.isVerified) {
         return res.status(400).json({ success: false, message: 'Email already registered. Please login.' });
       } else {
@@ -143,6 +146,9 @@ router.post('/login', async (req, res) => {
 
     if (user.authProvider === 'google') {
       return res.status(400).json({ success: false, message: 'This email is registered with Google. Please use Google Sign-In.' });
+    }
+    if (user.authProvider === 'microsoft') {
+      return res.status(400).json({ success: false, message: 'This email is registered with Microsoft / Outlook. Please use Outlook Sign-In.' });
     }
 
     const isMatch = await user.comparePassword(password);
@@ -326,6 +332,9 @@ router.post('/google-login', async (req, res) => {
       if (user.authProvider === 'local') {
         return res.status(400).json({ success: false, message: 'This email is already registered with standard email and password. Please log in with password.' });
       }
+      if (user.authProvider === 'microsoft') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with Microsoft / Outlook. Please log in with Outlook.' });
+      }
       // User exists and is registered via Google
       if (!user.isActive) {
         return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
@@ -369,6 +378,92 @@ router.post('/google-login', async (req, res) => {
         isVerified: true, // Google accounts are pre-verified
         isApproved,
         authProvider: 'google',
+      });
+
+      const token = generateToken(user._id);
+      return res.status(201).json({
+        success: true,
+        message: 'Registration and login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone,
+          role: user.role,
+          company: user.company,
+          isApproved: user.isApproved,
+          createdAt: user.createdAt,
+        },
+      });
+    }
+  } catch (error) {
+    res.status(500).json({ success: false, message: 'Server error', error: error.message });
+  }
+});
+
+// @desc    Microsoft / Outlook Sign-In / Sign-Up
+// @route   POST /api/auth/microsoft-login
+// @access  Public
+router.post('/microsoft-login', async (req, res) => {
+  try {
+    const { email, name, phone, role, company } = req.body;
+    if (!email || !name) {
+      return res.status(400).json({ success: false, message: 'Please provide email and name' });
+    }
+
+    let user = await User.findOne({ email });
+
+    if (user) {
+      if (user.authProvider === 'local') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with standard email and password. Please log in with password.' });
+      }
+      if (user.authProvider === 'google') {
+        return res.status(400).json({ success: false, message: 'This email is already registered with Google. Please log in with Google.' });
+      }
+
+      if (!user.isActive) {
+        return res.status(403).json({ success: false, message: 'Account is deactivated. Contact support.' });
+      }
+      
+      const token = generateToken(user._id);
+      return res.status(200).json({
+        success: true,
+        message: 'Login successful',
+        token,
+        user: {
+          id: user._id,
+          name: user.name,
+          email: user.email,
+          phone: user.phone || '',
+          role: user.role,
+          company: user.company || '',
+          isApproved: user.isApproved,
+          createdAt: user.createdAt,
+        },
+      });
+    } else {
+      // Create new user with authProvider = 'microsoft'
+      const finalRole = role || USER_ROLES.ATTENDEE;
+      if (!ALL_ROLES.includes(finalRole)) {
+        return res.status(400).json({ success: false, message: 'Invalid role provided' });
+      }
+
+      const isApproved = AUTO_APPROVE_ROLES.includes(finalRole);
+
+      // Generate a random dummy password because schema requires it
+      const dummyPassword = Math.random().toString(36).slice(-8) + Math.random().toString(36).slice(-8);
+
+      user = await User.create({
+        name,
+        email,
+        phone: phone || 'N/A',
+        password: dummyPassword,
+        role: finalRole,
+        company: company || '',
+        isVerified: true, // Microsoft accounts are pre-verified
+        isApproved,
+        authProvider: 'microsoft',
       });
 
       const token = generateToken(user._id);

@@ -12,8 +12,10 @@ import { BRAND } from '../../config/branding';
 import { COUNTRY_CODES } from '../../data/countries';
 import { toast } from 'sonner';
 
+import { loginWithMicrosoft } from '../../utils/msalAuth';
+
 export function Signup() {
-  const { signup, googleLogin, verifyOTP } = useAuth();
+  const { signup, googleLogin, microsoftLogin, verifyOTP } = useAuth();
   const navigate = useNavigate();
 
   const [formData, setFormData] = useState({
@@ -32,6 +34,7 @@ export function Signup() {
   const [success, setSuccess] = useState('');
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [msLoading, setMsLoading] = useState(false);
 
   const decodeJwt = (token: string) => {
     try {
@@ -67,6 +70,25 @@ export function Signup() {
       setError(err.message || 'Google Registration/Login failed.');
     } finally {
       setGoogleLoading(false);
+    }
+  };
+
+  const handleMicrosoftSignUp = async () => {
+    setError('');
+    setSuccess('');
+    setMsLoading(true);
+    try {
+      const res = await loginWithMicrosoft();
+      await microsoftLogin(res.email, res.name, formData.role, formData.company);
+      toast.success('Successfully registered and signed in with Microsoft / Outlook!');
+      navigate('/');
+    } catch (err: any) {
+      if (err?.message && err.message.includes('user_cancelled')) {
+        return;
+      }
+      setError(err.message || 'Microsoft Registration/Login failed.');
+    } finally {
+      setMsLoading(false);
     }
   };
 
@@ -342,12 +364,28 @@ export function Signup() {
                 />
               </div>
 
-              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading || googleLoading}>
-                {loading || googleLoading ? 'Creating account...' : 'Sign Up'}
+              <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading || googleLoading || msLoading}>
+                {loading || googleLoading || msLoading ? 'Creating account...' : 'Sign Up'}
               </Button>
 
-              <div className="mt-4 flex justify-center">
+              <div className="mt-4 flex flex-col gap-2.5">
                 <div id="google-signup-button" className="w-full min-h-[40px] flex justify-center"></div>
+
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={handleMicrosoftSignUp}
+                  disabled={loading || googleLoading || msLoading}
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl h-10 transition-all duration-200 flex items-center justify-center gap-2.5 text-sm cursor-pointer shadow-sm"
+                >
+                  <svg className="w-4 h-4" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill="#f35325" d="M1 1h10v10H1z" />
+                    <path fill="#81bc06" d="M12 1h10v10H12z" />
+                    <path fill="#05a6f0" d="M1 12h10v10H1z" />
+                    <path fill="#ffba08" d="M12 12h10v10H12z" />
+                  </svg>
+                  {msLoading ? 'Connecting Outlook...' : 'Sign up with Outlook / Microsoft'}
+                </Button>
               </div>
             </form>
           )}

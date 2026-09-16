@@ -53,7 +53,7 @@ const userSchema = new mongoose.Schema(
     verifyTokenExpiry: Date,
     authProvider: {
       type: String,
-      enum: ['local', 'google'],
+      enum: ['local', 'google', 'microsoft'],
       default: 'local'
     },
   },

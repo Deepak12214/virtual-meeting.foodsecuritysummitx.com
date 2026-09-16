@@ -34,6 +34,7 @@ interface AuthContextType {
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ message: string }>;
   logout: () => void;
   googleLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
+  microsoftLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   updateProfile: (name: string, company: string, phone: string) => Promise<void>;
   isAuthenticated: boolean;
@@ -120,6 +121,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!res.ok) {
       throw new Error(data.message || 'Google authentication failed');
+    }
+
+    if (data.success && data.token && data.user) {
+      localStorage.setItem('token', data.token);
+      setUser(data.user);
+    }
+  };
+
+  const microsoftLogin = async (email: string, name: string, role?: UserRole, company?: string) => {
+    const res = await fetch(`${API_URL}/auth/microsoft-login`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ email, name, role, company }),
+    });
+
+    const data = await res.json();
+
+    if (!res.ok) {
+      throw new Error(data.message || 'Microsoft authentication failed');
     }
 
     if (data.success && data.token && data.user) {
@@ -268,6 +290,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user,
         login,
         googleLogin,
+        microsoftLogin,
         signup,
         verifyOTP,
         forgotPassword,

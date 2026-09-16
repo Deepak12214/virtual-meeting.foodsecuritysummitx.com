@@ -13,6 +13,7 @@ import { BoothMeetingRoom } from "./pages/BoothMeetingRoom";
 import { StartupPitchEnhanced } from "./pages/StartupPitchEnhanced";
 import { OrganizerDashboard } from "./pages/organizer/OrganizerDashboard";
 import { OrganizerUsers } from "./pages/organizer/OrganizerUsers";
+import { ContactSubmissions } from "./pages/organizer/ContactSubmissions";
 import { Analytics } from "./pages/Analytics";
 import { Profile } from "./pages/Profile";
 import { NotFound } from "./pages/NotFound";
@@ -47,6 +48,7 @@ export const router = createBrowserRouter([
         children: [
           { index: true, Component: OrganizerDashboard },
           { path: "users", Component: OrganizerUsers },
+          { path: "contacts", Component: ContactSubmissions },
         ],
       },
       { path: "*", Component: NotFound },

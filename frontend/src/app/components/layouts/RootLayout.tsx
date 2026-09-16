@@ -14,10 +14,14 @@ import {
   Menu,
   X,
   Lock,
+  Mail,
+  MessageSquare,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { BRAND } from '../../config/branding';
 import { fetchMeetings } from '../../services/meetingService';
+import { ContactModal } from '../ContactModal';
+import { WhatsAppWidget } from '../WhatsAppWidget';
 
 export function RootLayout() {
   const { user, logout, isAuthenticated, loading } = useAuth();
@@ -25,6 +29,7 @@ export function RootLayout() {
   const location = useLocation();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [hasPrivateMeetings, setHasPrivateMeetings] = useState(false);
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
 
   const navItems: Array<{
     path: string;
@@ -48,6 +53,12 @@ export function RootLayout() {
       label: 'Organizer',
       icon: Settings,
       roles: [USER_ROLES.ORGANIZER, USER_ROLES.ADMIN],
+    },
+    {
+      path: '/organizer/contacts',
+      label: 'Contact Inquiries',
+      icon: Mail,
+      roles: [USER_ROLES.ADMIN, USER_ROLES.ORGANIZER],
     },
     {
       path: '/analytics',
@@ -197,6 +208,17 @@ export function RootLayout() {
 
         {/* Sidebar User Profile Menu */}
         <div className="p-4 border-t border-[--color-sidebar-border] bg-[--color-sidebar]">
+          {/* Contact Us Button - placed just above Login/Profile section */}
+          <div className="mb-3">
+            <button
+              onClick={() => setIsContactModalOpen(true)}
+              className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm rounded-xl border border-emerald-500/25 transition-all cursor-pointer group"
+            >
+              <Mail className="h-4.5 w-4.5 group-hover:scale-110 transition-transform" />
+              <span>Contact Us</span>
+            </button>
+          </div>
+
           {isAuthenticated && user ? (
             <div className="flex items-center justify-between gap-3 p-2 rounded-xl bg-slate-100/40 dark:bg-slate-900/40 border border-[--color-sidebar-border]">
               <Link to="/profile" className="flex items-center gap-2.5 min-w-0 flex-1 hover:opacity-85 no-underline">
@@ -297,6 +319,17 @@ export function RootLayout() {
               })}
               
               <div className="pt-4 mt-4 border-t border-[--color-sidebar-border]">
+                <button
+                  onClick={() => {
+                    setMobileMenuOpen(false);
+                    setIsContactModalOpen(true);
+                  }}
+                  className="w-full flex items-center justify-center gap-2.5 px-4 py-2.5 mb-3 bg-emerald-600/10 hover:bg-emerald-600/20 text-emerald-700 dark:text-emerald-400 font-semibold text-sm rounded-xl border border-emerald-500/25 transition-all cursor-pointer"
+                >
+                  <Mail className="h-4.5 w-4.5" />
+                  <span>Contact Us</span>
+                </button>
+
                 {isAuthenticated ? (
                   <button
                     className="w-full flex items-center gap-3 px-4 py-3 rounded-xl text-sm font-semibold text-red-500 hover:bg-red-500/10 border-none bg-transparent cursor-pointer transition-all"
@@ -343,6 +376,15 @@ export function RootLayout() {
           </div>
         )}
       </div>
+
+      {/* Global Contact Form Modal */}
+      <ContactModal
+        isOpen={isContactModalOpen}
+        onClose={() => setIsContactModalOpen(false)}
+      />
+
+      {/* Floating WhatsApp Action Widget */}
+      <WhatsAppWidget />
     </div>
   );
 }

@@ -8,6 +8,7 @@ const adminRoutes = require('./routes/admin.routes');
 const boothRoutes = require('./routes/booth.routes');
 const questionRoutes = require('./routes/question.routes');
 const analyticsRoutes = require('./routes/analytics.routes');
+const contactRoutes = require('./routes/contact.routes');
 const path = require('path');
 
 // Connect to Database
@@ -40,6 +41,7 @@ app.use('/api/admin', adminRoutes);
 app.use('/api/booths', boothRoutes);
 app.use('/api/questions', questionRoutes);
 app.use('/api/analytics', analyticsRoutes);
+app.use('/api/contact', contactRoutes);
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 app.use('/api/uploads', express.static(path.join(__dirname, '../uploads')));
 
