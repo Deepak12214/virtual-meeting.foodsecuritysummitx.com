@@ -1,11 +1,11 @@
 import { PublicClientApplication, Configuration, PopupRequest } from '@azure/msal-browser';
 
 // Microsoft OAuth Configuration (Client ID can be configured via VITE_MICROSOFT_CLIENT_ID)
-const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID || 'f8cdef31-a31e-4b4a-93e4-5f571e91255a';
+const clientId = import.meta.env.VITE_MICROSOFT_CLIENT_ID || '7d9dfe90-bc4e-45e8-816a-9d7e28a81e95';
 const msalConfig: Configuration = {
   auth: {
     clientId: clientId,
-    authority: 'https://login.microsoftonline.com/common', 
+    authority: 'https://login.microsoftonline.com/common',
     redirectUri: window.location.origin,
   },
   cache: {

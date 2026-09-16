@@ -376,7 +376,7 @@ export function Signup() {
                   variant="outline"
                   onClick={handleMicrosoftSignUp}
                   disabled={loading || googleLoading || msLoading}
-                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200 font-semibold rounded-xl h-10 transition-all duration-200 flex items-center justify-center gap-2.5 text-sm cursor-pointer shadow-sm"
+                  className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl h-10 flex items-center justify-center gap-2.5 text-sm cursor-pointer shadow-sm"
                 >
                   <svg className="w-4 h-4" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path fill="#f35325" d="M1 1h10v10H1z" />
