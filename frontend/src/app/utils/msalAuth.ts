@@ -31,6 +31,10 @@ export async function loginWithMicrosoft(): Promise<{ email: string; name: strin
   const loginRequest: PopupRequest = {
     scopes: ['User.Read', 'openid', 'profile', 'email'],
     prompt: 'select_account',
+    // Use a blank page as redirect URI so the popup doesn't load the full React app.
+    // MSAL processes the auth code in this blank page, closes the popup,
+    // and returns the account info to the main window.
+    redirectUri: window.location.origin + '/blank.html',
   };
 
   try {
