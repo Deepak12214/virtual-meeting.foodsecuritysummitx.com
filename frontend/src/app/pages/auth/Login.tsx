@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Link, useNavigate } from 'react-router';
 import { useAuth } from '../../context/AuthContext';
 import { Button } from '../../components/ui/button';
@@ -29,35 +29,19 @@ export function Login() {
   const [showOtpScreen, setShowOtpScreen] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [msLoading, setMsLoading] = useState(false);
-
-  const decodeJwt = (token: string) => {
-    try {
-      const base64Url = token.split('.')[1];
-      const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-      const jsonPayload = decodeURIComponent(
-        window
-          .atob(base64)
-          .split('')
-          .map((c) => '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2))
-          .join('')
-      );
-      return JSON.parse(jsonPayload);
-    } catch (e) {
-      console.error('Error decoding Google JWT token', e);
-      return null;
-    }
-  };
+  // MSAL can't tell when the Microsoft popup is closed, so the button stays clickable
+  // and a new click replaces the pending attempt; this lets stale attempts bow out.
+  const msAttemptRef = useRef(0);
 
   const handleGoogleCredentialResponse = async (response: any) => {
     setError('');
     setSuccess('');
     setGoogleLoading(true);
     try {
-      const decoded = decodeJwt(response.credential);
-      if (!decoded || !decoded.email) {
-        throw new Error('Could not retrieve user details from Google credentials.');
+      if (!response?.credential) {
+        throw new Error('Could not retrieve Google credentials.');
       }
-      await googleLogin(decoded.email, decoded.name || 'Google User');
+      await googleLogin(response.credential);
       toast.success('Successfully signed in with Google!');
       navigate('/');
     } catch (err: any) {
@@ -68,21 +52,23 @@ export function Login() {
   };
 
   const handleMicrosoftSignIn = async () => {
+    const attempt = ++msAttemptRef.current;
     setError('');
     setSuccess('');
     setMsLoading(true);
     try {
-      const res = await loginWithMicrosoft();
-      await microsoftLogin(res.email, res.name);
+      const idToken = await loginWithMicrosoft();
+      await microsoftLogin(idToken);
       toast.success('Successfully signed in with Microsoft / Outlook!');
       navigate('/');
     } catch (err: any) {
+      if (attempt !== msAttemptRef.current) return; // replaced by a newer click
       if (err?.message && err.message.includes('user_cancelled')) {
         return;
       }
       setError(err.message || 'Microsoft Sign-In failed.');
     } finally {
-      setMsLoading(false);
+      if (attempt === msAttemptRef.current) setMsLoading(false);
     }
   };
   useEffect(() => {
@@ -310,8 +296,8 @@ export function Login() {
                     </div>
                   </div>
 
-                  <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading || googleLoading || msLoading}>
-                    {loading || googleLoading || msLoading ? 'Signing in...' : 'Sign In'}
+                  <Button type="submit" className="w-full bg-emerald-600 hover:bg-emerald-500 text-white font-semibold rounded-xl h-11 transition-all duration-300 shadow-lg shadow-emerald-500/10 cursor-pointer border-none" disabled={loading || googleLoading}>
+                    {loading || googleLoading ? 'Signing in...' : 'Sign In'}
                   </Button>
 
                   <div className="mt-4 flex flex-col gap-2.5">
@@ -321,7 +307,7 @@ export function Login() {
                       type="button"
                       variant="outline"
                       onClick={handleMicrosoftSignIn}
-                      disabled={loading || googleLoading || msLoading}
+                      disabled={loading || googleLoading}
                       className="w-full bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold rounded-xl h-10 flex items-center justify-center gap-2.5 text-sm cursor-pointer shadow-sm"
                     >
                       <svg className="w-4 h-4" viewBox="0 0 23 23" fill="none" xmlns="http://www.w3.org/2000/svg">

@@ -5,6 +5,7 @@ const User = require('../models/User');
 const { sendEmail } = require('../utils/mailer');
 const { protectUser } = require('../middleware/auth');
 const { ALL_ROLES, AUTO_APPROVE_ROLES, USER_ROLES } = require('../constants/roles');
+const { verifyGoogleIdToken, verifyMicrosoftIdToken } = require('../utils/verifyIdToken');
 
 const generateToken = (id) => {
   return jwt.sign({ id }, process.env.JWT_SECRET, {
@@ -321,10 +322,9 @@ router.put('/profile', protectUser, async (req, res) => {
 // @access  Public
 router.post('/google-login', async (req, res) => {
   try {
-    const { email, name, phone, role, company } = req.body;
-    if (!email || !name) {
-      return res.status(400).json({ success: false, message: 'Please provide email and name' });
-    }
+    const { credential, phone, role, company } = req.body;
+    // Identity comes only from the verified Google token, never from the request body.
+    const { email, name } = await verifyGoogleIdToken(credential);
 
     let user = await User.findOne({ email });
 
@@ -398,6 +398,9 @@ router.post('/google-login', async (req, res) => {
       });
     }
   } catch (error) {
+    if (error.status === 401) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });
@@ -407,10 +410,9 @@ router.post('/google-login', async (req, res) => {
 // @access  Public
 router.post('/microsoft-login', async (req, res) => {
   try {
-    const { email, name, phone, role, company } = req.body;
-    if (!email || !name) {
-      return res.status(400).json({ success: false, message: 'Please provide email and name' });
-    }
+    const { idToken, phone, role, company } = req.body;
+    // Identity comes only from the verified Microsoft token, never from the request body.
+    const { email, name } = await verifyMicrosoftIdToken(idToken);
 
     let user = await User.findOne({ email });
 
@@ -484,6 +486,9 @@ router.post('/microsoft-login', async (req, res) => {
       });
     }
   } catch (error) {
+    if (error.status === 401) {
+      return res.status(401).json({ success: false, message: error.message });
+    }
     res.status(500).json({ success: false, message: 'Server error', error: error.message });
   }
 });

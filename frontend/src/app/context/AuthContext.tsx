@@ -33,8 +33,8 @@ interface AuthContextType {
   forgotPassword: (email: string) => Promise<{ message: string }>;
   resetPassword: (email: string, otp: string, newPassword: string) => Promise<{ message: string }>;
   logout: () => void;
-  googleLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
-  microsoftLogin: (email: string, name: string, role?: UserRole, company?: string) => Promise<void>;
+  googleLogin: (credential: string, role?: UserRole, company?: string) => Promise<void>;
+  microsoftLogin: (idToken: string, role?: UserRole, company?: string) => Promise<void>;
   refreshUser: () => Promise<void>;
   updateProfile: (name: string, company: string, phone: string) => Promise<void>;
   isAuthenticated: boolean;
@@ -108,13 +108,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return {};
   };
 
-  const googleLogin = async (email: string, name: string, role?: UserRole, company?: string) => {
+  // Social logins send the provider's signed ID token; the backend verifies it
+  // and takes the email/name from the verified token.
+  const googleLogin = async (credential: string, role?: UserRole, company?: string) => {
     const res = await fetch(`${API_URL}/auth/google-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, name, role, company }),
+      body: JSON.stringify({ credential, role, company }),
     });
 
     const data = await res.json();
@@ -129,13 +131,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const microsoftLogin = async (email: string, name: string, role?: UserRole, company?: string) => {
+  const microsoftLogin = async (idToken: string, role?: UserRole, company?: string) => {
     const res = await fetch(`${API_URL}/auth/microsoft-login`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({ email, name, role, company }),
+      body: JSON.stringify({ idToken, role, company }),
     });
 
     const data = await res.json();
