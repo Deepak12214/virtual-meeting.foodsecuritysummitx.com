@@ -28,6 +28,7 @@ import {
   TableRow,
   TableCell,
 } from '../../components/ui/table';
+import { TablePagination } from '../../components/TablePagination';
 import { USER_ROLES, ALL_ROLES, ROLE_COLORS, getRoleLabel, UserRole } from '../../constants/roles';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -217,6 +218,11 @@ export function OrganizerUsers() {
   const currentTabUsers = activeTab === 'pending' ? pendingUsers : approvedUsers;
   const totalPages = Math.ceil(currentTabUsers.length / pageSize);
   const paginatedUsers = currentTabUsers.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
+  // Keep the page in range when the list shrinks (e.g. approving the last user on the last page).
+  useEffect(() => {
+    if (totalPages > 0 && currentPage > totalPages) setCurrentPage(totalPages);
+  }, [currentPage, totalPages]);
 
   // ── Render ───────────────────────────────────────────────────────────────────
   return (
@@ -477,41 +483,11 @@ export function OrganizerUsers() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                   <p className="text-xs text-[--color-text-secondary]">
                     Showing {Math.min(pendingUsers.length, (currentPage - 1) * pageSize + 1)} to {Math.min(pendingUsers.length, currentPage * pageSize)} of {pendingUsers.length} users
                   </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          className="w-8 h-8 p-0"
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <TablePagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 </div>
               )}
             </>
@@ -634,41 +610,11 @@ export function OrganizerUsers() {
 
               {/* Pagination Controls */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-4">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-3 pt-4">
                   <p className="text-xs text-[--color-text-secondary]">
                     Showing {Math.min(approvedUsers.length, (currentPage - 1) * pageSize + 1)} to {Math.min(approvedUsers.length, currentPage * pageSize)} of {approvedUsers.length} users
                   </p>
-                  <div className="flex items-center gap-1">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === 1}
-                      onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))}
-                    >
-                      Previous
-                    </Button>
-                    <div className="flex items-center gap-1">
-                      {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                        <Button
-                          key={page}
-                          variant={currentPage === page ? 'default' : 'outline'}
-                          size="sm"
-                          className="w-8 h-8 p-0"
-                          onClick={() => setCurrentPage(page)}
-                        >
-                          {page}
-                        </Button>
-                      ))}
-                    </div>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={currentPage === totalPages}
-                      onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))}
-                    >
-                      Next
-                    </Button>
-                  </div>
+                  <TablePagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
                 </div>
               )}
             </>

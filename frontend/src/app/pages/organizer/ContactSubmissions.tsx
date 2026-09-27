@@ -6,6 +6,7 @@ import {
   ContactRecord,
   PaginationInfo,
 } from '../../services/contactService';
+import { getPageItems } from '../../utils/pagination';
 import {
   Mail,
   Search,
@@ -362,7 +363,11 @@ export function ContactSubmissions() {
               </button>
 
               <div className="flex items-center gap-1">
-                {Array.from({ length: pagination.totalPages }, (_, i) => i + 1).map((p) => (
+                {getPageItems(pagination.page, pagination.totalPages).map((p) => typeof p !== 'number' ? (
+                  <span key={p} aria-hidden className="h-8 w-8 flex items-center justify-center text-slate-400">
+                    …
+                  </span>
+                ) : (
                   <button
                     key={p}
                     onClick={() => loadContacts(p)}
