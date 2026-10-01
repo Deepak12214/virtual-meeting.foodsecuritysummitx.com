@@ -151,44 +151,52 @@ export async function updateBooth(id: string, payload: { name?: string; logo?: s
   return data.booth as Booth;
 }
 
-/**
- * Upload brochure PDF file (restricted to reps & admins).
- */
-/**
- * Upload any image or pdf file generally.
- */
-export async function uploadGenericFile(file: File): Promise<string> {
+// Must match `client_max_body_size` in the nginx config.
+export const MAX_UPLOAD_MB = 20;
+const MAX_UPLOAD_BYTES = MAX_UPLOAD_MB * 1024 * 1024;
+
+const tooLargeMessage = (file: File) =>
+  `"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maximum allowed file size is ${MAX_UPLOAD_MB} MB.`;
+
+async function postFile(url: string, field: string, file: File): Promise<string> {
+  if (file.size > MAX_UPLOAD_BYTES) {
+    throw new Error(tooLargeMessage(file));
+  }
+
   const token = localStorage.getItem('token');
   const formData = new FormData();
-  formData.append('file', file);
+  formData.append(field, file);
 
-  const res = await fetch(`${API_URL}/booths/upload-file`, {
+  const res = await fetch(url, {
     method: 'POST',
     headers: {
       ...(token ? { Authorization: `Bearer ${token}` } : {}),
     },
     body: formData,
   });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to upload file');
+
+  // nginx answers 413 with an HTML page, not JSON.
+  if (res.status === 413) {
+    throw new Error(tooLargeMessage(file));
+  }
+
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(data.message || `Failed to upload file (error ${res.status})`);
   return data.url as string;
 }
 
-export async function uploadBrochureFile(id: string, file: File): Promise<string> {
-  const token = localStorage.getItem('token');
-  const formData = new FormData();
-  formData.append('brochure', file);
+/**
+ * Upload any image or pdf file generally.
+ */
+export function uploadGenericFile(file: File): Promise<string> {
+  return postFile(`${API_URL}/booths/upload-file`, 'file', file);
+}
 
-  const res = await fetch(`${API_URL}/booths/${id}/upload`, {
-    method: 'POST',
-    headers: {
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-    },
-    body: formData,
-  });
-  const data = await res.json();
-  if (!res.ok) throw new Error(data.message || 'Failed to upload file');
-  return data.url as string;
+/**
+ * Upload brochure PDF file (restricted to reps & admins).
+ */
+export function uploadBrochureFile(id: string, file: File): Promise<string> {
+  return postFile(`${API_URL}/booths/${id}/upload`, 'brochure', file);
 }
 
 /**

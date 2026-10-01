@@ -42,6 +42,7 @@ import {
   claimBooth,
   getImageUrl,
   uploadGenericFile,
+  MAX_UPLOAD_MB,
   type Booth,
   type Lead
 } from '../services/boothService';
@@ -293,6 +294,14 @@ export function BoothDetail() {
     setEditBrochures(updated);
   };
 
+  // Files here only upload on Save, so reject oversized ones as soon as they are picked.
+  const isWithinUploadLimit = (file: File, input: HTMLInputElement) => {
+    if (file.size <= MAX_UPLOAD_MB * 1024 * 1024) return true;
+    toast.error(`"${file.name}" is ${(file.size / (1024 * 1024)).toFixed(1)} MB. Maximum allowed file size is ${MAX_UPLOAD_MB} MB.`);
+    input.value = '';
+    return false;
+  };
+
   const handleFileChange = (index: number, file: File) => {
     const updated = [...editBrochures];
     updated[index] = { ...updated[index], name: updated[index].name || file.name.replace(/\.[^/.]+$/, ""), file };
@@ -377,62 +386,70 @@ export function BoothDetail() {
           {/* Booth Header Card */}
           <Card className="border-border bg-card/60 backdrop-blur-md overflow-hidden relative shadow-md">
             <div className="absolute top-0 left-0 w-full h-1.5 bg-gradient-to-r from-emerald-500 via-teal-500 to-indigo-500" />
-            <CardContent className="p-6 md:p-8 pt-8">
-              <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                <div className="relative group shrink-0 mx-auto md:mx-0">
-                  <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300" />
-                  <img
-                    src={getImageUrl(booth.logo)}
-                    alt={booth.name}
-                    className="relative w-24 h-24 md:w-32 md:h-32 rounded-2xl object-cover border border-border/50 bg-white/10 dark:bg-black/20 shadow-md"
-                  />
-                </div>
-                
-                <div className="flex-1 space-y-3 min-w-0 text-center md:text-left">
-                  <div className="flex items-center gap-2.5 flex-wrap justify-center md:justify-start">
-                    <h1 className="text-3xl font-extrabold text-foreground tracking-tight">{booth.name}</h1>
-                    {booth.tier && getTierIcon(booth.tier)}
+            <CardContent className="p-6 md:p-8 pt-8 space-y-6">
+              {/* Row 1: logo + name on the left, actions on the right */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+                <div className="flex items-center gap-5 min-w-0">
+                  <div className="relative group shrink-0">
+                    <div className="absolute -inset-0.5 bg-gradient-to-r from-emerald-500 to-indigo-500 rounded-2xl blur opacity-30 group-hover:opacity-60 transition duration-300" />
+                    <img
+                      src={getImageUrl(booth.logo)}
+                      alt={booth.name}
+                      className="relative w-20 h-20 md:w-28 md:h-28 rounded-2xl object-cover border border-border/50 bg-white/10 dark:bg-black/20 shadow-md"
+                    />
                   </div>
-                  
-                  <div className="flex flex-wrap gap-2 items-center justify-center md:justify-start">
-                    {booth.tier && getTierBadge(booth.tier)}
-                    {booth.isLive ? (
-                      <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 text-[11px] font-semibold gap-1.5 animate-pulse rounded-lg">
-                        <span className="relative flex h-2 w-2">
-                          <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
-                          <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                        </span>
-                        Live Room Active
+
+                  <div className="space-y-3 min-w-0">
+                    <div className="flex items-center gap-2.5 flex-wrap">
+                      <h1 className="text-2xl md:text-3xl font-extrabold text-foreground tracking-tight break-words">{booth.name}</h1>
+                      {booth.tier && getTierIcon(booth.tier)}
+                    </div>
+
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {booth.tier && getTierBadge(booth.tier)}
+                      {booth.isLive ? (
+                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25 px-2.5 py-0.5 text-[11px] font-semibold gap-1.5 animate-pulse rounded-lg">
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-500 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                          Live Room Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="secondary" className="bg-muted text-muted-foreground border-none px-2.5 py-0.5 text-[11px]">Offline</Badge>
+                      )}
+                      <Badge variant="secondary" className="gap-1.5 text-xs bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 px-2.5 py-0.5">
+                        <Eye className="h-3.5 w-3.5" />
+                        {booth.visitCount} visits
                       </Badge>
-                    ) : (
-                      <Badge variant="secondary" className="bg-muted text-muted-foreground border-none px-2.5 py-0.5 text-[11px]">Offline</Badge>
-                    )}
-                    <Badge variant="secondary" className="gap-1.5 text-xs bg-sky-500/10 text-sky-600 dark:text-sky-400 border border-sky-500/25 px-2.5 py-0.5">
-                      <Eye className="h-3.5 w-3.5" />
-                      {booth.visitCount} visits
-                    </Badge>
+                    </div>
                   </div>
-                  
-                  <p className="text-muted-foreground text-sm leading-relaxed max-w-3xl">
-                    {booth.description}
-                  </p>
                 </div>
-                
-                <div className="flex flex-col gap-2 w-full md:w-auto shrink-0 self-stretch md:self-center justify-center md:items-end">
-                  {isRep && (
-                    <Button variant="outline" className="gap-2 border-border hover:bg-muted text-foreground font-semibold rounded-xl h-10 w-full md:w-auto cursor-pointer" onClick={handleOpenEdit}>
-                      <Edit className="h-4 w-4" />
-                      Edit Booth Details
-                    </Button>
-                  )}
-                  {canClaim && (
-                    <Button variant="secondary" className="gap-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl h-10 w-full md:w-auto cursor-pointer" onClick={handleClaimBooth} disabled={claiming}>
-                      {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
-                      Claim representative rights
-                    </Button>
-                  )}
-                </div>
+
+                {(isRep || canClaim) && (
+                  <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto shrink-0">
+                    {isRep && (
+                      <Button variant="outline" className="gap-2 border-border hover:bg-muted text-foreground font-semibold rounded-xl h-10 w-full sm:w-auto cursor-pointer" onClick={handleOpenEdit}>
+                        <Edit className="h-4 w-4" />
+                        Edit Booth Details
+                      </Button>
+                    )}
+                    {canClaim && (
+                      <Button variant="secondary" className="gap-2 bg-amber-500/15 hover:bg-amber-500/25 text-amber-600 dark:text-amber-400 border border-amber-500/30 rounded-xl h-10 w-full sm:w-auto cursor-pointer" onClick={handleClaimBooth} disabled={claiming}>
+                        {claiming ? <Loader2 className="h-4 w-4 animate-spin" /> : <ShieldAlert className="h-4 w-4" />}
+                        Claim representative rights
+                      </Button>
+                    )}
+                  </div>
+                )}
               </div>
+
+              {/* Row 2: full-width description, keeping the line breaks and spacing typed in the editor */}
+              {booth.description && (
+                <p className="text-muted-foreground text-sm leading-relaxed whitespace-pre-wrap break-words border-t border-border pt-6">
+                  {booth.description}
+                </p>
+              )}
             </CardContent>
           </Card>
 
@@ -797,7 +814,7 @@ export function BoothDetail() {
                       accept="image/*"
                       onChange={(e) => {
                         const file = e.target.files?.[0];
-                        if (file) {
+                        if (file && isWithinUploadLimit(file, e.target)) {
                           setEditLogoFile(file);
                           setEditLogoUrl(URL.createObjectURL(file));
                         }
@@ -877,7 +894,7 @@ export function BoothDetail() {
                               accept="application/pdf"
                               onChange={(e) => {
                                 const file = e.target.files?.[0];
-                                if (file) handleFileChange(index, file);
+                                if (file && isWithinUploadLimit(file, e.target)) handleFileChange(index, file);
                               }}
                               className="text-xs bg-card border-border text-foreground focus:ring-emerald-500 focus:border-emerald-500 pt-2 rounded-xl h-10 cursor-pointer"
                             />
