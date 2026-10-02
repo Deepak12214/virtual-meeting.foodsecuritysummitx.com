@@ -19,7 +19,7 @@ const requireAdminOrOrganizer = (req, res, next) => {
 // @access  Admin / Organizer
 router.get('/users', protectUser, requireAdminOrOrganizer, async (req, res) => {
   try {
-    const { status, role, search, page = 1, limit = 50 } = req.query;
+    const { status, role, search, page = 1, limit = 'all' } = req.query;
 
     const query = {};
 
@@ -39,14 +39,18 @@ router.get('/users', protectUser, requireAdminOrOrganizer, async (req, res) => {
       ];
     }
 
-    const skip = (Number(page) - 1) * Number(limit);
+    // If limit is 'all', fetch every document (no pagination)
+    const fetchAll = limit === 'all';
+    const pageNum = Number(page);
+    const limitNum = fetchAll ? 0 : Math.min(Number(limit), 10000);
+    const skip = fetchAll ? 0 : (pageNum - 1) * limitNum;
 
     const [users, total] = await Promise.all([
       User.find(query)
         .select('-password -verifyToken -verifyTokenExpiry')
         .sort({ createdAt: -1 })
         .skip(skip)
-        .limit(Number(limit)),
+        .limit(limitNum),   // 0 means no limit in Mongoose
       User.countDocuments(query),
     ]);
 
@@ -61,8 +65,8 @@ router.get('/users', protectUser, requireAdminOrOrganizer, async (req, res) => {
       success: true,
       users,
       total,
-      page: Number(page),
-      totalPages: Math.ceil(total / Number(limit)),
+      page: pageNum,
+      totalPages: fetchAll ? 1 : Math.ceil(total / limitNum),
       stats: {
         pending: pendingCount,
         approved: approvedCount,

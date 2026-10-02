@@ -86,7 +86,7 @@ export function OrganizerUsers() {
   const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
-      const params = new URLSearchParams({ limit: '200' });
+      const params = new URLSearchParams({ limit: 'all' });
       if (roleFilter !== 'all') params.set('role', roleFilter);
 
       const res = await fetch(`${API_URL}/admin/users?${params}`, {
